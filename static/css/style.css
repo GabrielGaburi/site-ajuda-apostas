@@ -1,0 +1,40 @@
+/* Fundo geral da página */
+body {
+    background: linear-gradient(180deg, #f1f5f9, #e2e8f0);
+    min-height: 100vh;
+}
+
+/* Banner principal */
+.hero {
+    background: linear-gradient(135deg, #ffffff, #f8fafc);
+    border-radius: 12px;
+    padding: 60px 30px;
+}
+
+/* Títulos */
+h1,
+h2 {
+    color: #1f2933;
+}
+
+/* Texto */
+p {
+    color: #4b5563;
+}
+
+/* Cards de notícias */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+    transition: transform 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+}
+
+/* Footer */
+footer {
+    background-color: #111827;
+}

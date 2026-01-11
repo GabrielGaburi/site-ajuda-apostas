@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Notícias{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+    <h2 class="mb-4 text-center">Todas as Notícias</h2>
+
+    {% for noticia in noticias %}
+    <div class="card mb-4 shadow-sm">
+        <div class="row g-0">
+
+            <div class="col-md-4">
+                <img src="{{ noticia.imagem }}" class="img-fluid rounded-start h-100 object-fit-cover"
+                    alt="{{ noticia.titulo }}">
+            </div>
+
+            <div class="col-md-8">
+                <div class="card-body d-flex flex-column h-100">
+                    <h5 class="card-title">{{ noticia.titulo }}</h5>
+
+                    <p class="card-text text-muted">
+                        {{ noticia.resumo }}
+                    </p>
+
+                    <button class="btn btn-outline-primary mt-auto" data-bs-toggle="modal"
+                        data-bs-target="#noticiaModal" data-titulo="{{ noticia.titulo }}"
+                        data-introducao="{{ noticia.introducao }}" data-fonte="{{ noticia.fonte }}">
+                        Ler mais
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- MODAL -->
+<div class="modal fade" id="noticiaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitulo"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <p id="modalIntroducao" class="lead"></p>
+
+                <div class="alert alert-secondary mt-4">
+                    <strong>Fonte original:</strong><br>
+                    <a id="modalFonte" href="#" target="_blank" rel="noopener noreferrer">
+                        Acessar notícia completa
+                    </a>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">
+                    Fechar
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    const noticiaModal = document.getElementById('noticiaModal');
+
+    noticiaModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+
+        document.getElementById('modalTitulo').textContent =
+            button.getAttribute('data-titulo');
+
+        document.getElementById('modalIntroducao').textContent =
+            button.getAttribute('data-introducao');
+
+        const linkFonte = document.getElementById('modalFonte');
+        linkFonte.href = button.getAttribute('data-fonte');
+    });
+</script>
+
+{% endblock %}
