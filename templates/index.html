@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Início{% endblock %}
+
+{% block content %}
+
+<!-- Banner -->
+<div class="container-fluid bg-light py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+
+                <h1 class="fw-bold mb-3">
+                    Informação é o primeiro passo para a recuperação
+                </h1>
+
+                <p class="lead text-muted">
+                    Notícias, apoio e comunidade para pessoas afetadas pelo vício em apostas online.
+                </p>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+<!-- Notícias -->
+<div class="container my-5">
+    <h2 class="mb-4 text-center">Notícias em Destaque</h2>
+
+    <div class="row">
+        {% for noticia in noticias %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 shadow-sm">
+
+                <img src="{{ noticia.imagem }}" class="card-img-top" alt="Imagem da notícia">
+
+
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">{{ noticia.titulo }}</h5>
+                    <p class="card-text text-muted">
+                        {{ noticia.resumo }}
+                    </p>
+                    <button class="btn btn-outline-primary mt-auto" data-bs-toggle="modal"
+                        data-bs-target="#noticiaModal" data-titulo="{{ noticia.titulo }}"
+                        data-introducao="{{ noticia.introducao }}" data-fonte="{{ noticia.fonte }}">
+                        Ler mais
+                    </button>
+
+                </div>
+
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal de Notícia -->
+<div class="modal fade" id="noticiaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitulo"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <p id="modalIntroducao" class="lead"></p>
+
+                <div class="alert alert-secondary mt-4">
+                    <strong>Fonte original:</strong><br>
+                    <a id="modalFonte" href="#" target="_blank" rel="noopener noreferrer">
+                        Acessar notícia completa
+                    </a>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">
+                    Fechar
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="container-fluid bg-secondary bg-opacity-10 py-5">
+    <div class="container">
+        <div class="row align-items-center">
+
+            <div class="col-md-6">
+                <img src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d" class="img-fluid rounded"
+                    alt="Apoio psicológico">
+            </div>
+
+            <div class="col-md-6">
+                <h3 class="mb-3">Por que falar sobre isso?</h3>
+                <p class="text-muted">
+                    O vício em apostas online é um problema de saúde pública que afeta
+                    famílias inteiras. Informação de qualidade ajuda na prevenção,
+                    identificação precoce e busca por tratamento.
+                </p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<div class="container my-5 text-center">
+    <h3 class="mb-3">Você não está sozinho</h3>
+    <p class="text-muted mb-4">
+        Busque informação, apoio e compartilhe experiências com outras pessoas.
+    </p>
+
+    <a href="/forum" class="btn btn-success btn-lg me-2">
+        Acessar Fórum
+    </a>
+    <a href="/contato" class="btn btn-outline-secondary btn-lg">
+        Buscar Ajuda
+    </a>
+</div>
+
+
+<script>
+    const noticiaModal = document.getElementById('noticiaModal');
+
+    noticiaModal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+
+        const titulo = button.getAttribute('data-titulo');
+        const introducao = button.getAttribute('data-introducao');
+        const fonte = button.getAttribute('data-fonte');
+
+        document.getElementById('modalTitulo').textContent = titulo;
+        document.getElementById('modalIntroducao').textContent = introducao;
+
+        const linkFonte = document.getElementById('modalFonte');
+        linkFonte.href = fonte;
+    });
+</script>
+
+
+
+{% endblock %}
