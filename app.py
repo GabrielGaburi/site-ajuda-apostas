@@ -27,6 +27,14 @@ noticias = [
         "introducao": "O mercado de apostas online, também conhecido como “bets”, está em pleno crescimento no Brasil. Estima-se que o país já seja o terceiro maior mercado de apostas do mundo, movimentando só em 2024 cerca de R$ 130 bilhões. Com isso, a regulamentação e a tributação desse setor tornaram-se prioridades para o governo. A aprovação da Lei nº 14.790/2023 trouxe mudanças importantes para a operação e fiscalização das bets, estabelecendo regras fiscais e regulamentares que as empresas devem seguir para atuar de forma legal no país.",
         "fonte": "https://www.taxgroup.com.br/intelligence/tributacao-das-bets-no-brasil-regras-desafios-e-as-bets-regulamentadas/",
         "imagem": "https://www.gov.br/secom/pt-br/fatos/brasil-contra-fake/noticias/2024/09/regulamentacao-da-legislacao-de-bets-torna-atividade-mais-segura-no-brasil/mg_8621.jpg/@@images/eb802195-03da-4422-a5ee-1b826d57aa5d.jpeg"
+    },
+    {   
+         "id": 4,
+        "titulo": "Entretenimento ou armadilha? Como apostas online e jogo do tigrinho afetam a vida dos 60+",
+        "resumo": "Gasto mensal do público idoso com jogos digitais é 30 vezes maior em comparação aos mais jovens, segundo dados do Banco Central.",
+        "introducao": "O avanço acelerado das apostas online no Brasil tem produzido um efeito colateral cada vez mais evidente à população idosa: o comprometimento severo da renda com plataformas de apostas esportivas e jogos de cassino online, popularmente associados a termos como bets e tigrinho (os caça-níqueis online).",
+        "fonte": "https://gauchazh.clicrbs.com.br/comportamento/60-mais/noticia/2026/01/tigrinho-apostas-online-e-60-quando-o-entretenimento-vira-problema-financeiro-e-social-cmk7brmmn025j014i4w3lbxs2.html",
+        "imagem": "https://www.rbsdirect.com.br/filestore/9/2/3/9/0/6/5_f411465a2662a86/5609329_74835350f8ddcb8.jpg?format=webp&w=700"
     }
 ]
 
