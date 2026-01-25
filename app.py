@@ -1,8 +1,10 @@
-from flask import Flask, render_template, abort
+
+import json
+from flask import Flask, render_template, request, redirect, url_for, abort
+from datetime import datetime
 
 app = Flask(__name__)
 
-# LISTA DE NOTÍCIAS
 noticias = [
     {
         "id": 1,
@@ -39,6 +41,29 @@ noticias = [
 ]
 
 
+# Arquivo JSON para salvar o fórum
+FORUM_FILE = "forum.json"
+
+# Funções auxiliares
+def carregar_forum():
+    try:
+        with open(FORUM_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+def salvar_forum(forum):
+    with open(FORUM_FILE, "w", encoding="utf-8") as f:
+        json.dump(forum, f, ensure_ascii=False, indent=4)
+
+# Carregar tópicos existentes
+forum = carregar_forum()
+
+
+# Usuário atual e flag de moderador (apenas para exemplo, normalmente viria do login)
+usuario_atual = "Anônimo"
+moderador = True  # Defina como True apenas para você, o moderador
+
 @app.route("/")
 def index():
     return render_template("index.html", noticias=noticias[:3])
@@ -48,20 +73,72 @@ def todas_noticias():
     return render_template("noticia.html", noticias=noticias)
 
 @app.route("/noticia/<int:noticia_id>")
-
 def noticia_detalhe(noticia_id):
-    noticia_encontrada = next(
-        (n for n in noticias if n["id"] == noticia_id),
-        None
-    )
-
+    noticia_encontrada = next((n for n in noticias if n["id"] == noticia_id), None)
     if noticia_encontrada is None:
         abort(404)
+    return render_template("noticia.html", noticia=noticia_encontrada)
 
-    return render_template(
-        "noticia.html",
-        noticia=noticia_encontrada
-    )
+# Página principal do fórum
+@app.route("/forum")
+def forum_home():
+    return render_template("forum.html", forum=forum)
+
+# Criar novo tópico
+@app.route("/forum/novo", methods=["GET", "POST"])
+if request.method == "POST":
+    titulo = request.form.get("titulo")
+    mensagem = request.form.get("mensagem")
+    autor = request.form.get("autor") or "Anônimo"
+
+    if titulo and mensagem:
+        novo_topico = {
+            "id": len(forum) + 1,
+            "titulo": titulo,
+            "mensagens": [{
+                "autor": autor,
+                "mensagem": mensagem,
+                "data": datetime.now().strftime("%d/%m/%Y %H:%M")
+            }]
+        }
+        forum.append(novo_topico)
+        return redirect(url_for("forum_home"))
+
+
+# Visualizar tópico e adicionar respostas
+@app.route("/forum/<int:topico_id>", methods=["GET", "POST"])
+def forum_topico(topico_id):
+    topico = next((t for t in forum if t["id"] == topico_id), None)
+    if not topico:
+        abort(404)
+
+    if request.method == "POST":
+        autor = request.form.get("autor") or "Anônimo"
+        mensagem = request.form.get("mensagem")
+        if mensagem:
+            topico["mensagens"].append({
+                "autor": autor,
+                "mensagem": mensagem,
+                "data": datetime.now().strftime("%d/%m/%Y %H:%M")
+            })
+            salvar_forum(forum)
+        return redirect(url_for("forum_topico", topico_id=topico_id))
+
+    return render_template("topico.html", topico=topico)
+
+
+# Excluir mensagem (somente autor ou moderador)
+@app.route("/forum/<int:topico_id>/excluir/<int:msg_index>", methods=["POST"])
+def excluir_mensagem(topico_id, msg_index):
+    topico = next((t for t in forum if t["id"] == topico_id), None)
+    if not topico:
+        abort(404)
+    
+    # Aqui você pode colocar verificação de autor ou moderador
+    topico["mensagens"].pop(msg_index)
+    salvar_forum(forum)
+    return redirect(url_for("forum_topico", topico_id=topico_id))
+
 
 
 if __name__ == "__main__":

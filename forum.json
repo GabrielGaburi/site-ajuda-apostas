@@ -1,0 +1,18 @@
+[
+    {
+        "id": 1,
+        "titulo": "Palmeiras",
+        "mensagens": [
+            {
+                "autor": "Gabriel",
+                "mensagem": "Palmeiras minha vida é vc.",
+                "data": "25/01/2026 14:25"
+            },
+            {
+                "autor": "Daniel",
+                "mensagem": "La ele",
+                "data": "25/01/2026 14:26"
+            }
+        ]
+    }
+]

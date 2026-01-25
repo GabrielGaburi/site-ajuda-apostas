@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+
+{% block title %}Criar Novo Tópico{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+    <h2 class="mb-4 text-center">Criar Novo Tópico</h2>
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label for="autor" class="form-label">Seu nome</label>
+                            <input type="text" class="form-control" id="autor" name="autor"
+                                placeholder="Digite seu nome ou deixe em branco para 'Anônimo'">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="titulo" class="form-label">Título do Tópico</label>
+                            <input type="text" class="form-control" id="titulo" name="titulo"
+                                placeholder="Digite o título do tópico" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="mensagem" class="form-label">Mensagem Inicial</label>
+                            <textarea class="form-control" id="mensagem" name="mensagem" rows="5"
+                                placeholder="Escreva sua mensagem" required></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('forum_home') }}" class="btn btn-outline-secondary">Voltar ao Fórum</a>
+                            <button type="submit" class="btn btn-success">Criar Tópico</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

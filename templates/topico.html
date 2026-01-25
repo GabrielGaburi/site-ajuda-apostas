@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ topico.titulo }}{% endblock %}
+{% block content %}
+
+<div class="container my-5">
+    <h2>{{ topico.titulo }}</h2>
+    <p class="text-muted">Criado por {{ topico.mensagens[0].autor if topico.mensagens else "Anônimo" }}</p>
+    <hr>
+
+    <h4>Respostas:</h4>
+
+    {% for msg in topico.mensagens %}
+    <div class="mb-2 p-3 border rounded position-relative">
+        <strong>{{ msg.autor }}</strong> <small class="text-muted">{{ msg.data }}</small>
+        <p>{{ msg.mensagem }}</p>
+
+        <!-- Botão de excluir só para o autor ou moderador -->
+        {% if msg.autor == usuario_atual or moderador %}
+        <form method="POST" action="{{ url_for('excluir_mensagem', topico_id=topico.id, msg_index=loop.index0) }}"
+            class="position-absolute top-0 end-0 m-2">
+            <button type="submit" class="btn btn-sm btn-danger">Excluir</button>
+        </form>
+        {% endif %}
+    </div>
+    {% endfor %}
+
+    <hr>
+    <h4>Responder</h4>
+    <form method="POST">
+        <div class="mb-3">
+            <label class="form-label">Nome</label>
+            <input type="text" name="autor" class="form-control" value="{{ usuario_atual }}" required>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Mensagem</label>
+            <textarea name="mensagem" class="form-control" rows="3" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-success">Enviar</button>
+    </form>
+</div>
+
+{% endblock %}
