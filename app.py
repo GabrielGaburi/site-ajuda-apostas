@@ -4,6 +4,7 @@ from flask import Flask, render_template, request, redirect, url_for, abort
 from datetime import datetime
 
 app = Flask(__name__)
+MODERADOR = True
 
 noticias = [
     {
@@ -86,60 +87,78 @@ def forum_home():
 
 # Criar novo tópico
 @app.route("/forum/novo", methods=["GET", "POST"])
-if request.method == "POST":
-    titulo = request.form.get("titulo")
-    mensagem = request.form.get("mensagem")
-    autor = request.form.get("autor") or "Anônimo"
+def forum_novo():
+    if request.method == "POST":
+        titulo = request.form.get("titulo")
+        autor = request.form.get("autor") or "Anônimo"
+        mensagem = request.form.get("mensagem")
+        
+        if titulo and mensagem:
+            novo_topico = {
+                "id": len(forum) + 1,
+                "titulo": titulo,
+                "mensagens": [
+                    {
+                        "autor": autor,
+                        "mensagem": mensagem,
+                        "data": datetime.now().strftime("%d/%m/%Y %H:%M")
+                    }
+                ]
+            }
+            forum.append(novo_topico)
+            salvar_forum(forum)
+            return redirect(url_for("forum_home"))
+    return render_template("novo_topico.html")
 
-    if titulo and mensagem:
-        novo_topico = {
-            "id": len(forum) + 1,
-            "titulo": titulo,
-            "mensagens": [{
-                "autor": autor,
-                "mensagem": mensagem,
-                "data": datetime.now().strftime("%d/%m/%Y %H:%M")
-            }]
-        }
-        forum.append(novo_topico)
-        return redirect(url_for("forum_home"))
 
-
-# Visualizar tópico e adicionar respostas
 @app.route("/forum/<int:topico_id>", methods=["GET", "POST"])
 def forum_topico(topico_id):
     topico = next((t for t in forum if t["id"] == topico_id), None)
     if not topico:
         abort(404)
 
+    usuario_atual = request.form.get("autor") or "Anônimo"
+
     if request.method == "POST":
-        autor = request.form.get("autor") or "Anônimo"
         mensagem = request.form.get("mensagem")
+
         if mensagem:
             topico["mensagens"].append({
-                "autor": autor,
+                "autor": usuario_atual,
                 "mensagem": mensagem,
                 "data": datetime.now().strftime("%d/%m/%Y %H:%M")
             })
             salvar_forum(forum)
-        return redirect(url_for("forum_topico", topico_id=topico_id))
+            return redirect(url_for("forum_topico", topico_id=topico_id))
 
-    return render_template("topico.html", topico=topico)
+    return render_template(
+        "topico.html",
+        topico=topico,
+        usuario_atual=usuario_atual,
+        moderador=MODERADOR
+    )
 
 
-# Excluir mensagem (somente autor ou moderador)
-@app.route("/forum/<int:topico_id>/excluir/<int:msg_index>", methods=["POST"])
+
+
+@app.route("/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir", methods=["POST"])
 def excluir_mensagem(topico_id, msg_index):
     topico = next((t for t in forum if t["id"] == topico_id), None)
     if not topico:
         abort(404)
-    
-    # Aqui você pode colocar verificação de autor ou moderador
-    topico["mensagens"].pop(msg_index)
-    salvar_forum(forum)
+
+    try:
+        topico["mensagens"].pop(msg_index)
+        salvar_forum(forum)
+    except IndexError:
+        abort(404)
+
     return redirect(url_for("forum_topico", topico_id=topico_id))
 
 
 
 if __name__ == "__main__":
     app.run(debug=True)
+    
+
+
