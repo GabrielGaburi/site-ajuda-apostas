@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}Como Bloquear Sites de Apostas{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+    <div class="text-center mb-5">
+        <h1 class="fw-bold">🔒 Como Bloquear Sites de Apostas</h1>
+        <p class="lead">
+            Guia prático para bloquear sites de apostas no computador, celular e roteador.
+        </p>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- Windows -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4>🖥️ Como bloquear no Windows (Arquivo Hosts)</h4>
+                    <ol>
+                        <li>Abra o Bloco de Notas como Administrador</li>
+                        <li>Vá em: <code>C:\Windows\System32\drivers\etc</code></li>
+                        <li>Abra o arquivo <strong>hosts</strong></li>
+                        <li>Adicione ao final os sites a serem bloqueados:</li>
+                    </ol>
+
+                    <pre class="bg-light p-3 border rounded">
+127.0.0.1 bet365.com
+127.0.0.1 www.bet365.com
+127.0.0.1 blaze.com
+127.0.0.1 www.blaze.com
+</pre>
+
+                    <p>Salve e reinicie o navegador.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- iPhone -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4>🍎 Como bloquear no iPhone</h4>
+                    <ol>
+                        <li>Vá em Ajustes</li>
+                        <li>Tempo de Uso</li>
+                        <li>Conteúdo e Privacidade</li>
+                        <li>Restrições de Conteúdo</li>
+                        <li>Conteúdo da Web</li>
+                        <li>Adicione em <strong>Nunca Permitir</strong></li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+        <!-- Android -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4>🤖 Como bloquear no Android</h4>
+                    <ul>
+                        <li>Use <strong>Family Link</strong></li>
+                        <li>Ative <strong>Bem-Estar Digital</strong></li>
+                        <li>Apps recomendados:</li>
+                        <ul>
+                            <li>BlockSite</li>
+                            <li>Stay Focused</li>
+                        </ul>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Roteador -->
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4>🌐 Como bloquear pelo Roteador (Recomendado)</h4>
+                    <p>Acesse no navegador:</p>
+
+                    <pre class="bg-light p-3 border rounded">
+192.168.0.1
+ou
+192.168.1.1
+</pre>
+
+                    <ol>
+                        <li>Entre com login do roteador</li>
+                        <li>Procure por:</li>
+                    </ol>
+                    <ul>
+                        <li>Controle Parental</li>
+                        <li>Website Blocking</li>
+                        <li>URL Filter</li>
+                    </ul>
+                    <p>Adicione os sites para bloquear em toda a rede.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="alert alert-warning mt-5">
+        <strong>Dica importante:</strong>
+        Se houver compulsão, peça para alguém de confiança definir e guardar as senhas de bloqueio.
+    </div>
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+            Voltar à Página Inicial
+        </a>
+    </div>
+
+</div>
+
+{% endblock %}

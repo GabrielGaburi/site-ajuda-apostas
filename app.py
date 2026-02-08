@@ -80,6 +80,11 @@ def noticia_detalhe(noticia_id):
         abort(404)
     return render_template("noticia.html", noticia=noticia_encontrada)
 
+@app.route("/bloqueio")
+def bloqueio():
+    return render_template("bloqueio.html")
+
+
 # Página principal do fórum
 @app.route("/forum")
 def forum_home():
