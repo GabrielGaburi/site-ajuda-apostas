@@ -8,33 +8,45 @@
     <h2 class="mb-4 text-center">Criar Novo Tópico</h2>
 
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow-sm">
-                <div class="card-body">
+        <div class="col-md-8 col-lg-7">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+
                     <form method="POST">
+
                         <div class="mb-3">
-                            <label for="autor" class="form-label">Seu nome</label>
+                            <label for="autor" class="form-label fw-semibold">Seu nome</label>
                             <input type="text" class="form-control" id="autor" name="autor"
-                                placeholder="Digite seu nome ou deixe em branco para 'Anônimo'">
+                                placeholder="Opcional (padrão: Anônimo)">
+                            <small class="text-muted">
+                                Você pode usar qualquer nome ou permanecer anônimo.
+                            </small>
                         </div>
 
                         <div class="mb-3">
-                            <label for="titulo" class="form-label">Título do Tópico</label>
+                            <label for="titulo" class="form-label fw-semibold">Título do tópico</label>
                             <input type="text" class="form-control" id="titulo" name="titulo"
-                                placeholder="Digite o título do tópico" required>
+                                placeholder="Ex: Preciso de ajuda para parar de apostar" required>
                         </div>
 
-                        <div class="mb-3">
-                            <label for="mensagem" class="form-label">Mensagem Inicial</label>
+                        <div class="mb-4">
+                            <label for="mensagem" class="form-label fw-semibold">Mensagem inicial</label>
                             <textarea class="form-control" id="mensagem" name="mensagem" rows="5"
-                                placeholder="Escreva sua mensagem" required></textarea>
+                                placeholder="Conte sua experiência ou dúvida" required></textarea>
                         </div>
 
-                        <div class="d-flex justify-content-between">
-                            <a href="{{ url_for('forum_home') }}" class="btn btn-outline-secondary">Voltar ao Fórum</a>
-                            <button type="submit" class="btn btn-success">Criar Tópico</button>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{{ url_for('forum_home') }}" class="btn btn-outline-secondary">
+                                Cancelar
+                            </a>
+
+                            <button type="submit" class="btn btn-success px-4">
+                                Criar tópico
+                            </button>
                         </div>
+
                     </form>
+
                 </div>
             </div>
         </div>

@@ -144,8 +144,6 @@ def forum_topico(topico_id):
     )
 
 
-
-
 @app.route("/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir", methods=["POST"])
 def excluir_mensagem(topico_id, msg_index):
     topico = next((t for t in forum if t["id"] == topico_id), None)
@@ -159,6 +157,333 @@ def excluir_mensagem(topico_id, msg_index):
         abort(404)
 
     return redirect(url_for("forum_topico", topico_id=topico_id))
+
+
+@app.route("/ajuda")
+def ajuda():
+
+    locais = [
+
+        # 🏥 Atendimento Público / Especializado
+
+        {
+            "nome": "Pro-AMJO – HC FMUSP (Jogo Patológico)",
+            "cidade": "São Paulo",
+            "tipo": "Atendimento Público / Especializado",
+            "telefone" : "(11) 2661-7805",
+            "endereco": "R. Dr. Ovídio Pires de Campos, 785 - Cerqueira César, São Paulo - SP",
+            "lat": -23.5578,
+            "lng": -46.6680
+        },
+        {
+            "nome": "Instituto de Psiquiatria HC-FMUSP",
+            "cidade": "São Paulo",
+            "tipo": "Atendimento Público / Especializado",
+            "telefone": "(11) 2661-6000",
+            "endereco": "Rua Dr. Ovídio Pires de Campos, 785 - Cerqueira César, São Paulo - SP",
+            "lat": -23.5576,
+            "lng": -46.6682
+        },
+        {
+            "nome": "PROAD – UNIFESP",
+            "cidade": "São Paulo",
+            "tipo": "Atendimento Público / Especializado",
+            "telefone": "(11) 5576-4990",
+            "endereco": "Rua Borges Lagoa, 570, Vila Clementino, em São Paulo - SP",
+            "lat": -23.5945,
+            "lng": -46.6536
+        },
+        
+          {
+            "nome": "CAPSad - Presidente Prudente",
+            "cidade": "Presidente Prudente",
+            "tipo": "Atendimento Público / Especializado",
+            "telefone": "(18) 3907-6753",
+            "endereco": "Rua dos Ipês Roxos, 480, Presidente Prudente - SP",
+            "lat": -22.1297,
+            "lng": -51.3897
+        },
+        {
+            "nome": "Sanatório São João - Presidente Prudente",
+            "cidade": "Presidente Prudente",
+            "tipo": "Atendimento Público / Especializado",
+            "telefone": "(18) 3222-2155",
+            "endereco": "Rua Coronel Albino, 872, Presidente Prudente - SP",
+            "lat": -22.1246,
+            "lng": -51.3802
+        },
+        {
+            "nome": "Sanatório Alan Kardec - Presidente Prudente",
+            "cidade": "Presidente Prudente",
+            "tipo": "Atendimento Público / Especializado",
+            "telefone": "(18) 3222-8383",
+            "endereco": "Rua Benedicto Franco, 200, Presidente Prudente - SP",
+            "lat": -22.1183,
+            "lng": -51.3972
+        },
+        
+         {
+            "nome": "CAPS II Saúde Mental - Itapetininga",
+            "cidade": "Itapetininga",
+            "tipo": "Atendimento Público / Especializado",
+            "telefone": "(15) 3271-7789",
+            "endereco": "Rua Gumercindo Soares Hungria, S/Nº, Itapetininga - SP",
+            "lat": -23.5882,
+            "lng": -48.0440
+            
+        },
+        
+         # 🧠 Clínicas-Escola / Atendimento Psicológico
+        {
+            "nome": "Hospital das Clínicas da Faculdade de Medicina de Ribeirão Preto",
+            "cidade": "Ribeirão Preto",
+            "tipo": "Hospital Universitário",
+            "telefone": "(16) 3602-1000",
+            "endereco": "Avenida Bandeirantes, 3900 - Monte Alegre, Ribeirão Preto - SP",
+            "lat": -21.1767,
+            "lng": -47.8208
+        },
+        {
+            "nome": "Hospital de Clínicas UNICAMP",
+            "cidade": "Campinas",
+            "tipo": "Hospital Universitário",
+            "telefone": "(19) 3521-2121",
+            "endereco": "Rua Vital Brasil, 251, no distrito de Barão Geraldo. Campinas - SP",
+            "lat": -22.8156,
+            "lng": -47.0647
+        },
+
+        {
+            "nome": "Clínica Psicológica USP",
+            "cidade": "São Paulo",
+            "tipo": "Hospital Universitário",
+            "telefone": "(11) 3091-5015",
+            "endereco": " Av. Professor Mello Moraes, 1721 - Butantã, São Paulo - SP", 
+            "lat": -23.5658,
+            "lng": -46.7237
+        },
+        {
+            "nome": "Clínica-Escola Mackenzie",
+            "cidade": "São Paulo",
+            "tipo": "Hospital Universitário",
+            "telefone": "(11) 2114-8342",
+            "endereco": "Campus Higienópolis: R. Itambé, 143 – andar térreo, São Paulo - SP",
+            "lat": -23.5475,
+            "lng": -46.6521
+        },
+        {
+            "nome": "Clínica-Escola UNIP",
+            "cidade": "Bauru",
+            "tipo": "Hospital Universitário",
+            "telefone": "(14) 3312-7018",
+            "endereco": "Rua Luiz Levorato, 2-140 - Chácaras Bauruenses, Bauru - SP ",
+            "lat": -22.3250,
+            "lng": -49.0667
+        },
+        {
+            "nome": "Clínica-Escola UNINOVE",
+            "cidade": "São Paulo",
+            "tipo": "Hospital Universitário",
+            "telefone": "(11) 4130-9050",
+            "endereco": "Clinica Uninove, R. Dr. Siqueira Campos, 172 - Liberdade, São Paulo - SP",
+            "lat": -23.5276,
+            "lng": -46.6659
+        },
+        {
+            "nome": "Clínica-Escola PUC Campinas",
+            "cidade": "Campinas",
+            "tipo": "Hospital Universitário",
+            "telefone": "(19) 3343-6846",
+            "endereco": "Avenida John Boyd Dunlop, s/n, Jardim Ipaussurama, Campinas - SP",
+            "lat": -22.9099,
+            "lng": -47.0626
+        },
+
+        # 🤝 Grupos de Apoio
+
+        {
+            "nome": "Grupo Pioneiro",
+            "cidade": "São Paulo",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua Guaporé, 335 - Luz - São Paulo - SP",
+            "lat": -23.55052,
+            "lng": -46.63331
+        },
+        {
+            "nome": "Grupo Mauá",
+            "cidade": "Mauá",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Praça Monsenhor Alexandre Venâncio Arminas, 01 - Matriz - Mauá - SP",
+            "lat": -23.6675,
+            "lng": -46.4614
+        },
+        {
+            "nome": "Grupo Itaim",
+            "cidade": "São Paulo",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua Clodomiro Amazonas, 50 - Itaim Bibi - São Paulo - SP",
+            "lat": -23.55052,
+            "lng": -46.63331
+        },
+        {
+            "nome": "Grupo Jabaquara",
+            "cidade": "São Paulo",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Av. Jabaquara, 2682 - Jabaquara - São Paulo - SP",
+            "lat": -23.9608,
+            "lng": -46.3336
+        },
+        {
+            "nome": "Grupo Buscando a Serenidade",
+            "cidade": "São Paulo",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua Pedreira de Magalhães, 100 - Artur Alvim - São Paulo - SP",
+            "lat": -23.55052,
+            "lng": -46.63331
+        },
+        {
+            "nome": "Grupo Santos",
+            "cidade": "Santos",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Av. Dr. Pedro Lessa, 2262 - Ponta da Praia - Santos - SP",
+            "lat": -23.9608,
+            "lng": -46.3336
+        },
+        {
+            "nome": "Grupo Nova Chance",
+            "cidade": "São Paulo",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Av. João Dias, 822 - Santo Amaro - São Paulo - SP",
+            "lat": -23.55052,
+            "lng": -46.63331
+        },
+        {
+            "nome": "Grupo Santa Ifigênia",
+            "cidade": "São Paulo",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua Santa Ifigênia, 30 - Centro - São Paulo - SP",
+            "lat": -23.55052,
+            "lng": -46.63331
+        },
+        {
+            "nome": "Grupo São Bernardo do Campo",
+            "cidade": "São Bernardo do Campo",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Estrada Dos Casa, 3230 - São Bernardo do Campo - SP",
+            "lat": -23.6920,
+            "lng": -46.5649
+        },
+        {
+            "nome": "Grupo Taubaté",
+            "cidade": "Taubaté",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua Maria Tereza de Moura, 150 - Taubaté - SP",
+            "lat": -23.0207,
+            "lng": -45.5558
+        },
+        {
+            "nome": "Grupo Renascer - Campinas",
+            "cidade": "Campinas",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua Guaraci, 38 - Campinas - SP",
+            "lat": -22.9056,
+            "lng": -47.0608
+        },
+        {
+            "nome": "Grupo Semeando Recomeços",
+            "cidade": "São José dos Campos",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua Bertioga, 191 - São José dos Campos - SP",
+            "lat": -23.2038,
+            "lng": -45.9009
+        },
+        {
+            "nome": "Grupo Pindamonhangaba",
+            "cidade": "Pindamonhangaba",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua Homem de Melo, s/n - Pindamonhangaba - SP",
+            "lat": -22.9308,
+            "lng": -45.4772
+        },
+        {
+            "nome": "Grupo Limeira",
+            "cidade": "Limeira",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua Oscar Buzolin, 1-63 - Limeira - SP",
+            "lat": -22.5647,
+            "lng": -47.4016
+        },
+        {
+            "nome": "Grupo Atibaia",
+            "cidade": "Atibaia",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Av. Jerônimo de Camargo, 3111 - Atibaia - SP",
+            "lat": -23.1189,
+            "lng": -46.5559
+        },
+        {
+            "nome": "Grupo São José do Rio Preto",
+            "cidade": "São José do Rio Preto",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua José Martins Romero, 590 - São José do Rio Preto - SP",
+            "lat": -20.8167,
+            "lng": -49.3756
+        },
+        {
+            "nome": "Grupo Bertioga",
+            "cidade": "Bertioga",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Av. Anchieta, 1450 - Bertioga - SP",
+            "lat": -23.8236,
+            "lng": -45.4269
+        },
+        {
+            "nome": "Grupo Sorocaba",
+            "cidade": "Sorocaba",
+            "tipo": "Grupo de Apoio",
+            "telefone": "",
+            "endereco": "Rua José Mesquita Sobrinho, 129 - Sorocaba - SP",
+            "lat": -23.5015,
+            "lng": -47.4526
+        },
+
+    
+        
+        
+        {
+            "nome": "Seção Núcleo de Atenção ao Toxicodependente (Senat) - Santos",
+            "cidade": "Santos",
+            "tipo": "Grupo de Apoio",
+            "telefone": "(13) 3237-2681",
+            "endereco": "Rua Silva Jardim, 354 - Encruzilhada, Santos - SP", 
+            "lat": -23.9608,
+            "lng": -46.3336
+        },
+       
+       
+        
+      
+
+    ]
+
+    return render_template("ajuda.html", locais=locais)
 
 
 

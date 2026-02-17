@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Ajuda{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+    <div class="text-center mb-4">
+        <h2>Locais de Acolhimento – Estado de São Paulo</h2>
+        <p class="text-muted">Centros de Ajuda</p>
+    </div>
+
+    <div id="map" style="height: 500px; width: 100%;"></div>
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+
+        const locais = {{ locais | tojson | safe
+    }};
+
+    const map = L.map("map").setView([-23.55052, -46.633308], 7);
+
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "&copy; OpenStreetMap contributors"
+    }).addTo(map);
+
+    const iconeVermelho = new L.Icon({
+        iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    const iconeAzul = new L.Icon({
+        iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    const iconeVerde = new L.Icon({
+        iconUrl: "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+        shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    function escolherIcone(tipo) {
+        if (tipo.includes("Atendimento")) {
+            return iconeVermelho;
+        }
+        else if (tipo.includes("Hospital")) {
+            return iconeAzul;
+        }
+        else if (tipo.includes("Grupo")) {
+            return iconeVerde;
+        }
+        else {
+            return iconeAzul; // padrão
+        }
+    }
+
+
+
+    locais.forEach(item => {
+
+        const icone = escolherIcone(item.tipo);
+
+        L.marker([item.lat, item.lng], { icon: icone })
+            .addTo(map)
+            .bindPopup(`
+            <strong>${item.nome}</strong><br>
+            ${item.cidade}<br>
+            ${item.tipo}<br>
+            📍 ${item.endereco}<br>
+            📞 ${item.telefone}
+        `);
+    });
+
+
+    });
+</script>
+
+
+
+{% endblock %}
