@@ -24,14 +24,35 @@
 
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">Início</a></li>
-                    <a class="nav-link" href="/noticias">Notícias</a>
-                    <li class="nav-item"><a class="nav-link" href="{{ url_for('forum_home') }}">Fórum</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">Ajuda</a></li>
-                    <li class="nav-item"><a class="nav-link" href="#">Contato</a></li>
-                    <a class="nav-link" href="{{ url_for('bloqueio') }}">Bloquear Apostas</a>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('index') }}">Início</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('todas_noticias') }}">Notícias</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('forum_home') }}">Fórum</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('ajuda') }}">Ajuda</a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('bloqueio') }}">
+                            Bloqueie Sites de Apostas
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">Contato</a>
+                    </li>
 
                 </ul>
+
             </div>
         </div>
     </nav>
@@ -42,6 +63,8 @@
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    {% block scripts %}{% endblock %}
 </body>
 
 </html>
