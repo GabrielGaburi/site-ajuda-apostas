@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-5 d-flex justify-content-center">
+    <div id="cardCadastro" class="card shadow-lg border-0 p-4 bg-primary-subtle"
+        style="max-width: 750px; width: 100%; border-radius: 20px; transition: all 0.3s ease;">
+
+        <!-- TÍTULO -->
+        <h3 class="text-center mb-2 fw-bold">Criar Conta</h3>
+        <p class="text-center text-muted mb-4">
+            Escolha o tipo de cadastro para continuar
+        </p>
+
+        <!-- ABAS -->
+        <ul class="nav nav-pills nav-justified mb-4">
+            <li class="nav-item">
+                <button class="nav-link active text-primary fw-semibold" onclick="trocarTipo(event, 'usuario')">
+                    👤 Usuário
+                </button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link text-success fw-semibold" onclick="trocarTipo(event, 'profissional')">
+                    🩺 Profissional
+                </button>
+            </li>
+        </ul>
+
+        <form method="POST">
+
+            <input type="hidden" name="tipo" id="tipo" value="usuario">
+
+            <!-- NOME -->
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Nome</label>
+                    <input type="text" name="nome" class="form-control" required>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Sobrenome</label>
+                    <input type="text" name="sobrenome" class="form-control">
+                </div>
+            </div>
+
+            <!-- EMAIL -->
+            <div class="mb-3">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" required>
+            </div>
+
+            <!-- TELEFONE -->
+            <div class="mb-3">
+                <label class="form-label">Telefone</label>
+                <input type="text" name="telefone" id="telefone" class="form-control" placeholder="(14) 99999-9999">
+            </div>
+
+            <!-- CEP -->
+            <div class="mb-3">
+                <label class="form-label">CEP</label>
+                <input type="text" id="cep" name="cep" class="form-control" placeholder="00000-000">
+            </div>
+
+            <!-- ENDEREÇO -->
+            <div class="mb-3">
+                <label class="form-label">Rua</label>
+                <input type="text" id="rua" name="rua" class="form-control">
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Cidade</label>
+                    <input type="text" id="cidade" name="cidade" class="form-control">
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Estado</label>
+                    <select id="estado" name="estado" class="form-select">
+                        <option value="">Selecione</option>
+                        <option value="AC">Acre</option>
+                        <option value="AL">Alagoas</option>
+                        <option value="AP">Amapá</option>
+                        <option value="AM">Amazonas</option>
+                        <option value="BA">Bahia</option>
+                        <option value="CE">Ceará</option>
+                        <option value="DF">Distrito Federal</option>
+                        <option value="ES">Espírito Santo</option>
+                        <option value="GO">Goiás</option>
+                        <option value="MA">Maranhão</option>
+                        <option value="MT">Mato Grosso</option>
+                        <option value="MS">Mato Grosso do Sul</option>
+                        <option value="MG">Minas Gerais</option>
+                        <option value="PA">Pará</option>
+                        <option value="PB">Paraíba</option>
+                        <option value="PR">Paraná</option>
+                        <option value="PE">Pernambuco</option>
+                        <option value="PI">Piauí</option>
+                        <option value="RJ">Rio de Janeiro</option>
+                        <option value="RN">Rio Grande do Norte</option>
+                        <option value="RS">Rio Grande do Sul</option>
+                        <option value="RO">Rondônia</option>
+                        <option value="RR">Roraima</option>
+                        <option value="SC">Santa Catarina</option>
+                        <option value="SP">São Paulo</option>
+                        <option value="SE">Sergipe</option>
+                        <option value="TO">Tocantins</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- SENHA -->
+            <div class="mb-3">
+                <label class="form-label">Senha</label>
+                <input type="password" name="senha" class="form-control" required>
+            </div>
+
+            <!-- BOTÃO -->
+            <button id="btnCadastro" class="btn btn-primary w-100 py-2 fw-bold">
+                Criar Conta
+            </button>
+
+        </form>
+
+    </div>
+</div>
+
+<!-- JS -->
+<script>
+    function trocarTipo(e, tipoSelecionado) {
+        document.getElementById("tipo").value = tipoSelecionado;
+
+        const card = document.getElementById("cardCadastro");
+        const btn = document.getElementById("btnCadastro");
+
+        document.querySelectorAll(".nav-link").forEach(b => b.classList.remove("active"));
+        e.target.classList.add("active");
+
+        if (tipoSelecionado === "usuario") {
+            card.classList.remove("bg-success-subtle");
+            card.classList.add("bg-primary-subtle");
+
+            btn.classList.remove("btn-success");
+            btn.classList.add("btn-primary");
+        } else {
+            card.classList.remove("bg-primary-subtle");
+            card.classList.add("bg-success-subtle");
+
+            btn.classList.remove("btn-primary");
+            btn.classList.add("btn-success");
+        }
+    }
+</script>
+
+<!-- TELEFONE -->
+<script>
+    document.getElementById("telefone").addEventListener("input", function (e) {
+        let v = e.target.value.replace(/\D/g, "");
+
+        if (v.length > 11) v = v.slice(0, 11);
+
+        if (v.length > 6) {
+            v = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+        } else if (v.length > 2) {
+            v = `(${v.slice(0, 2)}) ${v.slice(2)}`;
+        }
+
+        e.target.value = v;
+    });
+</script>
+
+<!-- CEP -->
+<script>
+    document.getElementById("cep").addEventListener("blur", function () {
+        let cep = this.value.replace(/\D/g, '');
+
+        if (cep.length !== 8) return;
+
+        fetch(`https://viacep.com.br/ws/${cep}/json/`)
+            .then(res => res.json())
+            .then(dados => {
+                if (!dados.erro) {
+                    document.getElementById("rua").value = dados.logradouro;
+                    document.getElementById("cidade").value = dados.localidade;
+                    document.getElementById("estado").value = dados.uf;
+                }
+            });
+    });
+</script>
+
+{% endblock %}
