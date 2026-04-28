@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container my-5">
+
+    <h2 class="mb-4">Bem-vindo de volta 👋</h2>
+
+    <div class="row">
+
+        <div class="col-md-4 mb-3">
+            <div class="card p-3 shadow">
+                <h5>Fórum</h5>
+                <p>Participe das discussões</p>
+                <a href="{{ url_for('forum_home') }}" class="btn btn-dark">Acessar</a>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card p-3 shadow">
+                <h5>Ajuda</h5>
+                <p>Centros de apoio próximos</p>
+                <a href="{{ url_for('ajuda') }}" class="btn btn-dark">Ver mapa</a>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-3">
+            <div class="card p-3 shadow">
+                <h5>Bloqueio</h5>
+                <p>Ferramentas para controle</p>
+                <a href="{{ url_for('bloqueio') }}" class="btn btn-dark">Acessar</a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
