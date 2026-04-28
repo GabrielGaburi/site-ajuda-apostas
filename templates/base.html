@@ -60,6 +60,18 @@
         </div>
     </nav>
 
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="container mt-3">
+        {% for msg in messages %}
+        <div class="alert alert-success">
+            {{ msg }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
     <!-- CONTEÚDO DAS PÁGINAS -->
     {% block content %}{% endblock %}
 

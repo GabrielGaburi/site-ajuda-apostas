@@ -1,11 +1,38 @@
-
-import json
-from flask import Flask, render_template, request, redirect, url_for, abort
+import secrets, re, json, os, traceback
+from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
 from datetime import datetime
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_mail import Mail, Message
+from itsdangerous import URLSafeTimedSerializer
 
 app = Flask(__name__)
 MODERADOR = True
+app.secret_key = secrets.token_hex(16)
+usuarios = []
 
+
+app.config['SERVER_NAME'] = '192.168.1.11:5000'
+app.config['PREFERRED_URL_SCHEME'] = 'http'
+
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USE_SSL'] = False
+
+# CONTA GMAIL REMETENTE
+app.config['MAIL_USERNAME'] = 'gabrielgaburi6@gmail.com'
+
+# SENHA DE APP DO GMAIL (via terminal)
+app.config['MAIL_PASSWORD'] = "dans hivz zvpt xswd"
+
+# REMETENTE PRECISA SER O MESMO GMAIL
+app.config['MAIL_DEFAULT_SENDER'] = 'gabrielgaburi6@gmail.com'
+
+app.config['MAIL_SUPPRESS_SEND'] = False
+
+mail = Mail(app)
+
+serializer = URLSafeTimedSerializer(app.secret_key)
 noticias = [
     {
         "id": 1,
@@ -44,7 +71,90 @@ noticias = [
 
 # Arquivo JSON para salvar o fórum
 FORUM_FILE = "forum.json"
+# =========================
+# CADASTRO (ADICIONE ISSO NO app.py)
+# =========================
+@app.route('/cadastro', methods=['GET', 'POST'])
+def cadastro():
+    if request.method == 'POST':
 
+        nome = request.form.get('nome', '').strip()
+        email = request.form.get('email', '').strip().lower()
+        senha = request.form.get('senha', '')
+
+        if not nome or not email or not senha:
+            flash("Preencha todos os campos obrigatórios.", "danger")
+            return render_template("cadastro.html", nome=nome, email=email)
+
+        if not senha_valida(senha):
+            flash("A senha deve ter 8-16 caracteres, incluindo maiúscula, número e caractere especial.", "danger")
+            return render_template("cadastro.html", nome=nome, email=email)
+
+        usuario_existente = next(
+            (u for u in usuarios if u["email"].lower() == email),
+            None
+        )
+
+        if usuario_existente:
+            flash("Este email já está cadastrado.", "warning")
+            return render_template("cadastro.html", nome=nome, email=email)
+
+        senha_hash = generate_password_hash(senha)
+
+        novo_usuario = {
+            "id": len(usuarios) + 1,
+            "nome": nome,
+            "email": email,
+            "senha": senha_hash,
+            "email_confirmado": False,
+            "tipo": request.form.get("tipo", "usuario")
+        }
+
+        usuarios.append(novo_usuario)
+
+        # ENVIO EMAIL
+        if enviar_email_confirmacao(email):
+            flash("Conta criada! Verifique seu email para confirmar o cadastro.", "success")
+        else:
+            flash("Conta criada, mas houve erro ao enviar o email de confirmação.", "warning")
+
+        return redirect(url_for('login'))
+
+    return render_template('cadastro.html')
+
+# =========================
+# CONFIRMAÇÃO DE EMAIL (ADICIONE ISSO NO app.py)
+# =========================
+@app.route('/confirmar_email/<token>')
+def confirmar_email(token):
+    try:
+        email = serializer.loads(
+            token,
+            salt='confirmacao-email',
+            max_age=3600  # 1 hora
+        )
+
+    except:
+        flash("Link inválido ou expirado.", "danger")
+        return redirect(url_for("login"))
+
+    usuario = next(
+        (u for u in usuarios if u["email"].lower() == email.lower()),
+        None
+    )
+
+    if not usuario:
+        flash("Usuário não encontrado.", "danger")
+        return redirect(url_for("cadastro"))
+
+    if usuario["email_confirmado"]:
+        flash("Email já confirmado. Faça login.", "info")
+        return redirect(url_for("login"))
+
+    usuario["email_confirmado"] = True
+
+    flash("Email confirmado com sucesso! Agora você pode fazer login.", "success")
+    return redirect(url_for("login"))
 # Funções auxiliares
 def carregar_forum():
     try:
@@ -56,6 +166,21 @@ def carregar_forum():
 def salvar_forum(forum):
     with open(FORUM_FILE, "w", encoding="utf-8") as f:
         json.dump(forum, f, ensure_ascii=False, indent=4)
+        
+def senha_valida(senha):
+    if len(senha) < 8 or len(senha) > 16:
+        return False
+    
+    if not re.search(r"[A-Z]", senha):  # letra maiúscula
+        return False
+    
+    if not re.search(r"[0-9]", senha):  # número
+        return False
+    
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", senha):  # especial
+        return False
+
+    return True
 
 # Carregar tópicos existentes
 forum = carregar_forum()
@@ -158,17 +283,124 @@ def excluir_mensagem(topico_id, msg_index):
 
     return redirect(url_for("forum_topico", topico_id=topico_id))
 
-@app.route("/login")
+@app.route("/login", methods=["GET", "POST"])
 def login():
+    if request.method == "POST":
+
+        # mantém os dados digitados caso dê erro
+        email = request.form.get("email", "").strip().lower()
+        senha = request.form.get("senha", "")
+
+        # procura usuário pelo email
+        usuario = next(
+            (u for u in usuarios if u["email"].lower() == email),
+            None
+        )
+
+        # verifica se existe
+        if not usuario:
+            flash("Email não encontrado.", "danger")
+            return render_template("login.html", email=email)
+
+        # verifica confirmação de email
+        if not usuario.get("email_confirmado", False):
+            flash("Confirme seu email antes de fazer login.", "warning")
+            return render_template("login.html", email=email)
+
+        # verifica senha
+        if not check_password_hash(usuario["senha"], senha):
+            flash("Senha incorreta.", "danger")
+            return render_template("login.html", email=email)
+
+        # login OK
+        session["usuario_id"] = usuario["id"]
+        session["usuario_nome"] = usuario["nome"]
+        session["tipo_usuario"] = usuario.get("tipo", "usuario")
+
+        flash(f"Bem-vindo(a), {usuario['nome']}!", "success")
+
+        return redirect(url_for("dashboard"))
+
+    # GET
     return render_template("login.html")
 
-@app.route('/cadastro')
-def cadastro():
-    return render_template('cadastro.html')
+@app.route('/dashboard')
+def dashboard():
+    if 'usuario_id' not in session:
+        return redirect(url_for('login'))
+
+    return render_template('dashboard.html')
+
+def enviar_email_confirmacao(email):
+    try:
+        token = serializer.dumps(email, salt='confirmacao-email')
+
+        link = url_for(
+            'confirmar_email',
+            token=token,
+            _external=True
+        )
+
+        msg = Message(
+            subject='Confirme seu cadastro - Apoio & Consciência',
+            recipients=[email],
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+
+        msg.body = f"""
+Confirme seu cadastro acessando o link abaixo:
+
+{link}
+
+Se você não criou essa conta, ignore esta mensagem.
+        """
+
+        msg.html = f"""
+        <h2>Confirme seu cadastro</h2>
+        <p>Clique no botão abaixo para ativar sua conta:</p>
+
+        <a href="{link}" style="
+            background:#198754;
+            color:white;
+            padding:12px 20px;
+            text-decoration:none;
+            border-radius:8px;
+            display:inline-block;
+        ">
+            Confirmar Cadastro
+        </a>
+
+        <p>Ou copie e cole este link:</p>
+        <p>{link}</p>
+        """
+        print("MAIL_USERNAME:", app.config['MAIL_USERNAME'])
+        print("MAIL_PASSWORD:", os.getenv("MAIL_PASSWORD"))
+        print("MAIL_DEFAULT_SENDER:", app.config['MAIL_DEFAULT_SENDER'])
+        print("DESTINATÁRIO:", email)
+        print("LINK:", link)
+        mail.send(msg)
+
+        print("EMAIL ENVIADO PARA:", email)
+        return True
+
+    except Exception as e:
+        print("ERRO AO ENVIAR EMAIL:")
+        traceback.print_exc()
+        return False
+    
+@app.route("/teste-email")
+def teste_email():
+    email_teste = "gabrielgaburi6@gmail.com"  # troque se quiser
+
+    sucesso = enviar_email_confirmacao(email_teste)
+
+    if sucesso:
+        return "Email enviado com sucesso! Verifique caixa de entrada, spam e lixo eletrônico."
+    else:
+        return "Falha no envio. Veja o terminal."
 
 @app.route("/ajuda")
 def ajuda():
-
     locais = [
 
         # 🏥 Atendimento Público / Especializado
@@ -484,7 +716,8 @@ def ajuda():
             "lng": -46.3336
         },
        
-       
+        
+        
         
       
 
@@ -492,10 +725,9 @@ def ajuda():
 
     return render_template("ajuda.html", locais=locais)
 
-
-
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
+    
     
 
 
