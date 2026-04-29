@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}Login{% endblock %}
-
 {% block content %}
 
 <div class="container-fluid vh-100 d-flex align-items-center justify-content-center bg-light">
@@ -35,13 +34,16 @@
 
                 <!-- SENHA -->
                 <div class="mb-3">
-                    <label class="form-label">Senha</label>
+                    <label>Senha</label>
+
                     <div class="input-group">
-                        <span class="input-group-text">🔒</span>
-                        <input type="password" name="senha" class="form-control" placeholder="••••••••" required>
+                        <input type="password" name="senha" id="senha" class="form-control" required>
+
+                        <button type="button" class="btn btn-outline-secondary" onclick="toggleSenha()">
+                            <span id="iconeSenha">👁️</span>
+                        </button>
                     </div>
                 </div>
-
                 <!-- BOTÃO -->
                 <button class="btn btn-dark w-100 mt-2">
                     Entrar
@@ -61,5 +63,21 @@
     </div>
 
 </div>
+
+<script>
+    function toggleSenha() {
+        let senha = document.getElementById("senha");
+        let icone = document.getElementById("iconeSenha");
+
+        if (senha.type === "password") {
+            senha.type = "text";
+            icone.textContent = "🙈";
+        } else {
+            senha.type = "password";
+            icone.textContent = "👁️";
+        }
+    }
+</script>
+
 
 {% endblock %}

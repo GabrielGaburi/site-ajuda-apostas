@@ -76,55 +76,113 @@ FORUM_FILE = "forum.json"
 # =========================
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
+
+    # dicionário com TODOS os campos para manter o formulário preenchido
+    dados = {
+        "tipo": "usuario",
+        "nome": "",
+        "sobrenome": "",
+        "email": "",
+        "telefone": "",
+        "cep": "",
+        "rua": "",
+        "cidade": "",
+        "estado": ""
+    }
+
     if request.method == 'POST':
 
-        nome = request.form.get('nome', '').strip()
-        email = request.form.get('email', '').strip().lower()
+        # captura TODOS os campos
+        dados = {
+            "tipo": request.form.get("tipo", "usuario"),
+            "nome": request.form.get("nome", "").strip(),
+            "sobrenome": request.form.get("sobrenome", "").strip(),
+            "email": request.form.get("email", "").strip().lower(),
+            "telefone": request.form.get("telefone", "").strip(),
+            "cep": request.form.get("cep", "").strip(),
+            "rua": request.form.get("rua", "").strip(),
+            "cidade": request.form.get("cidade", "").strip(),
+            "estado": request.form.get("estado", "").strip()
+        }
+
         senha = request.form.get('senha', '')
 
-        if not nome or not email or not senha:
+        # CAMPOS OBRIGATÓRIOS
+        if not dados["nome"] or not dados["email"] or not senha:
             flash("Preencha todos os campos obrigatórios.", "danger")
-            return render_template("cadastro.html", nome=nome, email=email)
 
+            return render_template(
+                "cadastro.html",
+                dados=dados
+            )
+
+        # SENHA INVÁLIDA
         if not senha_valida(senha):
-            flash("A senha deve ter 8-16 caracteres, incluindo maiúscula, número e caractere especial.", "danger")
-            return render_template("cadastro.html", nome=nome, email=email)
+            flash(
+                "A senha deve ter 8-16 caracteres, incluindo maiúscula, número e caractere especial.",
+                "danger"
+            )
 
+            # devolve TODOS os campos preenchidos
+            return render_template(
+                "cadastro.html",
+                dados=dados
+            )
+
+        # EMAIL JÁ CADASTRADO
         usuario_existente = next(
-            (u for u in usuarios if u["email"].lower() == email),
+            (u for u in usuarios if u["email"].lower() == dados["email"]),
             None
         )
 
         if usuario_existente:
             flash("Este email já está cadastrado.", "warning")
-            return render_template("cadastro.html", nome=nome, email=email)
 
+            return render_template(
+                "cadastro.html",
+                dados=dados
+            )
+
+        # SENHA HASH
         senha_hash = generate_password_hash(senha)
 
+        # NOVO USUÁRIO
         novo_usuario = {
             "id": len(usuarios) + 1,
-            "nome": nome,
-            "email": email,
+            "nome": dados["nome"],
+            "sobrenome": dados["sobrenome"],
+            "email": dados["email"],
+            "telefone": dados["telefone"],
+            "cep": dados["cep"],
+            "rua": dados["rua"],
+            "cidade": dados["cidade"],
+            "estado": dados["estado"],
             "senha": senha_hash,
             "email_confirmado": False,
-            "tipo": request.form.get("tipo", "usuario")
+            "tipo": dados["tipo"]
         }
 
         usuarios.append(novo_usuario)
 
-        # ENVIO EMAIL
-        if enviar_email_confirmacao(email):
-            flash("Conta criada! Verifique seu email para confirmar o cadastro.", "success")
+        # EMAIL
+        if enviar_email_confirmacao(dados["email"]):
+            flash(
+                "Conta criada! Verifique seu email para confirmar o cadastro.",
+                "success"
+            )
         else:
-            flash("Conta criada, mas houve erro ao enviar o email de confirmação.", "warning")
+            flash(
+                "Conta criada, mas houve erro ao enviar o email de confirmação.",
+                "warning"
+            )
 
         return redirect(url_for('login'))
 
-    return render_template('cadastro.html')
-
-# =========================
-# CONFIRMAÇÃO DE EMAIL (ADICIONE ISSO NO app.py)
-# =========================
+    # GET
+    return render_template(
+        'cadastro.html',
+        dados=dados
+    )
 @app.route('/confirmar_email/<token>')
 def confirmar_email(token):
     try:
@@ -155,6 +213,7 @@ def confirmar_email(token):
 
     flash("Email confirmado com sucesso! Agora você pode fazer login.", "success")
     return redirect(url_for("login"))
+
 # Funções auxiliares
 def carregar_forum():
     try:
@@ -307,10 +366,14 @@ def login():
             flash("Confirme seu email antes de fazer login.", "warning")
             return render_template("login.html", email=email)
 
-        # verifica senha
         if not check_password_hash(usuario["senha"], senha):
             flash("Senha incorreta.", "danger")
-            return render_template("login.html", email=email)
+
+            # mantém o email preenchido
+            return render_template(
+                "login.html",
+                email=email
+            )
 
         # login OK
         session["usuario_id"] = usuario["id"]
@@ -324,12 +387,26 @@ def login():
     # GET
     return render_template("login.html")
 
+
 @app.route('/dashboard')
 def dashboard():
     if 'usuario_id' not in session:
         return redirect(url_for('login'))
 
-    return render_template('dashboard.html')
+    # pega o tipo salvo no login/cadastro
+    tipo_usuario = session.get("tipo_usuario", "usuario")
+
+    # DASHBOARD USUÁRIO NORMAL
+    if tipo_usuario == "usuario":
+        return render_template("dashboard_usuario.html")
+
+    # DASHBOARD PROFISSIONAL
+    elif tipo_usuario == "profissional":
+        return render_template("dashboard_profissional.html")
+
+    # segurança extra
+    flash("Tipo de usuário inválido.", "danger")
+    return redirect(url_for("login"))
 
 def enviar_email_confirmacao(email):
     try:
@@ -347,6 +424,7 @@ def enviar_email_confirmacao(email):
             sender=app.config['MAIL_DEFAULT_SENDER']
         )
 
+        # VERSÃO TEXTO
         msg.body = f"""
 Confirme seu cadastro acessando o link abaixo:
 
@@ -355,29 +433,132 @@ Confirme seu cadastro acessando o link abaixo:
 Se você não criou essa conta, ignore esta mensagem.
         """
 
+        # VERSÃO HTML PROFISSIONAL
         msg.html = f"""
-        <h2>Confirme seu cadastro</h2>
-        <p>Clique no botão abaixo para ativar sua conta:</p>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="
+    margin:0;
+    padding:0;
+    background-color:#f4f6f9;
+    font-family:Arial, Helvetica, sans-serif;
+">
 
-        <a href="{link}" style="
-            background:#198754;
+    <div style="
+        max-width:600px;
+        margin:40px auto;
+        background:#ffffff;
+        border-radius:16px;
+        overflow:hidden;
+        box-shadow:0 8px 25px rgba(0,0,0,0.08);
+    ">
+
+        <!-- TOPO -->
+        <div style="
+            background:linear-gradient(135deg, #1d3557, #457b9d);
+            padding:30px;
+            text-align:center;
             color:white;
-            padding:12px 20px;
-            text-decoration:none;
-            border-radius:8px;
-            display:inline-block;
         ">
-            Confirmar Cadastro
-        </a>
+            <h1 style="margin:0; font-size:28px;">
+                Apoio & Consciência
+            </h1>
+            <p style="margin-top:8px; font-size:15px; opacity:0.9;">
+                Segurança e cuidado no seu cadastro
+            </p>
+        </div>
 
-        <p>Ou copie e cole este link:</p>
-        <p>{link}</p>
+        <!-- CONTEÚDO -->
+        <div style="padding:40px 30px; color:#333;">
+
+            <h2 style="
+                color:#1d3557;
+                margin-top:0;
+                text-align:center;
+            ">
+                Confirme seu cadastro
+            </h2>
+
+            <p style="
+                font-size:16px;
+                line-height:1.6;
+                text-align:center;
+                color:#555;
+            ">
+                Obrigado por se cadastrar em nossa plataforma.<br>
+                Para ativar sua conta com segurança, confirme seu e-mail clicando no botão abaixo:
+            </p>
+
+            <!-- BOTÃO -->
+            <div style="text-align:center; margin:35px 0;">
+                <a href="{link}" style="
+                    background:linear-gradient(135deg, #198754, #20c997);
+                    color:white;
+                    padding:14px 30px;
+                    text-decoration:none;
+                    border-radius:10px;
+                    display:inline-block;
+                    font-size:16px;
+                    font-weight:bold;
+                    box-shadow:0 4px 12px rgba(25,135,84,0.3);
+                ">
+                    Confirmar Cadastro
+                </a>
+            </div>
+
+            <!-- LINK -->
+            <p style="
+                font-size:14px;
+                color:#666;
+                text-align:center;
+                margin-bottom:8px;
+            ">
+                Se o botão não funcionar, copie e cole este link no navegador:
+            </p>
+
+            <div style="
+                background:#f8f9fa;
+                border:1px solid #dee2e6;
+                padding:12px;
+                border-radius:8px;
+                word-break:break-all;
+                font-size:13px;
+                color:#0d6efd;
+                text-align:center;
+            ">
+                {link}
+            </div>
+
+        </div>
+
+        <!-- RODAPÉ -->
+        <div style="
+            background:#f8f9fa;
+            padding:20px;
+            text-align:center;
+            font-size:13px;
+            color:#6c757d;
+            border-top:1px solid #e9ecef;
+        ">
+            Se você não criou essa conta, ignore esta mensagem com segurança.<br>
+            © Apoio & Consciência
+        </div>
+
+    </div>
+
+</body>
+</html>
         """
+
         print("MAIL_USERNAME:", app.config['MAIL_USERNAME'])
         print("MAIL_PASSWORD:", os.getenv("MAIL_PASSWORD"))
         print("MAIL_DEFAULT_SENDER:", app.config['MAIL_DEFAULT_SENDER'])
         print("DESTINATÁRIO:", email)
         print("LINK:", link)
+
         mail.send(msg)
 
         print("EMAIL ENVIADO PARA:", email)
@@ -387,7 +568,8 @@ Se você não criou essa conta, ignore esta mensagem.
         print("ERRO AO ENVIAR EMAIL:")
         traceback.print_exc()
         return False
-    
+
+
 @app.route("/teste-email")
 def teste_email():
     email_teste = "gabrielgaburi6@gmail.com"  # troque se quiser
