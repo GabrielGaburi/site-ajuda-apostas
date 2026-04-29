@@ -3,7 +3,8 @@
 {% block content %}
 
 <div class="container mt-5 d-flex justify-content-center">
-    <div id="cardCadastro" class="card shadow-lg border-0 p-4 bg-primary-subtle"
+    <div id="cardCadastro"
+        class="card shadow-lg border-0 p-4 {% if request.form.get('tipo', 'usuario') == 'profissional' %}bg-success-subtle{% else %}bg-primary-subtle{% endif %}"
         style="max-width: 750px; width: 100%; border-radius: 20px; transition: all 0.3s ease;">
 
         <!-- TÍTULO -->
@@ -15,12 +16,16 @@
         <!-- ABAS -->
         <ul class="nav nav-pills nav-justified mb-4">
             <li class="nav-item">
-                <button class="nav-link active text-primary fw-semibold" onclick="trocarTipo(event, 'usuario')">
+                <button type="button"
+                    class="nav-link fw-semibold {% if request.form.get('tipo', 'usuario') == 'usuario' %}active text-primary{% else %}text-primary{% endif %}"
+                    onclick="trocarTipo(event, 'usuario')">
                     👤 Usuário
                 </button>
             </li>
             <li class="nav-item">
-                <button class="nav-link text-success fw-semibold" onclick="trocarTipo(event, 'profissional')">
+                <button type="button"
+                    class="nav-link fw-semibold {% if request.form.get('tipo') == 'profissional' %}active text-success{% else %}text-success{% endif %}"
+                    onclick="trocarTipo(event, 'profissional')">
                     🩺 Profissional
                 </button>
             </li>
@@ -28,94 +33,126 @@
 
         <form method="POST">
 
-            <input type="hidden" name="tipo" id="tipo" value="usuario">
+            <!-- TIPO -->
+            <input type="hidden" name="tipo" id="tipo" value="{{ request.form.get('tipo', 'usuario') }}">
 
             <!-- NOME -->
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Nome</label>
-                    <input type="text" name="nome" class="form-control" required>
+                    <input type="text" name="nome" class="form-control"
+                        value="{{ request.form.get('nome', nome or '') }}" required>
                 </div>
 
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Sobrenome</label>
-                    <input type="text" name="sobrenome" class="form-control">
+                    <input type="text" name="sobrenome" class="form-control"
+                        value="{{ request.form.get('sobrenome', sobrenome or '') }}">
                 </div>
             </div>
 
             <!-- EMAIL -->
             <div class="mb-3">
                 <label class="form-label">Email</label>
-                <input type="email" name="email" class="form-control" required>
+                <input type="email" name="email" class="form-control"
+                    value="{{ request.form.get('email', email or '') }}" required>
             </div>
 
             <!-- TELEFONE -->
             <div class="mb-3">
                 <label class="form-label">Telefone</label>
-                <input type="text" name="telefone" id="telefone" class="form-control" placeholder="(14) 99999-9999">
+                <input type="text" name="telefone" id="telefone" class="form-control" placeholder="(14) 99999-9999"
+                    value="{{ request.form.get('telefone', telefone or '') }}">
             </div>
 
             <!-- CEP -->
             <div class="mb-3">
                 <label class="form-label">CEP</label>
-                <input type="text" id="cep" name="cep" class="form-control" placeholder="00000-000">
+                <input type="text" id="cep" name="cep" class="form-control" placeholder="00000-000"
+                    value="{{ request.form.get('cep', cep or '') }}">
             </div>
 
             <!-- ENDEREÇO -->
             <div class="mb-3">
                 <label class="form-label">Rua</label>
-                <input type="text" id="rua" name="rua" class="form-control">
+                <input type="text" id="rua" name="rua" class="form-control"
+                    value="{{ request.form.get('rua', rua or '') }}">
             </div>
 
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Cidade</label>
-                    <input type="text" id="cidade" name="cidade" class="form-control">
+                    <input type="text" id="cidade" name="cidade" class="form-control"
+                        value="{{ request.form.get('cidade', cidade or '') }}">
                 </div>
 
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Estado</label>
                     <select id="estado" name="estado" class="form-select">
                         <option value="">Selecione</option>
-                        <option value="AC">Acre</option>
-                        <option value="AL">Alagoas</option>
-                        <option value="AP">Amapá</option>
-                        <option value="AM">Amazonas</option>
-                        <option value="BA">Bahia</option>
-                        <option value="CE">Ceará</option>
-                        <option value="DF">Distrito Federal</option>
-                        <option value="ES">Espírito Santo</option>
-                        <option value="GO">Goiás</option>
-                        <option value="MA">Maranhão</option>
-                        <option value="MT">Mato Grosso</option>
-                        <option value="MS">Mato Grosso do Sul</option>
-                        <option value="MG">Minas Gerais</option>
-                        <option value="PA">Pará</option>
-                        <option value="PB">Paraíba</option>
-                        <option value="PR">Paraná</option>
-                        <option value="PE">Pernambuco</option>
-                        <option value="PI">Piauí</option>
-                        <option value="RJ">Rio de Janeiro</option>
-                        <option value="RN">Rio Grande do Norte</option>
-                        <option value="RS">Rio Grande do Sul</option>
-                        <option value="RO">Rondônia</option>
-                        <option value="RR">Roraima</option>
-                        <option value="SC">Santa Catarina</option>
-                        <option value="SP">São Paulo</option>
-                        <option value="SE">Sergipe</option>
-                        <option value="TO">Tocantins</option>
+
+                        <option value="AC" {% if request.form.get('estado')=='AC' %}selected{% endif %}>Acre</option>
+                        <option value="AL" {% if request.form.get('estado')=='AL' %}selected{% endif %}>Alagoas</option>
+                        <option value="AP" {% if request.form.get('estado')=='AP' %}selected{% endif %}>Amapá</option>
+                        <option value="AM" {% if request.form.get('estado')=='AM' %}selected{% endif %}>Amazonas
+                        </option>
+                        <option value="BA" {% if request.form.get('estado')=='BA' %}selected{% endif %}>Bahia</option>
+                        <option value="CE" {% if request.form.get('estado')=='CE' %}selected{% endif %}>Ceará</option>
+                        <option value="DF" {% if request.form.get('estado')=='DF' %}selected{% endif %}>Distrito Federal
+                        </option>
+                        <option value="ES" {% if request.form.get('estado')=='ES' %}selected{% endif %}>Espírito Santo
+                        </option>
+                        <option value="GO" {% if request.form.get('estado')=='GO' %}selected{% endif %}>Goiás</option>
+                        <option value="MA" {% if request.form.get('estado')=='MA' %}selected{% endif %}>Maranhão
+                        </option>
+                        <option value="MT" {% if request.form.get('estado')=='MT' %}selected{% endif %}>Mato Grosso
+                        </option>
+                        <option value="MS" {% if request.form.get('estado')=='MS' %}selected{% endif %}>Mato Grosso do
+                            Sul</option>
+                        <option value="MG" {% if request.form.get('estado')=='MG' %}selected{% endif %}>Minas Gerais
+                        </option>
+                        <option value="PA" {% if request.form.get('estado')=='PA' %}selected{% endif %}>Pará</option>
+                        <option value="PB" {% if request.form.get('estado')=='PB' %}selected{% endif %}>Paraíba</option>
+                        <option value="PR" {% if request.form.get('estado')=='PR' %}selected{% endif %}>Paraná</option>
+                        <option value="PE" {% if request.form.get('estado')=='PE' %}selected{% endif %}>Pernambuco
+                        </option>
+                        <option value="PI" {% if request.form.get('estado')=='PI' %}selected{% endif %}>Piauí</option>
+                        <option value="RJ" {% if request.form.get('estado')=='RJ' %}selected{% endif %}>Rio de Janeiro
+                        </option>
+                        <option value="RN" {% if request.form.get('estado')=='RN' %}selected{% endif %}>Rio Grande do
+                            Norte</option>
+                        <option value="RS" {% if request.form.get('estado')=='RS' %}selected{% endif %}>Rio Grande do
+                            Sul</option>
+                        <option value="RO" {% if request.form.get('estado')=='RO' %}selected{% endif %}>Rondônia
+                        </option>
+                        <option value="RR" {% if request.form.get('estado')=='RR' %}selected{% endif %}>Roraima</option>
+                        <option value="SC" {% if request.form.get('estado')=='SC' %}selected{% endif %}>Santa Catarina
+                        </option>
+                        <option value="SP" {% if request.form.get('estado')=='SP' %}selected{% endif %}>São Paulo
+                        </option>
+                        <option value="SE" {% if request.form.get('estado')=='SE' %}selected{% endif %}>Sergipe</option>
+                        <option value="TO" {% if request.form.get('estado')=='TO' %}selected{% endif %}>Tocantins
+                        </option>
                     </select>
                 </div>
             </div>
 
             <!-- SENHA -->
             <div class="mb-3">
-                <label class="form-label">Senha</label>
-                <input type="password" name="senha" class="form-control" required>
+                <label>Senha</label>
+
+                <div class="input-group">
+                    <input type="password" name="senha" id="senha" class="form-control" required>
+
+                    <button type="button" class="btn btn-outline-secondary" onclick="toggleSenha()">
+                        <span id="iconeSenha">👁️</span>
+                    </button>
+                </div>
             </div>
 
             <!-- BOTÃO -->
-            <button id="btnCadastro" class="btn btn-primary w-100 py-2 fw-bold">
+            <button id="btnCadastro"
+                class="btn {% if request.form.get('tipo') == 'profissional' %}btn-success{% else %}btn-primary{% endif %} w-100 py-2 fw-bold">
                 Criar Conta
             </button>
 
@@ -185,6 +222,22 @@
                 }
             });
     });
+</script>
+
+<!-- MOSTRAR SENHA -->
+<script>
+    function toggleSenha() {
+        let senha = document.getElementById("senha");
+        let icone = document.getElementById("iconeSenha");
+
+        if (senha.type === "password") {
+            senha.type = "text";
+            icone.textContent = "🙈";
+        } else {
+            senha.type = "password";
+            icone.textContent = "👁️";
+        }
+    }
 </script>
 
 {% endblock %}

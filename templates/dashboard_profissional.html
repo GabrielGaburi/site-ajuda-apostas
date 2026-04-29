@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Profissional{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid py-5 bg-light min-vh-100">
+
+    <!-- TOPO -->
+    <div class="container mb-5">
+        <div class="p-4 rounded-4 shadow-sm text-white" style="background: linear-gradient(135deg, #0d6efd, #0dcaf0);">
+
+            <h2 class="fw-bold">Painel do Profissional 🩺</h2>
+
+            <p class="mb-0 fs-5">
+                Gerencie atendimentos, acompanhe usuários e ofereça suporte com mais eficiência.
+            </p>
+        </div>
+    </div>
+
+    <!-- CARDS -->
+    <div class="container">
+        <div class="row g-4">
+
+            <!-- FUTURO CHAT -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow h-100 rounded-4">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold mb-3">💬 Chat com Usuários</h4>
+
+                        <p class="text-muted">
+                            Área dedicada para comunicação e acompanhamento profissional.
+                        </p>
+
+                        <button class="btn btn-primary w-100" disabled>
+                            Em breve
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PERFIL -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow h-100 rounded-4">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold mb-3">👤 Meu Perfil</h4>
+
+                        <p class="text-muted">
+                            Atualize seus dados profissionais e informações de contato.
+                        </p>
+
+                        <a href="#" class="btn btn-outline-primary w-100">
+                            Gerenciar Perfil
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AGENDA -->
+            <div class="col-md-6 col-lg-4">
+                <div class="card border-0 shadow h-100 rounded-4">
+                    <div class="card-body p-4">
+                        <h4 class="fw-bold mb-3">📅 Agenda</h4>
+
+                        <p class="text-muted">
+                            Organize atendimentos, horários e disponibilidade.
+                        </p>
+
+                        <a href="#" class="btn btn-outline-primary w-100">
+                            Visualizar Agenda
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
