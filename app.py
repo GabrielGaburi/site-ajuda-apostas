@@ -68,11 +68,47 @@ noticias = [
     }
 ]
 
+# =========================
+# LOGOUT
+# =========================
+@app.route("/logout")
+def logout():
+    session.clear()  # remove todos os dados da sessão
+    flash("Você saiu da sua conta com sucesso.", "success")
+    return redirect(url_for("login"))
 
+
+# =========================
+# PERFIL
+# =========================
+@app.route("/perfil")
+def perfil():
+    # se não estiver logado
+    if "usuario_id" not in session:
+        flash("Faça login para acessar seu perfil.", "warning")
+        return redirect(url_for("login"))
+
+    # procura usuário na lista
+    usuario = next(
+        (u for u in usuarios if u["id"] == session["usuario_id"]),
+        None
+    )
+
+    # segurança extra
+    if not usuario:
+        session.clear()
+        flash("Usuário não encontrado.", "danger")
+        return redirect(url_for("login"))
+
+    # renderiza página de perfil
+    return render_template(
+        "perfil.html",
+        usuario=usuario
+    )
 # Arquivo JSON para salvar o fórum
 FORUM_FILE = "forum.json"
 # =========================
-# CADASTRO (ADICIONE ISSO NO app.py)
+# CADASTRO 
 # =========================
 @app.route('/cadastro', methods=['GET', 'POST'])
 def cadastro():
@@ -580,6 +616,246 @@ def teste_email():
         return "Email enviado com sucesso! Verifique caixa de entrada, spam e lixo eletrônico."
     else:
         return "Falha no envio. Veja o terminal."
+    
+def enviar_email_recuperacao(email):
+    try:
+        token = serializer.dumps(email, salt='recuperar-senha')
+
+        link = url_for(
+            'redefinir_senha',
+            token=token,
+            _external=True
+        )
+
+        msg = Message(
+            subject='Redefinição de senha - Apoio & Consciência',
+            recipients=[email],
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+
+        # =========================
+        # VERSÃO TEXTO
+        # =========================
+        msg.body = f"""
+Redefina sua senha acessando o link abaixo:
+
+{link}
+
+Se você não solicitou essa alteração, ignore este email com segurança.
+        """
+
+        # =========================
+        # VERSÃO HTML PROFISSIONAL
+        # =========================
+        msg.html = f"""
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="
+    margin:0;
+    padding:0;
+    background-color:#f4f6f9;
+    font-family:Arial, Helvetica, sans-serif;
+">
+
+    <div style="
+        max-width:600px;
+        margin:40px auto;
+        background:#ffffff;
+        border-radius:16px;
+        overflow:hidden;
+        box-shadow:0 8px 25px rgba(0,0,0,0.08);
+    ">
+
+        <!-- TOPO -->
+        <div style="
+            background:linear-gradient(135deg, #0d6efd, #3a86ff);
+            padding:30px;
+            text-align:center;
+            color:white;
+        ">
+            <h1 style="margin:0; font-size:28px;">
+                Apoio & Consciência
+            </h1>
+            <p style="margin-top:8px; font-size:15px; opacity:0.9;">
+                Segurança para redefinição da sua conta
+            </p>
+        </div>
+
+        <!-- CONTEÚDO -->
+        <div style="padding:40px 30px; color:#333;">
+
+            <h2 style="
+                color:#0d6efd;
+                margin-top:0;
+                text-align:center;
+            ">
+                Redefinição de Senha
+            </h2>
+
+            <p style="
+                font-size:16px;
+                line-height:1.6;
+                text-align:center;
+                color:#555;
+            ">
+                Recebemos uma solicitação para redefinir sua senha.<br>
+                Clique no botão abaixo para criar uma nova senha com segurança:
+            </p>
+
+            <!-- BOTÃO -->
+            <div style="text-align:center; margin:35px 0;">
+                <a href="{link}" style="
+                    background:linear-gradient(135deg, #0d6efd, #3a86ff);
+                    color:white;
+                    padding:14px 30px;
+                    text-decoration:none;
+                    border-radius:10px;
+                    display:inline-block;
+                    font-size:16px;
+                    font-weight:bold;
+                    box-shadow:0 4px 12px rgba(13,110,253,0.3);
+                ">
+                    Redefinir Senha
+                </a>
+            </div>
+
+            <!-- LINK -->
+            <p style="
+                font-size:14px;
+                color:#666;
+                text-align:center;
+                margin-bottom:8px;
+            ">
+                Se o botão não funcionar, copie e cole este link no navegador:
+            </p>
+
+            <div style="
+                background:#f8f9fa;
+                border:1px solid #dee2e6;
+                padding:12px;
+                border-radius:8px;
+                word-break:break-all;
+                font-size:13px;
+                color:#0d6efd;
+                text-align:center;
+            ">
+                {link}
+            </div>
+
+        </div>
+
+        <!-- ALERTA -->
+        <div style="
+            margin:0 30px 25px;
+            padding:14px;
+            background:#fff3cd;
+            border:1px solid #ffe69c;
+            border-radius:8px;
+            color:#856404;
+            font-size:14px;
+            text-align:center;
+        ">
+            Se você não solicitou esta redefinição, ignore este email. Sua conta continuará segura.
+        </div>
+
+        <!-- RODAPÉ -->
+        <div style="
+            background:#f8f9fa;
+            padding:20px;
+            text-align:center;
+            font-size:13px;
+            color:#6c757d;
+            border-top:1px solid #e9ecef;
+        ">
+            Protegendo seu acesso com responsabilidade.<br>
+            © Apoio & Consciência
+        </div>
+
+    </div>
+
+</body>
+</html>
+        """
+
+        # DEBUG
+        print("MAIL_USERNAME:", app.config['MAIL_USERNAME'])
+        print("MAIL_DEFAULT_SENDER:", app.config['MAIL_DEFAULT_SENDER'])
+        print("DESTINATÁRIO:", email)
+        print("LINK RECUPERAÇÃO:", link)
+
+        mail.send(msg)
+
+        print("EMAIL DE RECUPERAÇÃO ENVIADO PARA:", email)
+        return True
+
+    except Exception as e:
+        print("ERRO AO ENVIAR EMAIL DE RECUPERAÇÃO:")
+        traceback.print_exc()
+        return False
+    
+@app.route("/esqueci-senha", methods=["GET", "POST"])
+def esqueci_senha():
+    if request.method == "POST":
+
+        email = request.form.get("email", "").strip().lower()
+
+        usuario = next(
+            (u for u in usuarios if u["email"].lower() == email),
+            None
+        )
+
+        if not usuario:
+            flash("Email não encontrado.", "danger")
+            return render_template("esqueci_senha.html", email=email)
+
+        if enviar_email_recuperacao(email):
+            flash("Enviamos um link para redefinição de senha.", "success")
+        else:
+            flash("Erro ao enviar email de recuperação.", "danger")
+
+        return redirect(url_for("login"))
+
+    return render_template("esqueci_senha.html")
+
+@app.route("/redefinir-senha/<token>", methods=["GET", "POST"])
+def redefinir_senha(token):
+    try:
+        email = serializer.loads(
+            token,
+            salt='recuperar-senha',
+            max_age=3600
+        )
+
+    except:
+        flash("Link inválido ou expirado.", "danger")
+        return redirect(url_for("login"))
+
+    usuario = next(
+        (u for u in usuarios if u["email"].lower() == email.lower()),
+        None
+    )
+
+    if not usuario:
+        flash("Usuário não encontrado.", "danger")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+
+        nova_senha = request.form.get("senha", "")
+
+        if not senha_valida(nova_senha):
+            flash("Senha inválida. Use 8-16 caracteres, maiúscula, número e especial.", "danger")
+            return render_template("redefinir_senha.html")
+
+        usuario["senha"] = generate_password_hash(nova_senha)
+
+        flash("Senha redefinida com sucesso! Faça login.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("redefinir_senha.html")
 
 @app.route("/ajuda")
 def ajuda():

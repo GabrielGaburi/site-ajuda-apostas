@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Redefinir Senha{% endblock %}
+{% block content %}
+
+<div class="container mt-5 d-flex justify-content-center">
+    <div class="card shadow-lg p-4" style="max-width:500px; width:100%; border-radius:20px;">
+
+        <h3 class="text-center mb-4">Nova Senha</h3>
+
+        <form method="POST">
+
+            <div class="mb-3">
+                <label>Nova Senha</label>
+
+                <div class="input-group">
+                    <input type="password" name="senha" id="senha" class="form-control" required>
+
+                    <button type="button" class="btn btn-outline-secondary" onclick="toggleSenha()">
+                        <span id="iconeSenha">👁️</span>
+                    </button>
+                </div>
+            </div>
+
+            <button class="btn btn-success w-100">
+                Salvar nova senha
+            </button>
+
+        </form>
+
+    </div>
+</div>
+
+<script>
+    function toggleSenha() {
+        let senha = document.getElementById("senha");
+        let icone = document.getElementById("iconeSenha");
+
+        if (senha.type === "password") {
+            senha.type = "text";
+            icone.textContent = "🙈";
+        } else {
+            senha.type = "password";
+            icone.textContent = "👁️";
+        }
+    }
+</script>
+
+{% endblock %}

@@ -5,8 +5,11 @@
     <meta charset="UTF-8">
     <title>{% block title %}Apoio Contra o Vício em Apostas{% endblock %}</title>
 
-    <!-- ✅ Bootstrap CSS -->
+    <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons (ícone de usuário/seta) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
     <!-- CSS próprio -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -15,16 +18,20 @@
 <body>
 
     <!-- NAVBAR -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container">
-            <a class="navbar-brand" href="/">Apoio & Consciência</a>
+            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
+                Apoio & Consciência
+            </a>
 
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
+
+                <!-- MENU -->
+                <ul class="navbar-nav ms-auto align-items-lg-center">
 
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('index') }}">Início</a>
@@ -44,38 +51,75 @@
 
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('bloqueio') }}">
-                            Bloqueie Sites de Apostas
+                            Bloqueie Sites
                         </a>
                     </li>
 
-                    <!-- LOGIN -->
-                    <li class="nav-item">
-                        <a class="nav-link btn btn-outline-light ms-2 px-3" href="{{ url_for('login') }}">
+                    <!-- USUÁRIO LOGADO -->
+                    {% if session.get("usuario_id") %}
+                    <li class="nav-item dropdown ms-lg-3">
+                        <a class="nav-link dropdown-toggle fw-semibold text-info" href="#" id="navbarDropdown"
+                            role="button" data-bs-toggle="dropdown" aria-expanded="false">
+
+                            <i class="bi bi-person-circle"></i>
+                            Bem-vindo, {{ session.get("usuario_nome") }}
+                        </a>
+
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+
+                            <!-- PERFIL -->
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('perfil') }}">
+                                    <i class="bi bi-person"></i> Meu Perfil
+                                </a>
+                            </li>
+
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+
+                            <!-- SAIR -->
+                            <li>
+                                <a class="dropdown-item text-danger" href="{{ url_for('logout') }}">
+                                    <i class="bi bi-box-arrow-right"></i> Sair
+                                </a>
+                            </li>
+
+                        </ul>
+                    </li>
+
+                    <!-- NÃO LOGADO -->
+                    {% else %}
+                    <li class="nav-item ms-lg-3">
+                        <a class="btn btn-outline-light px-3" href="{{ url_for('login') }}">
                             Login
                         </a>
                     </li>
+                    {% endif %}
 
                 </ul>
             </div>
         </div>
     </nav>
 
-    {% with messages = get_flashed_messages() %}
+    <!-- FLASH MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="container mt-3">
-        {% for msg in messages %}
-        <div class="alert alert-success">
+        {% for categoria, msg in messages %}
+        <div class="alert alert-{{ categoria }} alert-dismissible fade show shadow-sm" role="alert">
             {{ msg }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
         {% endfor %}
     </div>
     {% endif %}
     {% endwith %}
 
-    <!-- CONTEÚDO DAS PÁGINAS -->
+    <!-- CONTEÚDO -->
     {% block content %}{% endblock %}
 
-    <!-- ✅ Bootstrap JS (SEMPRE antes do </body>) -->
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
     {% block scripts %}{% endblock %}
