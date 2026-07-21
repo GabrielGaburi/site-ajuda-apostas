@@ -304,6 +304,9 @@ def noticia_detalhe(noticia_id):
 def bloqueio():
     return render_template("bloqueio.html")
 
+@app.route("/bloqueio-cpf")
+def bloqueio_cpf():
+    return render_template("bloqueio_cpf.html")
 
 # Página principal do fórum
 @app.route("/forum")
