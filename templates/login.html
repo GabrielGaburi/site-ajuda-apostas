@@ -2,7 +2,9 @@
 {% block title %}Login{% endblock %}
 {% block content %}
 
-<div class="container-fluid vh-100 d-flex align-items-center justify-content-center bg-light">
+
+<div class="container-fluid d-flex align-items-center justify-content-center bg-light"
+    style="min-height:80vh; padding:30px 0;">
 
     <div class="row shadow-lg" style="width: 900px; border-radius: 15px; overflow: hidden;">
 
@@ -21,41 +23,47 @@
 
             <h3 class="mb-4 text-center">Login</h3>
 
-            <form method="POST">
+            <form method="POST" action="{{ url_for('login') }}">
 
                 <!-- EMAIL -->
                 <div class="mb-3">
                     <label class="form-label">Email</label>
                     <div class="input-group">
-                        <span class="input-group-text">📧</span>
+                        <span class="input-group-text">
+                            <i class="bi bi-envelope-fill"></i>
+                        </span>
                         <input type="email" name="email" class="form-control" placeholder="seu@email.com" required>
                     </div>
                 </div>
 
                 <!-- SENHA -->
                 <div class="mb-3">
-                    <label>Senha</label>
+                    <label class="form-label">Senha</label>
 
                     <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="bi bi-lock-fill"></i>
+                        </span>
+
                         <input type="password" name="senha" id="senha" class="form-control" required>
 
                         <button type="button" class="btn btn-outline-secondary" onclick="toggleSenha()">
-                            <span id="iconeSenha">👁️</span>
+                            <i id="iconeSenha" class="bi bi-eye"></i>
                         </button>
                     </div>
                 </div>
-                <!-- BOTÃO -->
-                <button class="btn btn-dark w-100 mt-2">
-                    Entrar
-                </button>
 
-                <!-- COLE LOGO ABAIXO DO CAMPO SENHA, ANTES DO BOTÃO ENTRAR -->
-
+                <!-- ESQUECI SENHA -->
                 <div class="text-end mb-3">
                     <a href="{{ url_for('esqueci_senha') }}" class="text-decoration-none">
                         Esqueci minha senha
                     </a>
                 </div>
+
+                <!-- BOTÃO -->
+                <button type="submit" class="btn btn-dark w-100 mt-2">
+                    Entrar
+                </button>
 
             </form>
 
@@ -63,7 +71,9 @@
             <div class="text-center mt-3">
                 <small>
                     Não tem conta?
-                    <a href="{{ url_for('cadastro') }}">Cadastre-se</a>
+                    <a href="{{ url_for('escolher_cadastro') }}">
+                        Cadastre-se
+                    </a>
                 </small>
             </div>
 

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Criar conta{% endblock %}
+
+{% block content %}
+
+<div class="container py-5">
+
+    <div class="text-center mb-5">
+        <h2 class="fw-bold">
+            Criar uma conta
+        </h2>
+
+        <p class="text-muted">
+            Escolha o tipo de cadastro que deseja realizar
+        </p>
+    </div>
+
+
+    <div class="row justify-content-center g-4">
+
+
+        <!-- USUÁRIO -->
+        <div class="col-md-5">
+
+            <div class="card shadow-lg border-0 h-100">
+
+                <div class="card-body text-center p-5">
+
+                    <div class="mb-3">
+                        <i class="bi bi-person-circle" style="font-size: 60px; color:#0d6efd;">
+                        </i>
+                    </div>
+
+
+                    <h3 class="mb-3">
+                        Usuário
+                    </h3>
+
+
+                    <p class="text-muted">
+                        Crie sua conta para acessar conteúdos,
+                        participar do fórum e receber apoio
+                        durante sua jornada.
+                    </p>
+
+
+                    <a href="{{ url_for('cadastro') }}" class="btn btn-primary w-100 mt-3">
+
+                        Criar conta de usuário
+
+                    </a>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+
+        <!-- PROFISSIONAL -->
+        <div class="col-md-5">
+
+            <div class="card shadow-lg border-0 h-100">
+
+                <div class="card-body text-center p-5">
+
+
+                    <div class="mb-3">
+                        <i class="bi bi-person-badge" style="font-size:60px; color:#198754;">
+                        </i>
+                    </div>
+
+
+                    <h3 class="mb-3">
+                        Profissional
+                    </h3>
+
+
+                    <p class="text-muted">
+                        Cadastre-se como psicólogo ou especialista
+                        para oferecer suporte aos usuários.
+                    </p>
+
+
+                    <a href="{{ url_for('cadastro') }}" class="btn btn-success w-100 mt-3">
+
+                        Cadastrar profissional
+
+                    </a>
+
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+    </div>
+
+
+    <div class="text-center mt-4">
+
+        <small>
+            Já possui uma conta?
+
+            <a href="{{ url_for('login') }}">
+                Fazer login
+            </a>
+
+        </small>
+
+    </div>
+
+
+</div>
+
+
+{% endblock %}
