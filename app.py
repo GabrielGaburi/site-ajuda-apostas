@@ -110,8 +110,8 @@ FORUM_FILE = "forum.json"
 # =========================
 # CADASTRO 
 # =========================
-@app.route('/cadastro', methods=['GET', 'POST'])
-def cadastro():
+@app.route('/cadastro_usuario', methods=['GET', 'POST'])
+def cadastro_usuario():
 
     # dicionário com TODOS os campos para manter o formulário preenchido
     dados = {
@@ -142,13 +142,25 @@ def cadastro():
         }
 
         senha = request.form.get('senha', '')
+        
+        confirmar_senha = request.form.get("confirmar_senha", "")
+
+        if senha != confirmar_senha:
+            flash("As senhas não coincidem.", "danger")
+            return render_template(
+            "cadastro_usuario.html",
+            dados=dados
+        )
+
+        # Só continua se as senhas forem iguais
+        senha_hash = generate_password_hash(senha)
 
         # CAMPOS OBRIGATÓRIOS
         if not dados["nome"] or not dados["email"] or not senha:
             flash("Preencha todos os campos obrigatórios.", "danger")
 
             return render_template(
-                "cadastro.html",
+                "cadastro_usuario.html",
                 dados=dados
             )
 
@@ -161,7 +173,7 @@ def cadastro():
 
             # devolve TODOS os campos preenchidos
             return render_template(
-                "cadastro.html",
+                "cadastro_usuario.html",
                 dados=dados
             )
 
@@ -175,7 +187,7 @@ def cadastro():
             flash("Este email já está cadastrado.", "warning")
 
             return render_template(
-                "cadastro.html",
+                "cadastro_usuario.html",
                 dados=dados
             )
 
@@ -191,6 +203,9 @@ def cadastro():
             "telefone": dados["telefone"],
             "cep": dados["cep"],
             "rua": dados["rua"],
+            "numero": dados ["numero"],
+            "bairro": dados ["bairro"],
+            "complemento": dados ["complemento"],
             "cidade": dados["cidade"],
             "estado": dados["estado"],
             "senha": senha_hash,
@@ -216,7 +231,7 @@ def cadastro():
 
     # GET
     return render_template(
-        'cadastro.html',
+        'cadastro_usuario.html',
         dados=dados
     )
 @app.route('/confirmar_email/<token>')
@@ -239,7 +254,7 @@ def confirmar_email(token):
 
     if not usuario:
         flash("Usuário não encontrado.", "danger")
-        return redirect(url_for("cadastro"))
+        return redirect(url_for("cadastro_usuario"))
 
     if usuario["email_confirmado"]:
         flash("Email já confirmado. Faça login.", "info")
@@ -285,150 +300,6 @@ forum = carregar_forum()
 usuario_atual = "Anônimo"
 moderador = True  # Defina como True apenas para você, o moderador
 
-@app.route('/cadastro_profissional', methods=['GET', 'POST'])
-def cadastro_profissional():
-
-    # dicionário com TODOS os campos para manter o formulário preenchido
-    dados = {
-        "tipo": "usuario",
-        "nome": "",
-        "sobrenome": "",
-        "email": "",
-        "telefone": "",
-        "cep": "",
-        "rua": "",
-        "cidade": "",
-        "estado": ""
-    }
-
-    if request.method == 'POST':
-
-        # captura TODOS os campos
-        dados = {
-            "tipo": request.form.get("tipo", "usuario"),
-            "nome": request.form.get("nome", "").strip(),
-            "sobrenome": request.form.get("sobrenome", "").strip(),
-            "email": request.form.get("email", "").strip().lower(),
-            "telefone": request.form.get("telefone", "").strip(),
-            "cep": request.form.get("cep", "").strip(),
-            "rua": request.form.get("rua", "").strip(),
-            "cidade": request.form.get("cidade", "").strip(),
-            "estado": request.form.get("estado", "").strip()
-        }
-
-        senha = request.form.get('senha', '')
-
-        # CAMPOS OBRIGATÓRIOS
-        if not dados["nome"] or not dados["email"] or not senha:
-            flash("Preencha todos os campos obrigatórios.", "danger")
-
-            return render_template(
-                "cadastro.html",
-                dados=dados
-            )
-
-        # SENHA INVÁLIDA
-        if not senha_valida(senha):
-            flash(
-                "A senha deve ter 8-16 caracteres, incluindo maiúscula, número e caractere especial.",
-                "danger"
-            )
-
-            # devolve TODOS os campos preenchidos
-            return render_template(
-                "cadastro.html",
-                dados=dados
-            )
-
-        # EMAIL JÁ CADASTRADO
-        usuario_existente = next(
-            (u for u in usuarios if u["email"].lower() == dados["email"]),
-            None
-        )
-
-        if usuario_existente:
-            flash("Este email já está cadastrado.", "warning")
-
-            return render_template(
-                "cadastro.html",
-                dados=dados
-            )
-
-        # SENHA HASH
-        senha_hash = generate_password_hash(senha)
-
-        # NOVO USUÁRIO
-        novo_usuario = {
-            "id": len(usuarios) + 1,
-            "nome": dados["nome"],
-            "sobrenome": dados["sobrenome"],
-            "email": dados["email"],
-            "telefone": dados["telefone"],
-            "cep": dados["cep"],
-            "rua": dados["rua"],
-            "cidade": dados["cidade"],
-            "estado": dados["estado"],
-            "senha": senha_hash,
-            "email_confirmado": False,
-            "tipo": dados["tipo"]
-        }
-
-        usuarios.append(novo_usuario)
-
-        # EMAIL
-        if enviar_email_confirmacao(dados["email"]):
-            flash(
-                "Conta criada! Verifique seu email para confirmar o cadastro.",
-                "success"
-            )
-        else:
-            flash(
-                "Conta criada, mas houve erro ao enviar o email de confirmação.",
-                "warning"
-            )
-
-        return redirect(url_for('login'))
-
-    # GET
-    return render_template(
-        'cadastro.html',
-        dados=dados
-    )
-
-# Funções auxiliares
-def carregar_forum():
-    try:
-        with open(FORUM_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return []
-
-def salvar_forum(forum):
-    with open(FORUM_FILE, "w", encoding="utf-8") as f:
-        json.dump(forum, f, ensure_ascii=False, indent=4)
-        
-def senha_valida(senha):
-    if len(senha) < 8 or len(senha) > 16:
-        return False
-    
-    if not re.search(r"[A-Z]", senha):  # letra maiúscula
-        return False
-    
-    if not re.search(r"[0-9]", senha):  # número
-        return False
-    
-    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", senha):  # especial
-        return False
-
-    return True
-
-# Carregar tópicos existentes
-forum = carregar_forum()
-
-
-# Usuário atual e flag de moderador (apenas para exemplo, normalmente viria do login)
-usuario_atual = "Anônimo"
-moderador = True  # Defina como True apenas para você, o moderador
 
 @app.route("/")
 def index():

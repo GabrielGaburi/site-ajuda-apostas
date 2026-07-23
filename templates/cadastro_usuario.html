@@ -1,243 +1,463 @@
 {% extends "base.html" %}
+{% block title %}Cadastro de Usuário{% endblock %}
 
 {% block content %}
 
-<div class="container mt-5 d-flex justify-content-center">
-    <div id="cardCadastro"
-        class="card shadow-lg border-0 p-4 {% if request.form.get('tipo', 'usuario') == 'profissional' %}bg-success-subtle{% else %}bg-primary-subtle{% endif %}"
-        style="max-width: 750px; width: 100%; border-radius: 20px; transition: all 0.3s ease;">
+<div class="container-fluid py-5 bg-light" style="min-height:90vh;">
 
-        <!-- TÍTULO -->
-        <h3 class="text-center mb-2 fw-bold">Criar Conta</h3>
-        <p class="text-center text-muted mb-4">
-            Escolha o tipo de cadastro para continuar
-        </p>
+    <div class="row justify-content-center">
 
-        <!-- ABAS -->
-        <ul class="nav nav-pills nav-justified mb-4">
-            <li class="nav-item">
-                <button type="button"
-                    class="nav-link fw-semibold {% if request.form.get('tipo', 'usuario') == 'usuario' %}active text-primary{% else %}text-primary{% endif %}"
-                    onclick="trocarTipo(event, 'usuario')">
-                    👤 Usuário
-                </button>
-            </li>
-            <li class="nav-item">
-                <button type="button"
-                    class="nav-link fw-semibold {% if request.form.get('tipo') == 'profissional' %}active text-success{% else %}text-success{% endif %}"
-                    onclick="trocarTipo(event, 'profissional')">
-                    🩺 Profissional
-                </button>
-            </li>
-        </ul>
+        <div class="col-lg-8">
 
-        <form method="POST">
+            <div class="card shadow-lg border-0 rounded-4">
 
-            <!-- TIPO -->
-            <input type="hidden" name="tipo" id="tipo" value="{{ request.form.get('tipo', 'usuario') }}">
+                <div class="card-body p-5">
 
-            <!-- NOME -->
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Nome</label>
-                    <input type="text" name="nome" class="form-control"
-                        value="{{ request.form.get('nome', nome or '') }}" required>
-                </div>
+                    <div class="text-center mb-5">
 
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Sobrenome</label>
-                    <input type="text" name="sobrenome" class="form-control"
-                        value="{{ request.form.get('sobrenome', sobrenome or '') }}">
-                </div>
-            </div>
+                        <i class="bi bi-person-circle text-primary" style="font-size:70px;"></i>
 
-            <!-- EMAIL -->
-            <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input type="email" name="email" class="form-control"
-                    value="{{ request.form.get('email', email or '') }}" required>
-            </div>
+                        <h2 class="fw-bold mt-3">
+                            Cadastro de Usuário
+                        </h2>
 
-            <!-- TELEFONE -->
-            <div class="mb-3">
-                <label class="form-label">Telefone</label>
-                <input type="text" name="telefone" id="telefone" class="form-control" placeholder="(14) 99999-9999"
-                    value="{{ request.form.get('telefone', telefone or '') }}">
-            </div>
+                        <p class="text-muted">
+                            Crie sua conta para acessar conteúdos,
+                            participar do fórum e acompanhar sua jornada.
+                        </p>
 
-            <!-- CEP -->
-            <div class="mb-3">
-                <label class="form-label">CEP</label>
-                <input type="text" id="cep" name="cep" class="form-control" placeholder="00000-000"
-                    value="{{ request.form.get('cep', cep or '') }}">
-            </div>
+                    </div>
 
-            <!-- ENDEREÇO -->
-            <div class="mb-3">
-                <label class="form-label">Rua</label>
-                <input type="text" id="rua" name="rua" class="form-control"
-                    value="{{ request.form.get('rua', rua or '') }}">
-            </div>
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for categoria, mensagem in messages %}
 
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Cidade</label>
-                    <input type="text" id="cidade" name="cidade" class="form-control"
-                        value="{{ request.form.get('cidade', cidade or '') }}">
-                </div>
+                    <div class="alert alert-{{ categoria }}">
+                        {{ mensagem }}
+                    </div>
 
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Estado</label>
-                    <select id="estado" name="estado" class="form-select">
-                        <option value="">Selecione</option>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
 
-                        <option value="AC" {% if request.form.get('estado')=='AC' %}selected{% endif %}>Acre</option>
-                        <option value="AL" {% if request.form.get('estado')=='AL' %}selected{% endif %}>Alagoas</option>
-                        <option value="AP" {% if request.form.get('estado')=='AP' %}selected{% endif %}>Amapá</option>
-                        <option value="AM" {% if request.form.get('estado')=='AM' %}selected{% endif %}>Amazonas
-                        </option>
-                        <option value="BA" {% if request.form.get('estado')=='BA' %}selected{% endif %}>Bahia</option>
-                        <option value="CE" {% if request.form.get('estado')=='CE' %}selected{% endif %}>Ceará</option>
-                        <option value="DF" {% if request.form.get('estado')=='DF' %}selected{% endif %}>Distrito Federal
-                        </option>
-                        <option value="ES" {% if request.form.get('estado')=='ES' %}selected{% endif %}>Espírito Santo
-                        </option>
-                        <option value="GO" {% if request.form.get('estado')=='GO' %}selected{% endif %}>Goiás</option>
-                        <option value="MA" {% if request.form.get('estado')=='MA' %}selected{% endif %}>Maranhão
-                        </option>
-                        <option value="MT" {% if request.form.get('estado')=='MT' %}selected{% endif %}>Mato Grosso
-                        </option>
-                        <option value="MS" {% if request.form.get('estado')=='MS' %}selected{% endif %}>Mato Grosso do
-                            Sul</option>
-                        <option value="MG" {% if request.form.get('estado')=='MG' %}selected{% endif %}>Minas Gerais
-                        </option>
-                        <option value="PA" {% if request.form.get('estado')=='PA' %}selected{% endif %}>Pará</option>
-                        <option value="PB" {% if request.form.get('estado')=='PB' %}selected{% endif %}>Paraíba</option>
-                        <option value="PR" {% if request.form.get('estado')=='PR' %}selected{% endif %}>Paraná</option>
-                        <option value="PE" {% if request.form.get('estado')=='PE' %}selected{% endif %}>Pernambuco
-                        </option>
-                        <option value="PI" {% if request.form.get('estado')=='PI' %}selected{% endif %}>Piauí</option>
-                        <option value="RJ" {% if request.form.get('estado')=='RJ' %}selected{% endif %}>Rio de Janeiro
-                        </option>
-                        <option value="RN" {% if request.form.get('estado')=='RN' %}selected{% endif %}>Rio Grande do
-                            Norte</option>
-                        <option value="RS" {% if request.form.get('estado')=='RS' %}selected{% endif %}>Rio Grande do
-                            Sul</option>
-                        <option value="RO" {% if request.form.get('estado')=='RO' %}selected{% endif %}>Rondônia
-                        </option>
-                        <option value="RR" {% if request.form.get('estado')=='RR' %}selected{% endif %}>Roraima</option>
-                        <option value="SC" {% if request.form.get('estado')=='SC' %}selected{% endif %}>Santa Catarina
-                        </option>
-                        <option value="SP" {% if request.form.get('estado')=='SP' %}selected{% endif %}>São Paulo
-                        </option>
-                        <option value="SE" {% if request.form.get('estado')=='SE' %}selected{% endif %}>Sergipe</option>
-                        <option value="TO" {% if request.form.get('estado')=='TO' %}selected{% endif %}>Tocantins
-                        </option>
-                    </select>
-                </div>
-            </div>
+                    <form method="POST" action="{{ url_for('cadastro_usuario') }}">
 
-            <!-- SENHA -->
-            <div class="mb-3">
-                <label>Senha</label>
+                        <h5 class="mb-3 text-primary">
+                            Informações Pessoais
+                        </h5>
 
-                <div class="input-group">
-                    <input type="password" name="senha" id="senha" class="form-control" required>
+                        <div class="row">
 
-                    <button type="button" class="btn btn-outline-secondary" onclick="toggleSenha()">
-                        <span id="iconeSenha">👁️</span>
-                    </button>
-                </div>
-            </div>
+                            <div class="col-md-6 mb-3">
 
-            <!-- BOTÃO -->
-            <button id="btnCadastro"
-                class="btn {% if request.form.get('tipo') == 'profissional' %}btn-success{% else %}btn-primary{% endif %} w-100 py-2 fw-bold">
-                Criar Conta
-            </button>
+                                <label class="form-label">
+                                    Nome
+                                </label>
 
-        </form>
+                                <input type="text" class="form-control" name="nome" required value="{{ dados.nome }}">
 
-    </div>
-</div>
+                            </div>
 
-<!-- JS -->
-<script>
-    function trocarTipo(e, tipoSelecionado) {
-        document.getElementById("tipo").value = tipoSelecionado;
+                            <div class="col-md-6 mb-3">
 
-        const card = document.getElementById("cardCadastro");
-        const btn = document.getElementById("btnCadastro");
+                                <label class="form-label">
+                                    Sobrenome
+                                </label>
 
-        document.querySelectorAll(".nav-link").forEach(b => b.classList.remove("active"));
-        e.target.classList.add("active");
+                                <input type="text" class="form-control" name="sobrenome" value="{{ dados.sobrenome }}">
 
-        if (tipoSelecionado === "usuario") {
-            card.classList.remove("bg-success-subtle");
-            card.classList.add("bg-primary-subtle");
+                            </div>
 
-            btn.classList.remove("btn-success");
-            btn.classList.add("btn-primary");
-        } else {
-            card.classList.remove("bg-primary-subtle");
-            card.classList.add("bg-success-subtle");
+                        </div>
 
-            btn.classList.remove("btn-primary");
-            btn.classList.add("btn-success");
-        }
-    }
-</script>
+                        <div class="mb-3">
 
-<!-- TELEFONE -->
-<script>
-    document.getElementById("telefone").addEventListener("input", function (e) {
-        let v = e.target.value.replace(/\D/g, "");
+                            <label class="form-label">
+                                E-mail
+                            </label>
 
-        if (v.length > 11) v = v.slice(0, 11);
+                            <div class="input-group">
 
-        if (v.length > 6) {
-            v = `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
-        } else if (v.length > 2) {
-            v = `(${v.slice(0, 2)}) ${v.slice(2)}`;
-        }
+                                <span class="input-group-text">
+                                    <i class="bi bi-envelope-fill"></i>
+                                </span>
 
-        e.target.value = v;
-    });
-</script>
+                                <input type="email" class="form-control" name="email" required
+                                    placeholder="email@exemplo.com" value="{{ dados.email }}">
 
-<!-- CEP -->
-<script>
-    document.getElementById("cep").addEventListener("blur", function () {
-        let cep = this.value.replace(/\D/g, '');
+                            </div>
 
-        if (cep.length !== 8) return;
+                        </div>
 
-        fetch(`https://viacep.com.br/ws/${cep}/json/`)
-            .then(res => res.json())
-            .then(dados => {
-                if (!dados.erro) {
-                    document.getElementById("rua").value = dados.logradouro;
-                    document.getElementById("cidade").value = dados.localidade;
-                    document.getElementById("estado").value = dados.uf;
-                }
-            });
-    });
-</script>
+                        <div class="mb-4">
 
-<!-- MOSTRAR SENHA -->
-<script>
-    function toggleSenha() {
-        let senha = document.getElementById("senha");
-        let icone = document.getElementById("iconeSenha");
+                            <label class="form-label">
+                                Telefone
+                            </label>
 
-        if (senha.type === "password") {
-            senha.type = "text";
-            icone.textContent = "🙈";
-        } else {
-            senha.type = "password";
-            icone.textContent = "👁️";
-        }
-    }
-</script>
+                            <div class="input-group">
 
-{% endblock %}
+                                <span class="input-group-text">
+                                    <i class="bi bi-telephone-fill"></i>
+                                </span>
+
+                                <input type="text" id="telefone" class="form-control" name="telefone"
+                                    placeholder="(00) 00000-0000" value="{{ dados.telefone }}">
+
+                            </div>
+
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h5 class="text-primary mb-3">
+                            Endereço
+                        </h5>
+                        <div class="row">
+
+                            <!-- CEP -->
+                            <div class="col-md-4 mb-3">
+
+                                <label class="form-label">
+                                    CEP
+                                </label>
+
+                                <input type="text" class="form-control" id="cep" name="cep" maxlength="9"
+                                    placeholder="00000-000" value="{{ dados.cep }}">
+
+                            </div>
+
+                            <!-- ESTADO -->
+                            <div class="col-md-2 mb-3">
+
+                                <label class="form-label">
+                                    UF
+                                </label>
+
+                                <input type="text" class="form-control" id="estado" name="estado" readonly
+                                    value="{{ dados.estado }}">
+
+                            </div>
+
+                            <!-- CIDADE -->
+                            <div class="col-md-6 mb-3">
+
+                                <label class="form-label">
+                                    Cidade
+                                </label>
+
+                                <input type="text" class="form-control" id="cidade" name="cidade" readonly
+                                    value="{{ dados.cidade }}">
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+                                Rua
+                            </label>
+
+                            <input type="text" class="form-control" id="rua" name="rua" readonly
+                                value="{{ dados.rua }}">
+
+                        </div>
+
+
+                        <div class="row">
+
+                            <!-- NÚMERO -->
+                            <div class="col-md-3 mb-3">
+
+                                <label class="form-label">
+                                    Número
+                                </label>
+
+                                <input type="text" class="form-control" name="numero" placeholder="123">
+
+                            </div>
+
+                            <!-- BAIRRO -->
+                            <div class="col-md-9 mb-3">
+
+                                <label class="form-label">
+                                    Bairro
+                                </label>
+
+                                <input type="text" class="form-control" id="bairro" name="bairro" readonly>
+
+                            </div>
+
+                        </div>
+
+
+                        <hr class="my-4">
+
+                        <h5 class="text-primary mb-3">
+                            Segurança
+                        </h5>
+
+
+                        <div class="mb-3">
+
+                            <label class="form-label">
+                                Senha
+                            </label>
+
+                            <div class="input-group">
+
+                                <span class="input-group-text">
+                                    <i class="bi bi-lock-fill"></i>
+                                </span>
+
+                                <input type="password" class="form-control" id="senha" name="senha" required>
+
+                                <button class="btn btn-outline-secondary" type="button"
+                                    onclick="toggleSenha('senha','iconeSenha')">
+
+                                    <i id="iconeSenha" class="bi bi-eye"></i>
+
+                                </button>
+
+                            </div>
+
+                            <div class="form-text">
+
+                                Deve conter entre 8 e 16 caracteres,
+                                letra maiúscula,
+                                número
+                                e caractere especial.
+
+                            </div>
+
+                            <div id="forcaSenha" class="small mt-2 fw-bold">
+                            </div>
+
+                        </div>
+
+
+
+                        <div class="mb-4">
+
+                            <label class="form-label">
+                                Confirmar senha
+                            </label>
+
+                            <div class="input-group">
+
+                                <span class="input-group-text">
+                                    <i class="bi bi-shield-lock-fill"></i>
+                                </span>
+
+                                <input type="password" class="form-control" id="confirmarSenha" name="confirmar_senha"
+                                    required>
+
+                                <button class="btn btn-outline-secondary" type="button"
+                                    onclick="toggleSenha('confirmarSenha','iconeConfirmar')">
+
+                                    <i id="iconeConfirmar" class="bi bi-eye"></i>
+
+                                </button>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="form-check mb-4">
+
+                            <input class="form-check-input" type="checkbox" required id="termos">
+
+                            <label class="form-check-label" for="termos">
+
+                                Li e aceito os
+                                <a href="#">Termos de Uso</a>
+                                e a
+                                <a href="#">Política de Privacidade</a>.
+
+                            </label>
+
+                        </div>
+
+
+                        <button class="btn btn-primary w-100 py-2 fw-bold">
+
+                            Criar Conta
+
+                        </button>
+                    </form>
+
+                    <div class="text-center mt-4">
+
+                        <small>
+                            Já possui uma conta?
+
+                            <a href="{{ url_for('login') }}">
+                                Fazer login
+                            </a>
+
+                        </small>
+
+                    </div>
+
+
+                    <script>
+                        // =======================
+                        // MOSTRAR / OCULTAR SENHA
+                        // =======================
+
+                        function toggleSenha(campoId, iconeId) {
+
+                            const campo = document.getElementById(campoId);
+                            const icone = document.getElementById(iconeId);
+
+                            if (campo.type === "password") {
+                                campo.type = "text";
+                                icone.classList.remove("bi-eye");
+                                icone.classList.add("bi-eye-slash");
+                            } else {
+                                campo.type = "password";
+                                icone.classList.remove("bi-eye-slash");
+                                icone.classList.add("bi-eye");
+                            }
+
+                        }
+
+
+
+                        // =======================
+                        // MÁSCARA TELEFONE
+                        // =======================
+
+                        const telefone = document.getElementById("telefone");
+
+                        telefone.addEventListener("input", function () {
+
+                            let valor = this.value.replace(/\D/g, "");
+
+                            valor = valor.replace(/^(\d{2})(\d)/, "($1) $2");
+                            valor = valor.replace(/(\d{5})(\d)/, "$1-$2");
+
+                            this.value = valor;
+
+                        });
+
+
+
+                        // =======================
+                        // MÁSCARA CEP
+                        // =======================
+
+                        const cep = document.getElementById("cep");
+
+                        cep.addEventListener("input", function () {
+
+                            let valor = this.value.replace(/\D/g, "");
+
+                            valor = valor.replace(/^(\d{5})(\d)/, "$1-$2");
+
+                            this.value = valor;
+
+                        });
+
+
+
+                        // =======================
+                        // BUSCAR CEP
+                        // =======================
+
+                        cep.addEventListener("blur", () => {
+
+                            const valor = cep.value.replace(/\D/g, "");
+
+                            if (valor.length !== 8)
+                                return;
+
+                            fetch(`https://viacep.com.br/ws/${valor}/json/`)
+                                .then(res => res.json())
+                                .then(dados => {
+
+                                    if (dados.erro) {
+
+                                        alert("CEP não encontrado.");
+
+                                        return;
+
+                                    }
+
+                                    document.getElementById("rua").value = dados.logradouro;
+                                    document.getElementById("bairro").value = dados.bairro;
+                                    document.getElementById("cidade").value = dados.localidade;
+                                    document.getElementById("estado").value = dados.uf;
+
+                                });
+
+                        });
+
+
+
+                        // =======================
+                        // FORÇA DA SENHA
+                        // =======================
+
+                        const senha = document.getElementById("senha");
+
+                        senha.addEventListener("keyup", () => {
+
+                            const texto = senha.value;
+
+                            let pontos = 0;
+
+                            if (texto.length >= 8)
+                                pontos++;
+
+                            if (/[A-Z]/.test(texto))
+                                pontos++;
+
+                            if (/[0-9]/.test(texto))
+                                pontos++;
+
+                            if (/[!@#$%^&*(),.?":{}|<>]/.test(texto))
+                                pontos++;
+
+                            const forca = document.getElementById("forcaSenha");
+
+                            if (pontos <= 1) { forca.innerHTML = "<span class='text-danger'>Senha fraca</span>"; } else
+                                if (pontos == 2 || pontos == 3) {
+                                    forca.innerHTML = "<span class='text-warning'>Senha média</span>";
+                                } else {
+                                    forca.innerHTML = "<span class='text-success'>Senha forte</span>";
+                                }
+                        });
+
+
+                        //=======================
+                        // CONFIRMAR SENHA
+                        //=======================
+
+                        const confirmar = document.getElementById("confirmarSenha");
+
+                        confirmar.addEventListener("keyup", () => {
+
+                            if (confirmar.value.length === 0)
+                                return;
+
+                            if (confirmar.value === senha.value) {
+
+                                confirmar.classList.remove("is-invalid");
+                                confirmar.classList.add("is-valid");
+
+                            } else {
+
+                                confirmar.classList.remove("is-valid");
+                                confirmar.classList.add("is-invalid");
+
+                            }
+
+                        });
+
+                    </script>
+
+                    {% endblock %}
