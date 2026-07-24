@@ -121,7 +121,10 @@ def cadastro_usuario():
         "email": "",
         "telefone": "",
         "cep": "",
+        "UF": "",
         "rua": "",
+        "numero": "",
+        "bairro": "",
         "cidade": "",
         "estado": ""
     }
@@ -137,6 +140,8 @@ def cadastro_usuario():
             "telefone": request.form.get("telefone", "").strip(),
             "cep": request.form.get("cep", "").strip(),
             "rua": request.form.get("rua", "").strip(),
+            "numero": request.form.get("numero", "").strip(),
+            "bairro": request.form.get("bairro", "").strip(),
             "cidade": request.form.get("cidade", "").strip(),
             "estado": request.form.get("estado", "").strip()
         }
@@ -205,7 +210,6 @@ def cadastro_usuario():
             "rua": dados["rua"],
             "numero": dados ["numero"],
             "bairro": dados ["bairro"],
-            "complemento": dados ["complemento"],
             "cidade": dados["cidade"],
             "estado": dados["estado"],
             "senha": senha_hash,
