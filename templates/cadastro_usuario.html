@@ -58,6 +58,7 @@
 
                             </div>
 
+
                             <div class="col-md-6 mb-3">
 
                                 <label class="form-label">
@@ -69,7 +70,6 @@
                             </div>
 
                         </div>
-
                         <div class="mb-3">
 
                             <label class="form-label">
@@ -102,7 +102,7 @@
                                 </span>
 
                                 <input type="text" id="telefone" class="form-control" name="telefone"
-                                    placeholder="(00) 00000-0000" value="{{ dados.telefone }}">
+                                    placeholder="(00) 00000-0000" maxlength="15" value="{{ dados.telefone }}" required>
 
                             </div>
 
@@ -115,6 +115,7 @@
                         </h5>
                         <div class="row">
 
+
                             <!-- CEP -->
                             <div class="col-md-4 mb-3">
 
@@ -125,7 +126,13 @@
                                 <input type="text" class="form-control" id="cep" name="cep" maxlength="9"
                                     placeholder="00000-000" value="{{ dados.cep }}">
 
+                                <div id="erroCep" class="invalid-feedback">
+                                    CEP não encontrado.
+                                </div>
+
                             </div>
+
+
 
                             <!-- ESTADO -->
                             <div class="col-md-2 mb-3">
@@ -175,7 +182,8 @@
                                     Número
                                 </label>
 
-                                <input type="text" class="form-control" name="numero" placeholder="123">
+                                <input type="number" class="form-control" id="numero" name="numero" placeholder="123"
+                                    min="0">
 
                             </div>
 
@@ -350,49 +358,136 @@
                         // MÁSCARA CEP
                         // =======================
 
+                        // =======================
+                        // MÁSCARA CEP
+                        // =======================
+
+                        // =======================
+                        // CEP
+                        // =======================
+
                         const cep = document.getElementById("cep");
-
-                        cep.addEventListener("input", function () {
-
-                            let valor = this.value.replace(/\D/g, "");
-
-                            valor = valor.replace(/^(\d{5})(\d)/, "$1-$2");
-
-                            this.value = valor;
-
-                        });
+                        const erroCep = document.getElementById("erroCep");
 
 
-
-                        // =======================
-                        // BUSCAR CEP
-                        // =======================
-
-                        cep.addEventListener("blur", () => {
+                        function buscarCEP() {
 
                             const valor = cep.value.replace(/\D/g, "");
 
-                            if (valor.length !== 8)
+                            if (valor.length !== 8) {
                                 return;
+                            }
+
+
+                            // limpa mensagens anteriores
+                            cep.classList.remove("is-invalid");
+                            cep.classList.remove("is-valid");
+
+                            if (erroCep) {
+                                erroCep.textContent = "";
+                            }
+
 
                             fetch(`https://viacep.com.br/ws/${valor}/json/`)
                                 .then(res => res.json())
                                 .then(dados => {
 
+
                                     if (dados.erro) {
 
-                                        alert("CEP não encontrado.");
+
+                                        cep.classList.add("is-invalid");
+
+                                        if (erroCep) {
+                                            erroCep.textContent = "CEP não encontrado.";
+                                        }
+
+
+                                        document.getElementById("rua").value = "";
+                                        document.getElementById("bairro").value = "";
+                                        document.getElementById("cidade").value = "";
+                                        document.getElementById("estado").value = "";
+
 
                                         return;
 
                                     }
+
+
 
                                     document.getElementById("rua").value = dados.logradouro;
                                     document.getElementById("bairro").value = dados.bairro;
                                     document.getElementById("cidade").value = dados.localidade;
                                     document.getElementById("estado").value = dados.uf;
 
+
+                                    cep.classList.add("is-valid");
+
+
+                                })
+
+
+                                .catch(() => {
+
+
+                                    cep.classList.add("is-invalid");
+
+
+                                    if (erroCep) {
+                                        erroCep.textContent = "Erro ao consultar o CEP.";
+                                    }
+
+
                                 });
+
+                        }
+
+
+
+                        // =======================
+                        // MÁSCARA CEP
+                        // =======================
+
+                        cep.addEventListener("input", function () {
+
+
+                            let valor = this.value.replace(/\D/g, "");
+
+
+                            // máximo 8 números
+                            valor = valor.substring(0, 8);
+
+
+                            // aplica máscara 00000-000
+                            if (valor.length > 5) {
+
+                                valor = valor.replace(/^(\d{5})(\d)/, "$1-$2");
+
+                            }
+
+
+                            this.value = valor;
+
+
+
+                            // remove mensagens enquanto digita
+                            cep.classList.remove("is-invalid");
+                            cep.classList.remove("is-valid");
+
+
+                            if (erroCep) {
+                                erroCep.textContent = "";
+                            }
+
+
+
+                            // busca automaticamente
+                            if (valor.replace(/\D/g, "").length === 8) {
+
+                                buscarCEP();
+
+                            }
+
 
                         });
 
@@ -408,10 +503,17 @@
 
                             const texto = senha.value;
 
+                            const forca = document.getElementById("forcaSenha");
+
                             let pontos = 0;
 
-                            if (texto.length >= 8)
+                            if (texto.length >= 8 && texto.length <= 16)
                                 pontos++;
+
+                            if (texto.length > 16) {
+                                forca.innerHTML = "<span class='text-danger'>Máximo de 16 caracteres</span>";
+                                return;
+                            }
 
                             if (/[A-Z]/.test(texto))
                                 pontos++;
@@ -422,7 +524,7 @@
                             if (/[!@#$%^&*(),.?":{}|<>]/.test(texto))
                                 pontos++;
 
-                            const forca = document.getElementById("forcaSenha");
+
 
                             if (pontos <= 1) { forca.innerHTML = "<span class='text-danger'>Senha fraca</span>"; } else
                                 if (pontos == 2 || pontos == 3) {
