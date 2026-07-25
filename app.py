@@ -9,9 +9,10 @@ app = Flask(__name__)
 MODERADOR = True
 app.secret_key = secrets.token_hex(16)
 usuarios = []
+profissional = []
 
 
-app.config['SERVER_NAME'] = '192.168.1.11:5000'
+# app.config['SERVER_NAME'] = '192.168.1.11:5000'
 app.config['PREFERRED_URL_SCHEME'] = 'http'
 
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
@@ -108,7 +109,7 @@ def perfil():
 # Arquivo JSON para salvar o fórum
 FORUM_FILE = "forum.json"
 # =========================
-# CADASTRO 
+# CADASTRO_USUÁRIO 
 # =========================
 @app.route('/cadastro_usuario', methods=['GET', 'POST'])
 def cadastro_usuario():
@@ -238,8 +239,10 @@ def cadastro_usuario():
         'cadastro_usuario.html',
         dados=dados
     )
+    
 @app.route('/confirmar_email/<token>')
 def confirmar_email(token):
+
     try:
         email = serializer.loads(
             token,
@@ -247,28 +250,38 @@ def confirmar_email(token):
             max_age=3600  # 1 hora
         )
 
-    except:
+    except Exception:
         flash("Link inválido ou expirado.", "danger")
         return redirect(url_for("login"))
 
-    usuario = next(
+    # Procura primeiro entre os usuários
+    cadastro = next(
         (u for u in usuarios if u["email"].lower() == email.lower()),
         None
     )
 
-    if not usuario:
-        flash("Usuário não encontrado.", "danger")
-        return redirect(url_for("cadastro_usuario"))
+    # Se não encontrou, procura entre os profissionais
+    if cadastro is None:
+        cadastro = next(
+            (p for p in profissional if p["email"].lower() == email.lower()),
+            None
+        )
 
-    if usuario["email_confirmado"]:
-        flash("Email já confirmado. Faça login.", "info")
+    # Não encontrou em nenhuma lista
+    if cadastro is None:
+        flash("Cadastro não encontrado.", "danger")
         return redirect(url_for("login"))
 
-    usuario["email_confirmado"] = True
+    # Já confirmou anteriormente
+    if cadastro["email_confirmado"]:
+        flash("E-mail já confirmado. Faça login.", "info")
+        return redirect(url_for("login"))
 
-    flash("Email confirmado com sucesso! Agora você pode fazer login.", "success")
+    # Confirma o cadastro
+    cadastro["email_confirmado"] = True
+
+    flash("E-mail confirmado com sucesso! Agora você pode fazer login.", "success")
     return redirect(url_for("login"))
-
 # Funções auxiliares
 def carregar_forum():
     try:
@@ -304,6 +317,186 @@ forum = carregar_forum()
 usuario_atual = "Anônimo"
 moderador = True  # Defina como True apenas para você, o moderador
 
+@app.route('/cadastro_profissional', methods=['GET', 'POST'])
+def cadastro_profissional():
+
+    # dicionário com TODOS os campos para manter o formulário preenchido
+    dados = {
+    "tipo": "profissional",
+    "nome": "",
+    "sobrenome": "",
+    "email": "",
+    "telefone": "",
+    "cep": "",
+    "rua": "",
+    "numero": "",
+    "bairro": "",
+    "cidade": "",
+    "estado": "",
+
+    "crp": "",
+    "uf_crp": "",
+    "experiencia": "",
+    "especialidade": "",
+    "faculdade": "",
+    "pos": "",
+    "online": False,
+    "presencial": False,
+    "biografia": ""
+}
+
+    if request.method == 'POST':
+
+        # captura TODOS os campos
+        dados = {
+            "tipo": request.form.get("tipo", "profissional"),
+            "nome": request.form.get("nome", "").strip(),
+            "sobrenome": request.form.get("sobrenome", "").strip(),
+            "email": request.form.get("email", "").strip().lower(),
+            "telefone": request.form.get("telefone", "").strip(),
+            "cep": request.form.get("cep", "").strip(),
+            "rua": request.form.get("rua", "").strip(),
+            "numero": request.form.get("numero", "").strip(),
+            "bairro": request.form.get("bairro", "").strip(),
+            "cidade": request.form.get("cidade", "").strip(),
+            "estado": request.form.get("estado", "").strip(),
+            "crp": request.form.get("crp", "").strip(),
+            "uf_crp": request.form.get("uf_crp", "").strip(),
+            "experiencia": request.form.get("experiencia", "").strip(),
+            "especialidade": request.form.get("especialidade", "").strip(),
+            "faculdade": request.form.get("faculdade", "").strip(),
+            "pos": request.form.get("pos", "").strip(),
+            "online": request.form.get("online") == "1",
+            "presencial": request.form.get("presencial") == "1",
+            "biografia": request.form.get("biografia", "").strip(),
+            "email_confirmado": False
+        }
+
+        senha = request.form.get('senha', '')
+        
+        confirmar_senha = request.form.get("confirmar_senha", "")
+
+        if senha != confirmar_senha:
+            flash("As senhas não coincidem.", "danger")
+            return render_template(
+            "cadastro_profissional.html",
+            dados=dados
+        )
+
+        # Só continua se as senhas forem iguais
+        senha_hash = generate_password_hash(senha)
+
+        # CAMPOS OBRIGATÓRIOS
+        if not dados["nome"] or not dados["email"] or not senha:
+            flash("Preencha todos os campos obrigatórios.", "danger")
+
+            return render_template(
+                'cadastro_profissional.html',
+                dados=dados
+            )
+
+        # SENHA INVÁLIDA
+        if not senha_valida(senha):
+            flash(
+                "A senha deve ter 8-16 caracteres, incluindo maiúscula, número e caractere especial.",
+                "danger"
+            )
+
+            # devolve TODOS os campos preenchidos
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados
+            )
+
+        # EMAIL JÁ CADASTRADO
+        usuario_existente = next(
+            (u for u in usuarios if u["email"].lower() == dados["email"]),
+            None
+        )
+
+        if usuario_existente:
+            flash("Este email já está cadastrado.", "warning")
+
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados
+            )
+
+        # SENHA HASH
+        senha_hash = generate_password_hash(senha)
+
+        # NOVO PROFISSIONAL
+        novo_profissional = {
+            "id": len(usuarios) + 1,
+            "nome": dados["nome"],
+            "sobrenome": dados["sobrenome"],
+            "email": dados["email"],
+            "telefone": dados["telefone"],
+
+            "crp": dados["crp"],
+            "uf_crp": dados["uf_crp"],
+            "experiencia": dados["experiencia"],
+            "especialidade": dados["especialidade"],
+            "faculdade": dados["faculdade"],
+            "pos": dados["pos"],
+            "biografia": dados["biografia"],
+
+            "online": dados["online"],
+            "presencial": dados["presencial"],
+
+            "senha": senha_hash,
+            "email_confirmado": False,
+            "tipo": dados["tipo"]
+        }
+
+        profissional.append(novo_profissional)
+
+        # EMAIL
+        if enviar_email_confirmacao(dados["email"]):
+            flash(
+                "Conta criada! Verifique seu email para confirmar o cadastro.",
+                "success"
+            )
+        else:
+            flash(
+                "Conta criada, mas houve erro ao enviar o email de confirmação.",
+                "warning"
+            )
+
+        return redirect(url_for('login'))
+
+    # GET
+    return render_template(
+        'cadastro_profissional.html',
+        dados=dados
+    )
+
+# Funções auxiliares
+def carregar_forum():
+    try:
+        with open(FORUM_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+def salvar_forum(forum):
+    with open(FORUM_FILE, "w", encoding="utf-8") as f:
+        json.dump(forum, f, ensure_ascii=False, indent=4)
+        
+def senha_valida(senha):
+    if len(senha) < 8 or len(senha) > 16:
+        return False
+    
+    if not re.search(r"[A-Z]", senha):  # letra maiúscula
+        return False
+    
+    if not re.search(r"[0-9]", senha):  # número
+        return False
+    
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", senha):  # especial
+        return False
+
+    return True
 
 @app.route("/")
 def index():
@@ -474,11 +667,15 @@ def enviar_email_confirmacao(email):
     try:
         token = serializer.dumps(email, salt='confirmacao-email')
 
+        print("HOST:", request.host)
+        print("URL_ROOT:", request.url_root)
+
         link = url_for(
             'confirmar_email',
             token=token,
             _external=True
         )
+
 
         msg = Message(
             subject='Confirme seu cadastro - Apoio & Consciência',
