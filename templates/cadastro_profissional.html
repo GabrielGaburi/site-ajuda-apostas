@@ -39,7 +39,7 @@
                     {% endif %}
                     {% endwith %}
 
-                    <form method="POST" action="{{ url_for('cadastro_profissional') }}">
+                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('cadastro_profissional') }}">
 
                         <h5 class="mb-3 text-primary">
                             Informações Pessoais
@@ -72,10 +72,29 @@
 
                         <div class="row">
 
+
+
                             <div class="col-md-4 mb-3">
-                                <label class="form-label">CPF</label>
-                                <input type="text" class="form-control" id="cpf" name="cpf" placeholder="000.000.000-00"
-                                    maxlength="14" required>
+
+                                <label class="form-label">
+                                    CPF
+                                </label>
+
+                                <div class="input-group">
+
+                                    <span class="input-group-text">
+                                        <i class="bi bi-person-vcard-fill"></i>
+                                    </span>
+
+                                    <input type="text" id="cpf" class="form-control" name="cpf"
+                                        placeholder="000.000.000-00" maxlength="14" value="{{ dados.cpf }}" required>
+
+                                </div>
+
+                                <small id="erroCpf" class="text-danger d-none">
+                                    CPF inválido.
+                                </small>
+
                             </div>
 
                             <div class="col-md-4 mb-3">
@@ -245,7 +264,20 @@
                                     Número do CRP
                                 </label>
 
-                                <input type="text" class="form-control" name="crp" placeholder="06/123456" required>
+                                <div class="input-group">
+
+                                    <span class="input-group-text">
+                                        <i class="bi bi-patch-check-fill"></i>
+                                    </span>
+
+                                    <input type="text" id="crp" class="form-control" name="crp" placeholder="06/123456"
+                                        maxlength="9" value="{{ dados.crp }}" required>
+
+                                </div>
+
+                                <small id="erroCrp" class="text-danger d-none">
+                                    CRP inválido.
+                                </small>
 
                             </div>
 
@@ -255,39 +287,8 @@
                                     Estado do CRP
                                 </label>
 
-                                <select class="form-select" name="uf_crp" required>
-
-                                    <option value="">Selecione</option>
-
-                                    <option>AC</option>
-                                    <option>AL</option>
-                                    <option>AP</option>
-                                    <option>AM</option>
-                                    <option>BA</option>
-                                    <option>CE</option>
-                                    <option>DF</option>
-                                    <option>ES</option>
-                                    <option>GO</option>
-                                    <option>MA</option>
-                                    <option>MT</option>
-                                    <option>MS</option>
-                                    <option>MG</option>
-                                    <option>PA</option>
-                                    <option>PB</option>
-                                    <option>PR</option>
-                                    <option>PE</option>
-                                    <option>PI</option>
-                                    <option>RJ</option>
-                                    <option>RN</option>
-                                    <option>RS</option>
-                                    <option>RO</option>
-                                    <option>RR</option>
-                                    <option>SC</option>
-                                    <option>SP</option>
-                                    <option>SE</option>
-                                    <option>TO</option>
-
-                                </select>
+                                <input type="text" id="uf_crp" name="uf_crp" class="form-control" readonly
+                                    value="{{ dados.uf_crp }}">
 
                             </div>
 
@@ -368,35 +369,6 @@
 
                         </div>
 
-                        <hr class="my-4">
-
-                        <h5 class="text-primary mb-3">
-                            Atendimento
-                        </h5>
-
-                        <div class="form-check">
-
-                            <input class="form-check-input" type="checkbox" name="online" value="1">
-
-                            <label class="form-check-label">
-
-                                Atendimento Online
-
-                            </label>
-
-                        </div>
-
-                        <div class="form-check mb-4">
-
-                            <input class="form-check-input" type="checkbox" name="presencial" value="1">
-
-                            <label class="form-check-label">
-
-                                Atendimento Presencial
-
-                            </label>
-
-                        </div>
 
                         <hr class="my-4">
 
@@ -416,12 +388,14 @@
                         <div class="mb-4">
 
                             <label class="form-label">
-
                                 Foto de Perfil
-
                             </label>
 
-                            <input type="file" class="form-control" name="foto" accept="image/*">
+                            <input type="file" class="form-control" name="foto" accept="image/png, image/jpeg">
+
+                            <small class="text-muted">
+                                Formatos aceitos: JPG ou PNG.
+                            </small>
 
                         </div>
 
@@ -666,6 +640,53 @@
 
                         }
 
+                        const cpf = document.getElementById("cpf");
+                        const erroCpf = document.getElementById("erroCpf");
+
+                        if (cpf) {
+
+                            cpf.addEventListener("input", function () {
+
+                                let valor = this.value.replace(/\D/g, "");
+
+                                valor = valor.substring(0, 11);
+
+                                // Máscara
+                                valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
+                                valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
+                                valor = valor.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+
+                                this.value = valor;
+
+                                // Remove validações anteriores
+                                cpf.classList.remove("is-valid");
+                                cpf.classList.remove("is-invalid");
+
+                                // Só valida quando tiver 11 números
+                                if (valor.replace(/\D/g, "").length === 11) {
+
+                                    if (validarCPF(valor)) {
+
+                                        cpf.classList.remove("is-invalid");
+                                        cpf.classList.add("is-valid");
+
+                                        erroCpf.classList.add("d-none");
+
+                                    } else {
+
+                                        cpf.classList.remove("is-valid");
+                                        cpf.classList.add("is-invalid");
+
+                                        erroCpf.classList.remove("d-none");
+
+                                    }
+
+                                }
+
+                            });
+
+                        }
+
 
 
                         // =======================
@@ -715,6 +736,139 @@
 
                         });
 
+                        function validarCPF(cpf) {
+
+                            cpf = cpf.replace(/\D/g, "");
+
+                            if (cpf.length !== 11)
+                                return false;
+
+                            if (/^(\d)\1+$/.test(cpf))
+                                return false;
+
+                            let soma = 0;
+
+                            for (let i = 0; i < 9; i++)
+                                soma += parseInt(cpf.charAt(i)) * (10 - i);
+
+                            let resto = (soma * 10) % 11;
+
+                            if (resto == 10)
+                                resto = 0;
+
+                            if (resto != parseInt(cpf.charAt(9)))
+                                return false;
+
+                            soma = 0;
+
+                            for (let i = 0; i < 10; i++)
+                                soma += parseInt(cpf.charAt(i)) * (11 - i);
+
+                            resto = (soma * 10) % 11;
+
+                            if (resto == 10)
+                                resto = 0;
+
+                            if (resto != parseInt(cpf.charAt(10)))
+                                return false;
+
+                            return true;
+
+
+                        }
+
+                        //=======================
+                        // MÁSCARA CRP
+                        //=======================
+
+                        const regioesCRP = {
+                            "01": "DF",
+                            "02": "PE",
+                            "03": "CE",
+                            "04": "MG",
+                            "05": "BA",
+                            "06": "SP",
+                            "07": "RS",
+                            "08": "PR",
+                            "09": "GO",
+                            "10": "PA/AP",
+                            "11": "SC",
+                            "12": "RJ",
+                            "13": "PB",
+                            "14": "MS",
+                            "15": "AL",
+                            "16": "ES",
+                            "17": "RN",
+                            "18": "PI",
+                            "19": "SE",
+                            "20": "AM/RR",
+                            "21": "RO/AC",
+                            "22": "MA",
+                            "23": "TO"
+                        };
+
+                        const crp = document.getElementById("crp");
+                        const erroCrp = document.getElementById("erroCrp");
+                        const ufCrp = document.getElementById("uf_crp");
+
+                        if (crp) {
+
+                            crp.addEventListener("input", function () {
+
+                                let valor = this.value.replace(/\D/g, "");
+
+                                valor = valor.substring(0, 8);
+
+                                if (valor.length > 2) {
+                                    valor = valor.replace(/^(\d{2})(\d+)/, "$1/$2");
+                                }
+
+                                this.value = valor;
+
+                                // Identifica a UF automaticamente
+                                const codigo = valor.replace(/\D/g, "").substring(0, 2);
+
+                                crp.classList.remove("is-valid", "is-invalid");
+                                erroCrp.classList.add("d-none");
+
+                                if (ufCrp) {
+
+                                    if (codigo.length === 2) {
+
+                                        if (regioesCRP[codigo]) {
+
+                                            ufCrp.value = regioesCRP[codigo];
+
+                                        } else {
+
+                                            ufCrp.value = "";
+
+                                            crp.classList.add("is-invalid");
+                                            erroCrp.textContent = "Código do CRP inexistente.";
+                                            erroCrp.classList.remove("d-none");
+
+                                            return;
+
+                                        }
+
+                                    } else {
+
+                                        ufCrp.value = "";
+
+                                    }
+
+                                }
+
+                                // Só valida quando o CRP estiver completo
+                                if (valor.length === 9) {
+
+                                    crp.classList.add("is-valid");
+
+                                }
+
+                            });
+
+                        }
 
 
                         // =======================
