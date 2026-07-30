@@ -30,8 +30,8 @@
 
 
 
-                    <form method="POST" enctype="multipart/form-data" action="{{ url_for('cadastro_profissional') }}"
-                        novalidate>
+                    <form id="formCadastroProfissional" method="POST" enctype="multipart/form-data"
+                        action="{{ url_for('cadastro_profissional') }}" novalidate>
                         <h5 class="mb-3 text-primary">
                             Informações Pessoais
                         </h5>
@@ -87,7 +87,7 @@
                                     CPF
                                 </label>
 
-                                <div class="input-group">
+                                <div class="input-group has-validation">
 
                                     <span class="input-group-text">
                                         <i class="bi bi-person-vcard-fill"></i>
@@ -96,10 +96,10 @@
                                     <input type="text" id="cpf" class="form-control" name="cpf"
                                         placeholder="000.000.000-00" maxlength="14" value="{{ dados.cpf }}" required>
 
-                                </div>
+                                    <div id="erroCpf" class="invalid-feedback">
+                                        CPF inválido.
+                                    </div>
 
-                                <div id="erroCpf" class="invalid-feedback">
-                                    CPF inválido.
                                 </div>
 
                                 {% if campo_erro == "cpf" %}
@@ -112,7 +112,12 @@
 
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Data de nascimento</label>
-                                <input type="date" class="form-control" name="data_nascimento" required>
+                                <input type="date" class="form-control" name="data_de_nascimento" required>
+                                {% if campo_erro == "data_de_nascimento" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
                             </div>
 
                             <div class="col-md-4 mb-3">
@@ -677,26 +682,31 @@
 
                                 this.value = valor;
 
-                                // Remove validações anteriores
-                                cpf.classList.remove("is-valid");
-                                cpf.classList.remove("is-invalid");
+                                const numeros = valor.replace(/\D/g, "");
 
-                                // Só valida quando tiver 11 números
-                                if (valor.replace(/\D/g, "").length === 11) {
+                                cpf.classList.remove("is-valid", "is-invalid");
 
-                                    if (validarCPF(valor)) {
+                                // Campo vazio
+                                if (numeros.length === 0) {
 
-                                        cpf.classList.remove("is-invalid");
+                                    cpf.classList.add("is-invalid");
+
+                                    erroCpf.textContent = "O CPF é obrigatório.";
+
+                                }
+
+                                // CPF completo
+                                else if (numeros.length === 11) {
+
+                                    if (validarCpf(valor)) {
+
                                         cpf.classList.add("is-valid");
-
-                                        erroCpf.classList.add("d-none");
 
                                     } else {
 
-                                        cpf.classList.remove("is-valid");
                                         cpf.classList.add("is-invalid");
 
-                                        erroCpf.classList.remove("d-none");
+                                        erroCpf.textContent = "CPF inválido.";
 
                                     }
 
@@ -755,7 +765,7 @@
 
                         });
 
-                        function validarCPF(cpf) {
+                        function validarCpf(cpf) {
 
                             cpf = cpf.replace(/\D/g, "");
 
@@ -954,6 +964,32 @@
                                 confirmar.classList.add("is-invalid");
 
                             }
+
+                        });
+
+                        // =======================
+                        // VALIDAÇÃO ANTES DO ENVIO
+                        // =======================
+
+                        const formulario = document.getElementById("formCadastroProfissional");
+
+                        formulario.addEventListener("submit", function (event) {
+
+                            let cpfValor = cpf.value.replace(/\D/g, "");
+
+                            if (!validarCpf(cpfValor)) {
+
+                                event.preventDefault();
+
+                                cpf.classList.add("is-invalid");
+
+                                erroCpf.textContent = "CPF inválido.";
+
+                                cpf.focus();
+
+                                return false;
+                            }
+
 
                         });
 
