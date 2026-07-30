@@ -156,6 +156,8 @@ def cadastro_usuario():
             "cadastro_usuario.html",
             dados=dados
         )
+            
+            
 
         # Só continua se as senhas forem iguais
         senha_hash = generate_password_hash(senha)
@@ -325,7 +327,7 @@ def cadastro_profissional():
         "tipo": "profissional",
         "nome": "",
         "sobrenome": "",
-        "data_nascimento": "",
+        "data_de_nascimento": "",
         "sexo": "",
         "email": "",
         "telefone": "",
@@ -354,7 +356,7 @@ def cadastro_profissional():
             "nome": request.form.get("nome", "").strip(),
             "sobrenome": request.form.get("sobrenome", "").strip(),
 
-            "data_nascimento": request.form.get("data_nascimento", "").strip(),
+            "data_de_nascimento": request.form.get("data_de_nascimento", "").strip(),
             "sexo": request.form.get("sexo", "").strip(),
 
             "email": request.form.get("email", "").strip().lower(),
@@ -396,9 +398,9 @@ def cadastro_profissional():
         campos_obrigatorios = [
             "nome",
             "sobrenome",
-            "data_nascimento",
-            "sexo",
             "cpf",
+            "data_de_nascimento",
+            "sexo",
             "email",
             "telefone",
             "cep",
@@ -414,6 +416,29 @@ def cadastro_profissional():
             "faculdade",
             "biografia"
         ]
+        
+        nomes_campos = {
+            "nome": "Nome",
+            "sobrenome": "Sobrenome",
+            "cpf": "CPF",
+            "data_de_nascimento": "Data de nascimento",
+            "sexo": "Sexo",
+            "email": "E-mail",
+            "telefone": "Telefone",
+            "cep": "CEP",
+            "rua": "Rua",
+            "numero": "Número",
+            "bairro": "Bairro",
+            "cidade": "Cidade",
+            "estado": "Estado",
+            "crp": "CRP",
+            "uf_crp": "UF do CRP",
+            "experiencia": "Experiência",
+            "especialidade": "Especialidade",
+            "faculdade": "Instituição de ensino",
+            "biografia": "Biografia"
+        }
+    
 
         for campo in campos_obrigatorios:
 
@@ -425,8 +450,18 @@ def cadastro_profissional():
                     "cadastro_profissional.html",
                     dados=dados,
                     campo_erro=campo,
-                    mensagem_erro=f"O campo {campo.replace('_', ' ').title()} é obrigatório."
+                    mensagem_erro=f"O campo {nomes_campos[campo]} é obrigatório."
                 )
+                
+        # Validar CPF
+        if not validar_cpf(dados["cpf"]):
+
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="cpf",
+                mensagem_erro="CPF inválido."
+            )
 
         # Foto obrigatória
         if not foto or foto.filename == "":
@@ -469,6 +504,25 @@ def cadastro_profissional():
                 "cadastro_profissional.html",
                 dados=dados
             )
+            
+            cpf_existente = next(
+                (
+                    p for p in profissional
+                    if p["cpf"].replace(".","").replace("-","") 
+                    == dados["cpf"].replace(".","").replace("-","")
+                ),
+                None
+            )
+
+
+            if cpf_existente:
+
+                return render_template(
+                    "cadastro_profissional.html",
+                    dados=dados,
+                    campo_erro="cpf",
+                    mensagem_erro="Este CPF já está cadastrado."
+                )
 
         senha_hash = generate_password_hash(senha)
 
@@ -479,7 +533,7 @@ def cadastro_profissional():
             "nome": dados["nome"],
             "sobrenome": dados["sobrenome"],
 
-            "data_nascimento": dados["data_nascimento"],
+            "data_de_nascimento": dados["data_de_nascimento"],
             "sexo": dados["sexo"],
 
             "email": dados["email"],
@@ -560,6 +614,46 @@ def bloqueio():
 @app.route("/bloqueio-cpf")
 def bloqueio_cpf():
     return render_template("bloqueio_cpf.html")
+
+def validar_cpf(cpf):
+
+    cpf = cpf.replace(".", "").replace("-", "")
+
+    if len(cpf) != 11:
+        return False
+
+    if cpf == cpf[0] * 11:
+        return False
+
+    soma = 0
+
+    for i in range(9):
+        soma += int(cpf[i]) * (10 - i)
+
+    resto = (soma * 10) % 11
+
+    if resto == 10:
+        resto = 0
+
+    if resto != int(cpf[9]):
+        return False
+
+
+    soma = 0
+
+    for i in range(10):
+        soma += int(cpf[i]) * (11 - i)
+
+    resto = (soma * 10) % 11
+
+    if resto == 10:
+        resto = 0
+
+    if resto != int(cpf[10]):
+        return False
+
+
+    return True
 
 # Página principal do fórum
 @app.route("/forum")
