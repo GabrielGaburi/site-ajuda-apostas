@@ -112,7 +112,16 @@
 
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Data de nascimento</label>
-                                <input type="date" class="form-control" name="data_de_nascimento" required>
+
+                                <input type="text" class="form-control" id="dataNascimento" name="data_de_nascimento"
+                                    placeholder="dd/mm/aaaa" maxlength="10" autocomplete="bday"
+                                    value="{{ dados.data_de_nascimento }}" required>
+
+
+                                <div id="erroNascimento" class="invalid-feedback">
+                                    Data de nascimento inválida.
+                                </div>
+
                                 {% if campo_erro == "data_de_nascimento" %}
                                 <div class="text-danger small mt-1">
                                     {{ mensagem_erro }}
@@ -120,24 +129,39 @@
                                 {% endif %}
                             </div>
 
+
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Sexo</label>
-
                                 <select class="form-select" name="sexo">
 
                                     <option value="">Selecione</option>
 
-                                    <option>Masculino</option>
+                                    <option value="Masculino" {% if dados.get('sexo')=='Masculino' %}selected{% endif
+                                        %}>
+                                        Masculino
+                                    </option>
 
-                                    <option>Feminino</option>
+                                    <option value="Feminino" {% if dados.get('sexo')=='Feminino' %}selected{% endif %}>
+                                        Feminino
+                                    </option>
 
-                                    <option>Prefiro não informar</option>
+                                    <option value="Prefiro não informar" {% if dados.get('sexo')=='Prefiro não informar'
+                                        %}selected{% endif %}>
+                                        Prefiro não informar
+                                    </option>
 
                                 </select>
+
+                                {% if campo_erro == "sexo" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
 
                             </div>
 
                         </div>
+
                         <div class="mb-3">
 
                             <label class="form-label">
@@ -150,10 +174,16 @@
                                     <i class="bi bi-envelope-fill"></i>
                                 </span>
 
-                                <input type="email" class="form-control" name="email" required
-                                    placeholder="email@exemplo.com" value="{{ dados.email }}">
+                                <input type="email" id="email" class="form-control" name="email"
+                                    placeholder="email@exemplo.com" value="{{ dados['email'] }}" required>
 
                             </div>
+
+                            {% if campo_erro == "email" %}
+                            <div class="text-danger small mt-1">
+                                {{ mensagem_erro }}
+                            </div>
+                            {% endif %}
 
                         </div>
 
@@ -993,6 +1023,173 @@
 
                         });
 
+                        /// MASCARA DATA
+
+                        //=======================
+                        // DATA DE NASCIMENTO
+                        //=======================
+
+                        //=======================
+                        // DATA DE NASCIMENTO
+                        //=======================
+
+                        const dataNascimento = document.getElementById("dataNascimento");
+                        const erroNascimento = document.getElementById("erroNascimento");
+
+                        dataNascimento.addEventListener("input", function () {
+
+                            let valor = this.value.replace(/\D/g, "");
+
+                            valor = valor.substring(0, 8);
+
+                            if (valor.length > 2)
+                                valor = valor.replace(/^(\d{2})(\d)/, "$1/$2");
+
+                            if (valor.length > 5)
+                                valor = valor.replace(/^(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
+
+                            this.value = valor;
+
+                            this.classList.remove("is-valid", "is-invalid");
+
+                            if (valor.length === 10) {
+
+                                validarDataNascimento();
+
+                            }
+
+                        });
+
+                        function validarDataNascimento() {
+
+                            const valor = dataNascimento.value;
+
+                            const partes = valor.split("/");
+
+                            if (partes.length !== 3) {
+
+                                invalido("Formato inválido.");
+                                return false;
+
+                            }
+
+                            const dia = parseInt(partes[0]);
+                            const mes = parseInt(partes[1]);
+                            const ano = parseInt(partes[2]);
+
+                            const hoje = new Date();
+
+                            // Ano permitido
+                            if (ano < hoje.getFullYear() - 100 || ano > hoje.getFullYear() - 18) {
+
+                                invalido("Idade deve estar entre 18 e 100 anos.");
+                                return false;
+
+                            }
+
+                            // Mês
+                            if (mes < 1 || mes > 12) {
+
+                                invalido("Mês inválido.");
+                                return false;
+
+                            }
+
+                            // Dias por mês
+                            const diasMes = [
+                                31,
+                                (ano % 4 === 0 && (ano % 100 !== 0 || ano % 400 === 0)) ? 29 : 28,
+                                31,
+                                30,
+                                31,
+                                30,
+                                31,
+                                31,
+                                30,
+                                31,
+                                30,
+                                31
+                            ];
+
+                            if (dia < 1 || dia > diasMes[mes - 1]) {
+
+                                invalido("Dia inválido.");
+                                return false;
+
+                            }
+
+                            valido();
+
+                            return true;
+                        }
+
+                        function invalido(msg) {
+
+                            dataNascimento.classList.remove("is-valid");
+                            dataNascimento.classList.add("is-invalid");
+
+                            erroNascimento.textContent = msg;
+
+                        }
+
+                        function valido() {
+
+                            dataNascimento.classList.remove("is-invalid");
+                            dataNascimento.classList.add("is-valid");
+
+                        }
+
+                        document.getElementById("formCadastroProfissional").addEventListener("submit", function (e) {
+
+                            if (!validarDataNascimento()) {
+
+                                e.preventDefault();
+                                dataNascimento.focus();
+
+                            }
+
+                        });
+
+                        /// MASCARA EMAIL
+
+                        const email = document.getElementById("email");
+                        const erroEmail = document.getElementById("erroEmail");
+
+                        email.addEventListener("input", function () {
+
+                            const valor = this.value.trim();
+
+                            this.classList.remove("is-valid", "is-invalid");
+
+                            if (valor.length === 0) {
+
+                                erroEmail.textContent = "O e-mail é obrigatório.";
+                                this.classList.add("is-invalid");
+                                return;
+
+                            }
+
+                            const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+                            if (regex.test(valor)) {
+
+                                this.classList.add("is-valid");
+
+                            } else {
+
+                                erroEmail.textContent = "Digite um e-mail válido.";
+                                this.classList.add("is-invalid");
+
+                            }
+
+                        });
+
                     </script>
+
+
+
+
+
+
 
                     {% endblock %}
