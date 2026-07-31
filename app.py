@@ -146,6 +146,7 @@ def cadastro_usuario():
             "cidade": request.form.get("cidade", "").strip(),
             "estado": request.form.get("estado", "").strip()
         }
+        
 
         senha = request.form.get('senha', '')
         confirmar_senha = request.form.get("confirmar_senha", "")
@@ -157,7 +158,8 @@ def cadastro_usuario():
             dados=dados
         )
             
-            
+
+      
 
         # Só continua se as senhas forem iguais
         senha_hash = generate_password_hash(senha)
@@ -380,6 +382,8 @@ def cadastro_profissional():
 
             "biografia": request.form.get("biografia", "").strip()
         }
+        
+        erros ={}
 
         foto = request.files.get("foto")
 
@@ -490,8 +494,24 @@ def cadastro_profissional():
                 u for u in usuarios + profissional
                 if u["email"].lower() == dados["email"]
             ),
-            None
+        None
         )
+        
+         
+                
+        # Validar email
+
+        padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+
+        if not re.match(padrao, dados["email"]):
+
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="email",
+                mensagem_erro="Digite um e-mail válido."
+            )   
+        
 
         if email_existente:
 
@@ -505,25 +525,7 @@ def cadastro_profissional():
                 dados=dados
             )
             
-            cpf_existente = next(
-                (
-                    p for p in profissional
-                    if p["cpf"].replace(".","").replace("-","") 
-                    == dados["cpf"].replace(".","").replace("-","")
-                ),
-                None
-            )
-
-
-            if cpf_existente:
-
-                return render_template(
-                    "cadastro_profissional.html",
-                    dados=dados,
-                    campo_erro="cpf",
-                    mensagem_erro="Este CPF já está cadastrado."
-                )
-
+       
         senha_hash = generate_password_hash(senha)
 
         novo_profissional = {
