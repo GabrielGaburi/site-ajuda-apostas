@@ -445,6 +445,9 @@ def cadastro_profissional():
     
 
         for campo in campos_obrigatorios:
+            
+            print("VALIDANDO:", campo)
+            
 
             print(campo, "=", dados[campo])
 
@@ -456,6 +459,40 @@ def cadastro_profissional():
                     campo_erro=campo,
                     mensagem_erro=f"O campo {nomes_campos[campo]} é obrigatório."
                 )
+                
+        # Validar email
+        
+        print("CHEGOU NA VALIDAÇÃO DO EMAIL")
+        print("Email digitado:", dados["email"])
+    
+        padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+    
+        if not re.match(padrao, dados["email"]):
+            
+            print(">>> EMAIL INVÁLIDO:", dados["email"])
+    
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="email",
+                mensagem_erro="Digite um e-mail válido."
+            ) 
+            
+        padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+
+        print("EMAIL RECEBIDO:", dados["email"])
+
+        if not re.match(padrao, dados["email"]):
+            print("ENTROU NA VALIDAÇÃO DO EMAIL")
+
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="email",
+                mensagem_erro="Digite um e-mail válido."
+            )  
+                 
+                
                 
         # Validar CPF
         if not validar_cpf(dados["cpf"]):
@@ -499,19 +536,7 @@ def cadastro_profissional():
         
          
                 
-        # Validar email
-
-        padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
-
-        if not re.match(padrao, dados["email"]):
-
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="email",
-                mensagem_erro="Digite um e-mail válido."
-            )   
-        
+       
 
         if email_existente:
 
