@@ -227,22 +227,41 @@
                         <div class="row">
 
 
-                            <!-- CEP -->
                             <div class="col-md-4 mb-3">
 
-                                <label class="form-label">
-                                    CEP
-                                </label>
+                                <label class="form-label">CEP</label>
 
-                                <input type="text" class="form-control" id="cep" name="cep" maxlength="9"
-                                    placeholder="00000-000" value="{{ dados.cep }}">
+                                <div class="input-group">
+
+                                    <input type="text" class="form-control" id="cep" name="cep" maxlength="9"
+                                        placeholder="00000-000" value="{{ dados.cep }}">
+
+                                    <button class="btn btn-primary" type="button" id="btnBuscarCep" title="Buscar CEP">
+
+                                        <i class="bi bi-search"></i>
+
+                                    </button>
+
+                                </div>
+
+                                <small class="text-muted d-block mt-1">
+                                    Não sabe seu CEP?
+                                    <a href="https://buscacepinter.correios.com.br/" target="_blank">
+                                        Buscar nos Correios
+                                    </a>
+                                </small>
 
                                 <div id="erroCep" class="invalid-feedback">
                                     CEP não encontrado.
                                 </div>
 
-                            </div>
+                                {% if campo_erro == "cep" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
 
+                            </div>
 
 
                             <!-- ESTADO -->
@@ -611,93 +630,7 @@
 
 
 
-                        // =======================
-                        // MÁSCARA CEP
-                        // =======================
 
-                        // =======================
-                        // MÁSCARA CEP
-                        // =======================
-
-                        // =======================
-                        // CEP
-                        // =======================
-
-                        const cep = document.getElementById("cep");
-                        const erroCep = document.getElementById("erroCep");
-
-
-                        function buscarCEP() {
-
-                            const valor = cep.value.replace(/\D/g, "");
-
-                            if (valor.length !== 8) {
-                                return;
-                            }
-
-
-                            // limpa mensagens anteriores
-                            cep.classList.remove("is-invalid");
-                            cep.classList.remove("is-valid");
-
-                            if (erroCep) {
-                                erroCep.textContent = "";
-                            }
-
-
-                            fetch(`https://viacep.com.br/ws/${valor}/json/`)
-                                .then(res => res.json())
-                                .then(dados => {
-
-
-                                    if (dados.erro) {
-
-
-                                        cep.classList.add("is-invalid");
-
-                                        if (erroCep) {
-                                            erroCep.textContent = "CEP não encontrado.";
-                                        }
-
-
-                                        document.getElementById("rua").value = "";
-                                        document.getElementById("bairro").value = "";
-                                        document.getElementById("cidade").value = "";
-                                        document.getElementById("estado").value = "";
-
-
-                                        return;
-
-                                    }
-
-
-
-                                    document.getElementById("rua").value = dados.logradouro;
-                                    document.getElementById("bairro").value = dados.bairro;
-                                    document.getElementById("cidade").value = dados.localidade;
-                                    document.getElementById("estado").value = dados.uf;
-
-
-                                    cep.classList.add("is-valid");
-
-
-                                })
-
-
-                                .catch(() => {
-
-
-                                    cep.classList.add("is-invalid");
-
-
-                                    if (erroCep) {
-                                        erroCep.textContent = "Erro ao consultar o CEP.";
-                                    }
-
-
-                                });
-
-                        }
 
                         const cpf = document.getElementById("cpf");
                         const erroCpf = document.getElementById("erroCpf");
@@ -753,52 +686,7 @@
 
 
 
-                        // =======================
-                        // MÁSCARA CEP
-                        // =======================
 
-                        cep.addEventListener("input", function () {
-
-
-                            let valor = this.value.replace(/\D/g, "");
-
-
-                            // máximo 8 números
-                            valor = valor.substring(0, 8);
-
-
-                            // aplica máscara 00000-000
-                            if (valor.length > 5) {
-
-                                valor = valor.replace(/^(\d{5})(\d)/, "$1-$2");
-
-                            }
-
-
-                            this.value = valor;
-
-
-
-                            // remove mensagens enquanto digita
-                            cep.classList.remove("is-invalid");
-                            cep.classList.remove("is-valid");
-
-
-                            if (erroCep) {
-                                erroCep.textContent = "";
-                            }
-
-
-
-                            // busca automaticamente
-                            if (valor.replace(/\D/g, "").length === 8) {
-
-                                buscarCEP();
-
-                            }
-
-
-                        });
 
                         function validarCpf(cpf) {
 
@@ -1213,6 +1101,70 @@
                             }
 
                         });
+
+
+                        // =======================
+                        // MÁSCARA CEP
+                        // =======================
+
+                        const cep = document.getElementById("cep");
+                        const btnBuscarCep = document.getElementById("btnBuscarCep");
+                        const erroCep = document.getElementById("erroCep");
+
+                        cep.addEventListener("input", function () {
+
+                            let valor = this.value.replace(/\D/g, "");
+
+                            valor = valor.substring(0, 8);
+
+                            if (valor.length > 5) {
+                                valor = valor.replace(/^(\d{5})(\d)/, "$1-$2");
+                            }
+
+                            this.value = valor;
+
+                        });
+
+                        function buscarCEP() {
+
+                            const valor = cep.value.replace(/\D/g, "");
+
+                            if (valor.length !== 8) {
+                                erroCep.textContent = "Digite um CEP válido.";
+                                cep.classList.add("is-invalid");
+                                return;
+                            }
+
+                            cep.classList.remove("is-invalid");
+                            erroCep.textContent = "";
+
+                            fetch(`https://viacep.com.br/ws/${valor}/json/`)
+                                .then(response => response.json())
+                                .then(dados => {
+
+                                    if (dados.erro) {
+                                        erroCep.textContent = "CEP não encontrado.";
+                                        cep.classList.add("is-invalid");
+                                        return;
+                                    }
+
+                                    document.getElementById("estado").value = dados.uf;
+                                    document.getElementById("cidade").value = dados.localidade;
+                                    document.getElementById("rua").value = dados.logradouro;
+                                    document.getElementById("bairro").value = dados.bairro;
+
+                                    cep.classList.remove("is-invalid");
+                                    cep.classList.add("is-valid");
+
+                                })
+                                .catch(() => {
+                                    erroCep.textContent = "Erro ao consultar o CEP.";
+                                    cep.classList.add("is-invalid");
+                                });
+
+                        }
+
+                        btnBuscarCep.addEventListener("click", buscarCEP);
 
                     </script>
 
