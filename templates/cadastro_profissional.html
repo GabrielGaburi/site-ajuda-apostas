@@ -328,6 +328,8 @@
 
                             </div>
 
+                            <div id="erroCep" class="text-danger small mt-1"></div>
+
                         </div>
 
                         <hr class="my-4">
@@ -1130,12 +1132,20 @@
                             const valor = cep.value.replace(/\D/g, "");
 
                             if (valor.length !== 8) {
+
+                                limparEndereco();
+
                                 erroCep.textContent = "Digite um CEP válido.";
+
+                                cep.classList.remove("is-valid");
                                 cep.classList.add("is-invalid");
+                                erroCep.style.display = "block";
+
                                 return;
                             }
 
                             cep.classList.remove("is-invalid");
+                            cep.classList.remove("is-valid");
                             erroCep.textContent = "";
 
                             fetch(`https://viacep.com.br/ws/${valor}/json/`)
@@ -1143,28 +1153,46 @@
                                 .then(dados => {
 
                                     if (dados.erro) {
+
+                                        limparEndereco();
+
                                         erroCep.textContent = "CEP não encontrado.";
+                                        erroCep.style.display = "block";
+
+                                        cep.classList.remove("is-valid");
                                         cep.classList.add("is-invalid");
+
                                         return;
+
                                     }
+
 
                                     document.getElementById("estado").value = dados.uf;
                                     document.getElementById("cidade").value = dados.localidade;
                                     document.getElementById("rua").value = dados.logradouro;
                                     document.getElementById("bairro").value = dados.bairro;
 
+
+                                    // limpa mensagem quando CEP está correto
+                                    erroCep.textContent = "";
+                                    erroCep.style.display = "none";
+
+
                                     cep.classList.remove("is-invalid");
                                     cep.classList.add("is-valid");
 
                                 })
-                                .catch(() => {
-                                    erroCep.textContent = "Erro ao consultar o CEP.";
-                                    cep.classList.add("is-invalid");
-                                });
 
                         }
 
                         btnBuscarCep.addEventListener("click", buscarCEP);
+
+                        function limparEndereco() {
+                            document.getElementById("estado").value = "";
+                            document.getElementById("cidade").value = "";
+                            document.getElementById("rua").value = "";
+                            document.getElementById("bairro").value = "";
+                        }
 
                     </script>
 
