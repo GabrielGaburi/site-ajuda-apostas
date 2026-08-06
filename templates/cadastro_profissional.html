@@ -324,7 +324,9 @@
                                     Bairro
                                 </label>
 
-                                <input type="text" class="form-control" id="bairro" name="bairro" readonly>
+                                <input type="text" class="form-control" id="bairro" name="bairro" readonly
+                                    value="{{ dados.bairro }}">
+
 
                             </div>
 
@@ -352,7 +354,7 @@
                                         <i class="bi bi-patch-check-fill"></i>
                                     </span>
 
-                                    <input type="text" id="crp" class="form-control" name="crp" placeholder="06/123456"
+                                    <input type="text" id="crp" class="form-control" name="crp" placeholder="00/123456"
                                         maxlength="9" value="{{ dados.crp }}" required>
 
                                 </div>
@@ -360,6 +362,12 @@
                                 <small id="erroCrp" class="text-danger d-none">
                                     CRP inválido.
                                 </small>
+
+                                {% if campo_erro == "crp" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
 
                             </div>
 
@@ -381,198 +389,256 @@
                                 </label>
 
                                 <input type="number" class="form-control" name="experiencia" min="0" max="60"
-                                    placeholder="Anos">
+                                    placeholder="Anos" value="{{ dados.experiencia }}">
+
+                                {% if campo_erro == "experiencia" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
 
                             </div>
 
-                        </div>
-
-                        <div class="mb-3">
-
-                            <label class="form-label">
-                                Especialidade
-                            </label>
-
-                            <select class="form-select" name="especialidade" required>
-
-                                <option value="">
-                                    Selecione
-                                </option>
-
-                                <option>Psicologia Clínica</option>
-
-                                <option>Terapia Cognitivo-Comportamental</option>
-
-                                <option>Dependência Química</option>
-
-                                <option>Dependência em Jogos</option>
-
-                                <option>Ansiedade</option>
-
-                                <option>Depressão</option>
-
-                                <option>Relacionamentos</option>
-
-                                <option>Infantil</option>
-
-                                <option>Casais</option>
-
-                                <option>Outro</option>
-
-                            </select>
-
-                        </div>
-
-                        <div class="row">
-
-                            <div class="col-md-6 mb-3">
+                            <div class="mb-3">
 
                                 <label class="form-label">
+                                    Especialidade
+                                </label>
 
-                                    Instituição de Ensino
+                                <select class="form-select" name="especialidade" required>
+
+                                    <option value="" {% if dados.especialidade=="" %}selected{% endif %}>
+                                        Selecione
+                                    </option>
+
+                                    <option value="Psicologia Clínica" {% if dados.especialidade=="Psicologia Clínica"
+                                        %}selected{% endif %}>
+                                        Psicologia Clínica
+                                    </option>
+
+                                    <option value="Terapia Cognitivo-Comportamental" {% if
+                                        dados.especialidade=="Terapia Cognitivo-Comportamental" %}selected{% endif %}>
+                                        Terapia Cognitivo-Comportamental
+                                    </option>
+
+                                    <option value="Dependência Química" {% if dados.especialidade=="Dependência Química"
+                                        %}selected{% endif %}>
+                                        Dependência Química
+                                    </option>
+
+                                    <option value="Dependência em Jogos" {% if
+                                        dados.especialidade=="Dependência em Jogos" %}selected{% endif %}>
+                                        Dependência em Jogos
+                                    </option>
+
+                                    <option value="Ansiedade" {% if dados.especialidade=="Ansiedade" %}selected{% endif
+                                        %}>
+                                        Ansiedade
+                                    </option>
+
+                                    <option value="Depressão" {% if dados.especialidade=="Depressão" %}selected{% endif
+                                        %}>
+                                        Depressão
+                                    </option>
+
+                                    <option value="Relacionamentos" {% if dados.especialidade=="Relacionamentos"
+                                        %}selected{% endif %}>
+                                        Relacionamentos
+                                    </option>
+
+                                    <option value="Infantil" {% if dados.especialidade=="Infantil" %}selected{% endif
+                                        %}>
+                                        Infantil
+                                    </option>
+
+                                    <option value="Casais" {% if dados.especialidade=="Casais" %}selected{% endif %}>
+                                        Casais
+                                    </option>
+
+                                    <option value="Outro" {% if dados.especialidade=="Outro" %}selected{% endif %}>
+                                        Outro
+                                    </option>
+
+                                </select>
+
+                                {% if campo_erro == "especialidade" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
+
+                            </div>
+
+                            <div class="row">
+
+                                <div class="col-md-6 mb-3">
+
+                                    <label class="form-label">
+
+                                        Instituição de Ensino
+
+                                    </label>
+
+                                    <input type="text" class="form-control" name="faculdade">
+
+                                    {% if campo_erro == "faculdade" %}
+                                    <div class="text-danger small mt-1">
+                                        {{ mensagem_erro }}
+                                    </div>
+                                    {% endif %}
+
+                                </div>
+
+                                <div class="col-md-6 mb-3">
+
+                                    <label class="form-label">
+
+                                        Pós-graduação
+
+                                    </label>
+
+                                    <input type="text" class="form-control" name="pos">
+
+                                    {% if campo_erro == "pos" %}
+                                    <div class="text-danger small mt-1">
+                                        {{ mensagem_erro }}
+                                    </div>
+                                    {% endif %}
+
+
+
+                                </div>
+
+                            </div>
+
+
+                            <hr class="my-4">
+
+                            <h5 class="text-primary mb-3">
+                                Perfil Público
+                            </h5>
+
+                            <label class="form-label">
+
+                                Mini Biografia
+
+                            </label>
+
+                            <textarea class="form-control" rows="5" name="biografia"
+                                placeholder="Descreva sua experiência profissional..."></textarea>
+
+                            {% if campo_erro == "biografia" %}
+                            <div class="text-danger small mt-1">
+                                {{ mensagem_erro }}
+                            </div>
+                            {% endif %}
+
+                            <div class="mb-4">
+
+                                <label class="form-label">
+                                    Foto de Perfil
+                                </label>
+
+                                <input type="file" class="form-control" name="foto" accept="image/png, image/jpeg">
+
+                                <small class="text-muted">
+                                    Formatos aceitos: JPG ou PNG.
+                                </small>
+
+                            </div>
+
+                            <hr class="my-4">
+
+                            <h5 class="text-primary mb-3">
+                                Segurança
+                            </h5>
+
+
+                            <div class="mb-3">
+
+                                <label class="form-label">
+                                    Senha
+                                </label>
+
+                                <div class="input-group">
+
+                                    <span class="input-group-text">
+                                        <i class="bi bi-lock-fill"></i>
+                                    </span>
+
+                                    <input type="password" class="form-control" id="senha" name="senha" required>
+
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        onclick="toggleSenha('senha','iconeSenha')">
+
+                                        <i id="iconeSenha" class="bi bi-eye"></i>
+
+                                    </button>
+
+                                </div>
+
+                                <div class="form-text">
+
+                                    Deve conter entre 8 e 16 caracteres,
+                                    letra maiúscula,
+                                    número
+                                    e caractere especial.
+
+                                </div>
+
+                                <div id="forcaSenha" class="small mt-2 fw-bold">
+                                </div>
+
+                            </div>
+
+
+
+                            <div class="mb-4">
+
+                                <label class="form-label">
+                                    Confirmar senha
+                                </label>
+
+                                <div class="input-group">
+
+                                    <span class="input-group-text">
+                                        <i class="bi bi-shield-lock-fill"></i>
+                                    </span>
+
+                                    <input type="password" class="form-control" id="confirmarSenha"
+                                        name="confirmar_senha" required>
+
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        onclick="toggleSenha('confirmarSenha','iconeConfirmar')">
+
+                                        <i id="iconeConfirmar" class="bi bi-eye"></i>
+
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+
+                            <div class="form-check mb-4">
+
+                                <input class="form-check-input" type="checkbox" required id="termos">
+
+                                <label class="form-check-label" for="termos">
+
+                                    Li e aceito os
+                                    <a href="#">Termos de Uso</a>
+                                    e a
+                                    <a href="#">Política de Privacidade</a>.
 
                                 </label>
 
-                                <input type="text" class="form-control" name="faculdade">
-
                             </div>
 
-                            <div class="col-md-6 mb-3">
 
-                                <label class="form-label">
-
-                                    Pós-graduação
-
-                                </label>
-
-                                <input type="text" class="form-control" name="pos">
-
-                            </div>
-
-                        </div>
-
-
-                        <hr class="my-4">
-
-                        <h5 class="text-primary mb-3">
-                            Perfil Público
-                        </h5>
-
-                        <label class="form-label">
-
-                            Mini Biografia
-
-                        </label>
-
-                        <textarea class="form-control" rows="5" name="biografia"
-                            placeholder="Descreva sua experiência profissional..."></textarea>
-
-                        <div class="mb-4">
-
-                            <label class="form-label">
-                                Foto de Perfil
-                            </label>
-
-                            <input type="file" class="form-control" name="foto" accept="image/png, image/jpeg">
-
-                            <small class="text-muted">
-                                Formatos aceitos: JPG ou PNG.
-                            </small>
-
-                        </div>
-
-                        <hr class="my-4">
-
-                        <h5 class="text-primary mb-3">
-                            Segurança
-                        </h5>
-
-
-                        <div class="mb-3">
-
-                            <label class="form-label">
-                                Senha
-                            </label>
-
-                            <div class="input-group">
-
-                                <span class="input-group-text">
-                                    <i class="bi bi-lock-fill"></i>
-                                </span>
-
-                                <input type="password" class="form-control" id="senha" name="senha" required>
-
-                                <button class="btn btn-outline-secondary" type="button"
-                                    onclick="toggleSenha('senha','iconeSenha')">
-
-                                    <i id="iconeSenha" class="bi bi-eye"></i>
-
-                                </button>
-
-                            </div>
-
-                            <div class="form-text">
-
-                                Deve conter entre 8 e 16 caracteres,
-                                letra maiúscula,
-                                número
-                                e caractere especial.
-
-                            </div>
-
-                            <div id="forcaSenha" class="small mt-2 fw-bold">
-                            </div>
-
-                        </div>
-
-
-
-                        <div class="mb-4">
-
-                            <label class="form-label">
-                                Confirmar senha
-                            </label>
-
-                            <div class="input-group">
-
-                                <span class="input-group-text">
-                                    <i class="bi bi-shield-lock-fill"></i>
-                                </span>
-
-                                <input type="password" class="form-control" id="confirmarSenha" name="confirmar_senha"
-                                    required>
-
-                                <button class="btn btn-outline-secondary" type="button"
-                                    onclick="toggleSenha('confirmarSenha','iconeConfirmar')">
-
-                                    <i id="iconeConfirmar" class="bi bi-eye"></i>
-
-                                </button>
-
-                            </div>
-
-                        </div>
-
-
-                        <div class="form-check mb-4">
-
-                            <input class="form-check-input" type="checkbox" required id="termos">
-
-                            <label class="form-check-label" for="termos">
-
-                                Li e aceito os
-                                <a href="#">Termos de Uso</a>
-                                e a
-                                <a href="#">Política de Privacidade</a>.
-
-                            </label>
-
-                        </div>
-
-
-                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
-                            Solicitar Cadastro
-                        </button>
+                            <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+                                Solicitar Cadastro
+                            </button>
                     </form>
 
                     <div class="text-center mt-4">

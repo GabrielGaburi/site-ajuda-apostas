@@ -324,6 +324,7 @@ moderador = True  # Defina como True apenas para você, o moderador
 
 @app.route('/cadastro_profissional', methods=['GET', 'POST'])
 def cadastro_profissional():
+    
 
     dados = {
         "tipo": "profissional",
@@ -407,17 +408,21 @@ def cadastro_profissional():
             "sexo",
             "email",
             "telefone",
+            
             "cep",
             "rua",
             "numero",
             "bairro",
             "cidade",
             "estado",
+            
             "crp",
             "uf_crp",
             "experiencia",
             "especialidade",
             "faculdade",
+            "pos",
+            
             "biografia"
         ]
         
@@ -440,6 +445,7 @@ def cadastro_profissional():
             "experiencia": "Experiência",
             "especialidade": "Especialidade",
             "faculdade": "Instituição de ensino",
+            "pos": "Pós-graduação",
             "biografia": "Biografia"
         }
     
