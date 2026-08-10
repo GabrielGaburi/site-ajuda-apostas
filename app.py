@@ -4,12 +4,19 @@ from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 MODERADOR = True
 app.secret_key = secrets.token_hex(16)
 usuarios = []
 profissional = []
+
+UPLOAD_FOLDER = os.path.join(app.root_path, "uploads")
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
 
 
 # app.config['SERVER_NAME'] = '192.168.1.11:5000'
@@ -157,6 +164,7 @@ def cadastro_usuario():
             "cadastro_usuario.html",
             dados=dados
         )
+            
             
 
       
@@ -322,8 +330,13 @@ forum = carregar_forum()
 usuario_atual = "Anônimo"
 moderador = True  # Defina como True apenas para você, o moderador
 
+
+
 @app.route('/cadastro_profissional', methods=['GET', 'POST'])
 def cadastro_profissional():
+    
+    print(">>> ENTROU NA ROTA CADASTRO PROFISSIONAL")
+    print(">>> MÉTODO:", request.method)
     
 
     dados = {
@@ -394,6 +407,21 @@ def cadastro_profissional():
         # Senhas iguais
         if senha != confirmar_senha:
             flash("As senhas não coincidem.", "danger")
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados
+            )
+            
+        termos = request.form.get("termos")
+
+        # Verificar aceite dos termos
+        if termos != "aceito":
+
+            flash(
+                "Você precisa aceitar os Termos de Uso e a Política de Privacidade.",
+                "danger"
+            )
+
             return render_template(
                 "cadastro_profissional.html",
                 dados=dados
@@ -471,18 +499,7 @@ def cadastro_profissional():
         print("CHEGOU NA VALIDAÇÃO DO EMAIL")
         print("Email digitado:", dados["email"])
     
-        padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
-    
-        if not re.match(padrao, dados["email"]):
-            
-            print(">>> EMAIL INVÁLIDO:", dados["email"])
-    
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="email",
-                mensagem_erro="Digite um e-mail válido."
-            ) 
+       
             
         padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
 
@@ -509,6 +526,8 @@ def cadastro_profissional():
                 campo_erro="cpf",
                 mensagem_erro="CPF inválido."
             )
+            
+        
 
         # Foto obrigatória
         if not foto or foto.filename == "":
@@ -517,6 +536,16 @@ def cadastro_profissional():
                 "cadastro_profissional.html",
                 dados=dados
             )
+
+        # Salvar foto na pasta uploads
+        nome_foto = secure_filename(foto.filename)
+
+        caminho_foto = os.path.join(
+            app.config["UPLOAD_FOLDER"],
+            nome_foto
+        )
+
+        foto.save(caminho_foto)
 
         # Senha forte
         if not senha_valida(senha):
@@ -590,7 +619,7 @@ def cadastro_profissional():
 
             "biografia": dados["biografia"],
 
-            "foto": foto.filename,
+            "foto": nome_foto,
 
             "modalidade": "Online",
 
@@ -622,8 +651,11 @@ def cadastro_profissional():
     return render_template(
         "cadastro_profissional.html",
         dados=dados
-    )
-
+    ) 
+    
+    
+    
+   
 
 @app.route("/")
 def index():
