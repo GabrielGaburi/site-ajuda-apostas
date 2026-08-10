@@ -3,6 +3,8 @@
 
 {% block content %}
 
+
+
 <div class="container-fluid py-5 bg-light" style="min-height:90vh;">
 
     <div class="row justify-content-center">
@@ -336,7 +338,7 @@
 
                             </div>
 
-                            <div id="erroCep" class="text-danger small mt-1"></div>
+
 
                         </div>
 
@@ -545,14 +547,14 @@
                                     Foto de Perfil
                                 </label>
 
-                                <input type="file" class="form-control" name="foto" accept="image/png, image/jpeg">
+                                <input type="file" class="form-control" name="foto" accept="image/png, image/jpeg"
+                                    required>
 
                                 <small class="text-muted">
                                     Formatos aceitos: JPG ou PNG.
                                 </small>
 
                             </div>
-
                             <hr class="my-4">
 
                             <h5 class="text-primary mb-3">
@@ -626,16 +628,161 @@
                             </div>
 
 
-                            <div class="form-check mb-4">
+                            <!-- TERMOS E PRIVACIDADE -->
 
-                                <input class="form-check-input" type="checkbox" required id="termos">
+                            <div class="mb-4">
+
+                                <div class="accordion" id="accordionTermos">
+
+                                    <!-- TERMOS DE USO -->
+                                    <div class="accordion-item">
+
+                                        <h2 class="accordion-header" id="headingTermos">
+
+                                            <button class="accordion-button collapsed" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#collapseTermos"
+                                                aria-expanded="false" aria-controls="collapseTermos">
+
+                                                <i class="bi bi-file-text me-2"></i>
+                                                Termos de Uso
+
+                                            </button>
+
+                                        </h2>
+
+                                        <div id="collapseTermos" class="accordion-collapse collapse"
+                                            aria-labelledby="headingTermos" data-bs-parent="#accordionTermos">
+
+                                            <div class="accordion-body">
+
+                                                <h6>1. Aceitação dos termos</h6>
+
+                                                <p>
+                                                    Ao utilizar esta plataforma, o usuário declara estar
+                                                    ciente e de acordo com os presentes Termos de Uso.
+                                                </p>
+
+                                                <h6>2. Utilização da plataforma</h6>
+
+                                                <p>
+                                                    Esta plataforma tem finalidade informativa e busca
+                                                    disponibilizar recursos relacionados à prevenção e
+                                                    conscientização sobre problemas relacionados a apostas.
+                                                </p>
+
+                                                <h6>3. Responsabilidades do usuário</h6>
+
+                                                <p>
+                                                    O usuário é responsável pelas informações fornecidas
+                                                    durante o cadastro e pela utilização adequada dos
+                                                    recursos disponibilizados pela plataforma.
+                                                </p>
+
+                                                <h6>4. Alterações</h6>
+
+                                                <p>
+                                                    Estes termos poderão ser atualizados para adequação
+                                                    às necessidades da plataforma e à legislação aplicável.
+                                                </p>
+
+                                                <hr>
+
+                                                <p class="text-muted mb-0">
+                                                    <small>
+                                                        Texto provisório. Os termos definitivos serão
+                                                        elaborados após a revisão das informações legais.
+                                                    </small>
+                                                </p>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+
+                                    <!-- POLÍTICA DE PRIVACIDADE -->
+                                    <div class="accordion-item">
+
+                                        <h2 class="accordion-header" id="headingPrivacidade">
+
+                                            <button class="accordion-button collapsed" type="button"
+                                                data-bs-toggle="collapse" data-bs-target="#collapsePrivacidade"
+                                                aria-expanded="false" aria-controls="collapsePrivacidade">
+
+                                                <i class="bi bi-shield-check me-2"></i>
+                                                Política de Privacidade
+
+                                            </button>
+
+                                        </h2>
+
+                                        <div id="collapsePrivacidade" class="accordion-collapse collapse"
+                                            aria-labelledby="headingPrivacidade" data-bs-parent="#accordionTermos">
+
+                                            <div class="accordion-body">
+
+                                                <h6>1. Informações coletadas</h6>
+
+                                                <p>
+                                                    A plataforma poderá coletar informações fornecidas
+                                                    pelo usuário durante o processo de cadastro e utilização
+                                                    dos seus recursos.
+                                                </p>
+
+                                                <h6>2. Utilização das informações</h6>
+
+                                                <p>
+                                                    As informações coletadas serão utilizadas para permitir
+                                                    o funcionamento da plataforma, autenticação do usuário
+                                                    e disponibilização dos recursos oferecidos.
+                                                </p>
+
+                                                <h6>3. Proteção dos dados</h6>
+
+                                                <p>
+                                                    A plataforma adotará medidas técnicas e organizacionais
+                                                    destinadas à proteção das informações dos usuários.
+                                                </p>
+
+                                                <h6>4. Direitos do usuário</h6>
+
+                                                <p>
+                                                    O usuário poderá exercer os direitos previstos na
+                                                    legislação aplicável em relação aos seus dados pessoais.
+                                                </p>
+
+                                                <hr>
+
+                                                <p class="text-muted mb-0">
+                                                    <small>
+                                                        Texto provisório. A política definitiva será
+                                                        elaborada após a pesquisa e revisão da legislação
+                                                        aplicável.
+                                                    </small>
+                                                </p>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- ACEITE -->
+
+                            <div class="form-check mb-3">
+
+                                <input class="form-check-input" type="checkbox" id="termos" name="termos" value="aceito"
+                                    required>
 
                                 <label class="form-check-label" for="termos">
 
-                                    Li e aceito os
-                                    <a href="#">Termos de Uso</a>
-                                    e a
-                                    <a href="#">Política de Privacidade</a>.
+                                    Li e aceito os Termos de Uso e a Política de Privacidade.
 
                                 </label>
 
@@ -645,6 +792,7 @@
                             <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
                                 Solicitar Cadastro
                             </button>
+
                     </form>
 
                     <div class="text-center mt-4">
@@ -659,8 +807,6 @@
                         </small>
 
                     </div>
-
-
                     <script>
                         // =======================
                         // MOSTRAR / OCULTAR SENHA
@@ -1267,6 +1413,7 @@
                         }
 
                     </script>
+
 
 
 
