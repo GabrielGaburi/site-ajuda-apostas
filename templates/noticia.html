@@ -68,21 +68,6 @@
     </div>
 </div>
 
-<script>
-    const noticiaModal = document.getElementById('noticiaModal');
-
-    noticiaModal.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-
-        document.getElementById('modalTitulo').textContent =
-            button.getAttribute('data-titulo');
-
-        document.getElementById('modalIntroducao').textContent =
-            button.getAttribute('data-introducao');
-
-        const linkFonte = document.getElementById('modalFonte');
-        linkFonte.href = button.getAttribute('data-fonte');
-    });
-</script>
+<script src="{{ url_for('static', filename='js/noticias-modal.js') }}"></script>
 
 {% endblock %}

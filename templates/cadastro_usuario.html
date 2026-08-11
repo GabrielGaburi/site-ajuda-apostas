@@ -535,31 +535,6 @@
                         });
 
 
-                        //=======================
-                        // CONFIRMAR SENHA
-                        //=======================
-
-                        const confirmar = document.getElementById("confirmarSenha");
-
-                        confirmar.addEventListener("keyup", () => {
-
-                            if (confirmar.value.length === 0)
-                                return;
-
-                            if (confirmar.value === senha.value) {
-
-                                confirmar.classList.remove("is-invalid");
-                                confirmar.classList.add("is-valid");
-
-                            } else {
-
-                                confirmar.classList.remove("is-valid");
-                                confirmar.classList.add("is-invalid");
-
-                            }
-
-                        });
-
-                    </script>
+                        src = "{{ url_for('static', filename='js/cadastro_usuario.js') }}" ></script>
 
                     {% endblock %}
