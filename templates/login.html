@@ -82,20 +82,6 @@
 
 </div>
 
-<script>
-    function toggleSenha() {
-        let senha = document.getElementById("senha");
-        let icone = document.getElementById("iconeSenha");
-
-        if (senha.type === "password") {
-            senha.type = "text";
-            icone.textContent = "🙈";
-        } else {
-            senha.type = "password";
-            icone.textContent = "👁️";
-        }
-    }
-</script>
-
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
 
 {% endblock %}

@@ -128,24 +128,6 @@
 </div>
 
 
-<script>
-    const noticiaModal = document.getElementById('noticiaModal');
-
-    noticiaModal.addEventListener('show.bs.modal', function (event) {
-        const button = event.relatedTarget;
-
-        const titulo = button.getAttribute('data-titulo');
-        const introducao = button.getAttribute('data-introducao');
-        const fonte = button.getAttribute('data-fonte');
-
-        document.getElementById('modalTitulo').textContent = titulo;
-        document.getElementById('modalIntroducao').textContent = introducao;
-
-        const linkFonte = document.getElementById('modalFonte');
-        linkFonte.href = fonte;
-    });
-</script>
-
-
+<script src="{{ url_for('static', filename='js/noticias-modal.js') }}"></script>
 
 {% endblock %}
