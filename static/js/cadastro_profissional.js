@@ -190,7 +190,11 @@ function normalizarTexto(texto) {
 }
 
 (function () {
+
+    const formulario = document.getElementById("formCadastroProfissional");
+    const dataNascimento = document.getElementById("dataNascimento");
     const telefone = document.getElementById("telefone");
+
     if (telefone) {
         telefone.addEventListener("input", function () {
             let valor = this.value.replace(/\D/g, "");
@@ -272,6 +276,9 @@ function normalizarTexto(texto) {
         });
     }
 
+    const senha = document.getElementById("senha");
+    const confirmar = document.getElementById("confirmarSenha");
+
     if (senha) {
         senha.addEventListener("keyup", function () {
             const texto = this.value;
@@ -300,6 +307,8 @@ function normalizarTexto(texto) {
         });
     }
 
+
+
     if (confirmar && senha) {
         confirmar.addEventListener("keyup", function () {
             if (this.value.length === 0) {
@@ -315,7 +324,6 @@ function normalizarTexto(texto) {
         });
     }
 
-    const formulario = document.getElementById("formCadastroProfissional");
     if (formulario) {
         formulario.addEventListener("submit", function (event) {
             if (cpf && !validarCpf(cpf.value.replace(/\D/g, ""))) {
@@ -344,44 +352,42 @@ function normalizarTexto(texto) {
                 }
             }
 
-            const termos = document.getElementById("termos");
-            const erroTermos = document.getElementById("erroTermos");
-
-            if (termos && !termos.checked) {
-
-                event.preventDefault();
-
-                termos.classList.add("is-invalid");
-
-                erroTermos.textContent =
-                    "Você deve aceitar os Termos de Uso e a Política de Privacidade.";
-
-                termos.focus();
-
-                return false;
-            }
         });
     }
 
-    const dataNascimento = document.getElementById("dataNascimento");
+
     if (dataNascimento) {
+
         dataNascimento.addEventListener("input", function () {
+
             let valor = this.value.replace(/\D/g, "");
+
             valor = valor.substring(0, 8);
-            if (valor.length > 2) valor = valor.replace(/^(\d{2})(\d)/, "$1/$2");
-            if (valor.length > 5) valor = valor.replace(/^(\d{2})\/(\d{2})(\d)/, "$1/$2/$3");
+
+            if (valor.length >= 3) {
+                valor = valor.substring(0, 2) + "/" + valor.substring(2);
+            }
+
+            if (valor.length >= 6) {
+                valor = valor.substring(0, 5) + "/" + valor.substring(5);
+            }
+
             this.value = valor;
+
             this.classList.remove("is-valid", "is-invalid");
+
             if (valor.length === 10) {
                 validarDataNascimento();
             }
         });
 
         formulario && formulario.addEventListener("submit", function (e) {
+
             if (!validarDataNascimento()) {
                 e.preventDefault();
                 dataNascimento.focus();
             }
+
         });
     }
 
