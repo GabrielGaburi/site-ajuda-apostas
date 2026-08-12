@@ -360,7 +360,8 @@ def cadastro_profissional():
         "especialidade": "",
         "faculdade": "",
         "pos": "",
-        "biografia": ""
+        "biografia": "",
+        "termos":""
     }
 
     if request.method == "POST":
@@ -394,7 +395,9 @@ def cadastro_profissional():
             "faculdade": request.form.get("faculdade", "").strip(),
             "pos": request.form.get("pos", "").strip(),
 
-            "biografia": request.form.get("biografia", "").strip()
+            "biografia": request.form.get("biografia", "").strip(),
+            
+            "termos": request.form.get("termos", "").strip()
         }
         
         erros ={}
@@ -412,20 +415,8 @@ def cadastro_profissional():
                 dados=dados
             )
             
-        termos = request.form.get("termos")
-
-        # Verificar aceite dos termos
-        if termos != "aceito":
-
-            flash(
-                "Você precisa aceitar os Termos de Uso e a Política de Privacidade.",
-                "danger"
-            )
-
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados
-            )
+    
+            
 
         # Campos obrigatórios
         campos_obrigatorios = [
@@ -451,7 +442,9 @@ def cadastro_profissional():
             "faculdade",
             "pos",
             
-            "biografia"
+            "biografia",
+            
+            "termos"
         ]
         
         nomes_campos = {
@@ -474,33 +467,29 @@ def cadastro_profissional():
             "especialidade": "Especialidade",
             "faculdade": "Instituição de ensino",
             "pos": "Pós-graduação",
-            "biografia": "Biografia"
+            "biografia": "Biografia",
+            "termos": "Termos de Uso e a Política de Privacidade"
         }
     
 
         for campo in campos_obrigatorios:
-            
-            print("VALIDANDO:", campo)
-            
-
-            print(campo, "=", dados[campo])
 
             if not dados[campo]:
+
+                mensagem = f"O campo {nomes_campos[campo]} é obrigatório."
+
+                if campo == "termos":
+                    mensagem = "Você precisa aceitar os Termos de Uso e a Política de Privacidade."
 
                 return render_template(
                     "cadastro_profissional.html",
                     dados=dados,
                     campo_erro=campo,
-                    mensagem_erro=f"O campo {nomes_campos[campo]} é obrigatório."
+                    mensagem_erro=mensagem
                 )
                 
         # Validar email
-        
-        print("CHEGOU NA VALIDAÇÃO DO EMAIL")
-        print("Email digitado:", dados["email"])
-    
-       
-            
+               
         padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
 
         print("EMAIL RECEBIDO:", dados["email"])
@@ -531,10 +520,11 @@ def cadastro_profissional():
 
         # Foto obrigatória
         if not foto or foto.filename == "":
-            flash("Selecione uma foto de perfil.", "danger")
             return render_template(
                 "cadastro_profissional.html",
-                dados=dados
+                dados=dados,
+                campo_erro="foto",
+                mensagem_erro="Selecione uma foto de perfil."
             )
 
         # Salvar foto na pasta uploads
@@ -652,6 +642,8 @@ def cadastro_profissional():
         "cadastro_profissional.html",
         dados=dados
     ) 
+    
+    
     
     
     
