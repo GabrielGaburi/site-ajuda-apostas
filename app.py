@@ -1,4 +1,4 @@
-import secrets, re, json, os, traceback
+import secrets, re, json, os, traceback, uuid
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -334,10 +334,6 @@ moderador = True  # Defina como True apenas para você, o moderador
 
 @app.route('/cadastro_profissional', methods=['GET', 'POST'])
 def cadastro_profissional():
-    
-    print(">>> ENTROU NA ROTA CADASTRO PROFISSIONAL")
-    print(">>> MÉTODO:", request.method)
-    
 
     dados = {
         "tipo": "profissional",
@@ -361,68 +357,57 @@ def cadastro_profissional():
         "faculdade": "",
         "pos": "",
         "biografia": "",
-        "termos":""
+        "termos": ""
     }
 
     if request.method == "POST":
-        print("Entrou no POST")
-
         dados = {
             "tipo": "profissional",
-
             "nome": request.form.get("nome", "").strip(),
             "sobrenome": request.form.get("sobrenome", "").strip(),
-
             "data_de_nascimento": request.form.get("data_de_nascimento", "").strip(),
             "sexo": request.form.get("sexo", "").strip(),
-
             "email": request.form.get("email", "").strip().lower(),
             "telefone": request.form.get("telefone", "").strip(),
             "cpf": request.form.get("cpf", "").strip(),
-
             "cep": request.form.get("cep", "").strip(),
             "rua": request.form.get("rua", "").strip(),
             "numero": request.form.get("numero", "").strip(),
             "bairro": request.form.get("bairro", "").strip(),
             "cidade": request.form.get("cidade", "").strip(),
             "estado": request.form.get("estado", "").strip(),
-
             "crp": request.form.get("crp", "").strip(),
             "uf_crp": request.form.get("uf_crp", "").strip(),
-
             "experiencia": request.form.get("experiencia", "").strip(),
             "especialidade": request.form.get("especialidade", "").strip(),
             "faculdade": request.form.get("faculdade", "").strip(),
             "pos": request.form.get("pos", "").strip(),
-
             "biografia": request.form.get("biografia", "").strip(),
-            
             "termos": request.form.get("termos", "").strip()
         }
-        
-        erros ={}
 
         foto = request.files.get("foto")
-
-        senha = request.form.get("senha", "")
-        confirmar_senha = request.form.get("confirmar_senha", "")
-        
+        senha = request.form.get("senha", "").strip()
+        confirmar_senha = request.form.get("confirmar_senha", "").strip()
         termos = request.form.get("termos")
 
-        # Senhas iguais
+        if not senha or not confirmar_senha:
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="senha",
+                mensagem_erro="Informe e confirme sua senha."
+            )
+
         if senha != confirmar_senha:
             flash("As senhas não coincidem.", "danger")
             return render_template(
                 "cadastro_profissional.html",
-                dados=dados
+                dados=dados,
+                campo_erro="senha",
+                mensagem_erro="As senhas não coincidem."
             )
-            
-       
-            
-    
-            
 
-        # Campos obrigatórios
         campos_obrigatorios = [
             "nome",
             "sobrenome",
@@ -431,26 +416,21 @@ def cadastro_profissional():
             "sexo",
             "email",
             "telefone",
-            
             "cep",
             "rua",
             "numero",
             "bairro",
             "cidade",
             "estado",
-            
             "crp",
             "uf_crp",
             "experiencia",
             "especialidade",
             "faculdade",
             "pos",
-            
-            "biografia",
-            
-            "termos"
+            "biografia"
         ]
-        
+
         nomes_campos = {
             "nome": "Nome",
             "sobrenome": "Sobrenome",
@@ -471,70 +451,65 @@ def cadastro_profissional():
             "especialidade": "Especialidade",
             "faculdade": "Instituição de ensino",
             "pos": "Pós-graduação",
-            "biografia": "Biografia",
-            "termos": "Termos de Uso e a Política de Privacidade"
+            "biografia": "Biografia"
         }
-    
 
         for campo in campos_obrigatorios:
-
             if not dados[campo]:
-
                 mensagem = f"O campo {nomes_campos[campo]} é obrigatório."
-
-                if campo == "termos":
-                    mensagem = "Você precisa aceitar os Termos de Uso e a Política de Privacidade."
-
                 return render_template(
                     "cadastro_profissional.html",
                     dados=dados,
                     campo_erro=campo,
                     mensagem_erro=mensagem
                 )
-                
-         # Validar Termos
-                
-            if termos != "aceito":
-                flash("Você deve aceitar os Termos de Uso e a Política de Privacidade.", "danger")
-        
-                return render_template(
-                    "cadastro_profissional.html",
-                    dados=dados,
-                    campo_erro="termos",
-                    mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
-                )    
-                
-        # Validar email
-               
+
+        if termos != "aceito":
+            flash("Você deve aceitar os Termos de Uso e a Política de Privacidade.", "danger")
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="termos",
+                mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
+            )
+
         padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
-
-        print("EMAIL RECEBIDO:", dados["email"])
-
         if not re.match(padrao, dados["email"]):
-            print("ENTROU NA VALIDAÇÃO DO EMAIL")
-
             return render_template(
                 "cadastro_profissional.html",
                 dados=dados,
                 campo_erro="email",
                 mensagem_erro="Digite um e-mail válido."
-            )  
-                 
-                
-                
-        # Validar CPF
-        if not validar_cpf(dados["cpf"]):
+            )
 
+        if not validar_cpf(dados["cpf"]):
             return render_template(
                 "cadastro_profissional.html",
                 dados=dados,
                 campo_erro="cpf",
                 mensagem_erro="CPF inválido."
             )
-            
-        
 
-        # Foto obrigatória
+        try:
+            data_nascimento = datetime.strptime(dados["data_de_nascimento"], "%d/%m/%Y")
+        except ValueError:
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="data_de_nascimento",
+                mensagem_erro="Data de nascimento inválida."
+            )
+
+        hoje = datetime.today()
+        idade = hoje.year - data_nascimento.year - ((hoje.month, hoje.day) < (data_nascimento.month, data_nascimento.day))
+        if idade < 18 or idade > 100:
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="data_de_nascimento",
+                mensagem_erro="Idade deve estar entre 18 e 100 anos."
+            )
+
         if not foto or foto.filename == "":
             return render_template(
                 "cadastro_profissional.html",
@@ -543,125 +518,95 @@ def cadastro_profissional():
                 mensagem_erro="Selecione uma foto de perfil."
             )
 
-        # Salvar foto na pasta uploads
-        nome_foto = secure_filename(foto.filename)
-
-        caminho_foto = os.path.join(
-            app.config["UPLOAD_FOLDER"],
-            nome_foto
-        )
-
-        foto.save(caminho_foto)
-
-        # Senha forte
         if not senha_valida(senha):
-
             flash(
                 "A senha deve ter entre 8 e 16 caracteres, conter letra maiúscula, número e caractere especial.",
                 "danger"
             )
-
             return render_template(
                 "cadastro_profissional.html",
                 dados=dados
             )
 
-        # Email já existe
         email_existente = next(
-            (
-                u for u in usuarios + profissional
-                if u["email"].lower() == dados["email"]
-            ),
-        None
+            (u for u in usuarios + profissional if u["email"].lower() == dados["email"]),
+            None
         )
-        
-         
-                
-       
 
         if email_existente:
-
-            flash(
-                "Este email já está cadastrado.",
-                "warning"
-            )
-
+            flash("Este email já está cadastrado.", "warning")
             return render_template(
                 "cadastro_profissional.html",
                 dados=dados
             )
-            
-       
+
+        nome_original = secure_filename(foto.filename)
+        extensao = os.path.splitext(nome_original)[1].lower()
+        extensoes_validas = {".jpg", ".jpeg", ".png"}
+
+        if extensao not in extensoes_validas:
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="foto",
+                mensagem_erro="Formato de imagem inválido. Use JPG ou PNG."
+            )
+
         senha_hash = generate_password_hash(senha)
+        nome_foto = f"{uuid.uuid4().hex}{extensao}"
+        caminho_foto = os.path.join(app.config["UPLOAD_FOLDER"], nome_foto)
+        foto.save(caminho_foto)
 
         novo_profissional = {
-
             "id": len(profissional) + 1,
-
             "nome": dados["nome"],
             "sobrenome": dados["sobrenome"],
-
             "data_de_nascimento": dados["data_de_nascimento"],
             "sexo": dados["sexo"],
-
             "email": dados["email"],
             "telefone": dados["telefone"],
             "cpf": dados["cpf"],
-
             "cep": dados["cep"],
             "rua": dados["rua"],
             "numero": dados["numero"],
             "bairro": dados["bairro"],
             "cidade": dados["cidade"],
             "estado": dados["estado"],
-
             "crp": dados["crp"],
             "uf_crp": dados["uf_crp"],
-
             "experiencia": dados["experiencia"],
             "especialidade": dados["especialidade"],
             "faculdade": dados["faculdade"],
             "pos": dados["pos"],
-
             "biografia": dados["biografia"],
-
             "foto": nome_foto,
-
             "modalidade": "Online",
-
             "senha": senha_hash,
-
             "email_confirmado": False,
-
             "tipo": "profissional"
         }
 
         profissional.append(novo_profissional)
 
         if enviar_email_confirmacao(dados["email"]):
-
-            flash(
-                "Cadastro realizado! Confirme seu email.",
-                "success"
-            )
-
+            flash("Cadastro realizado! Confirme seu email.", "success")
         else:
-
-            flash(
-                "Cadastro criado, mas houve erro no envio do email.",
-                "warning"
-            )
+            flash("Cadastro criado, mas houve erro no envio do email.", "warning")
 
         return redirect(url_for("login"))
 
     return render_template(
         "cadastro_profissional.html",
         dados=dados
-    ) 
+    )
+
+
+
+
+
     
     
-    
-    
+
     
    
 
@@ -1257,6 +1202,12 @@ def esqueci_senha():
             None
         )
 
+        if usuario is None:
+            usuario = next(
+                (p for p in profissional if p["email"].lower() == email),
+                None
+            )
+
         if not usuario:
             flash("Email não encontrado.", "danger")
             return render_template("esqueci_senha.html", email=email)
@@ -1287,6 +1238,12 @@ def redefinir_senha(token):
         (u for u in usuarios if u["email"].lower() == email.lower()),
         None
     )
+
+    if usuario is None:
+        usuario = next(
+            (p for p in profissional if p["email"].lower() == email.lower()),
+            None
+        )
 
     if not usuario:
         flash("Usuário não encontrado.", "danger")
