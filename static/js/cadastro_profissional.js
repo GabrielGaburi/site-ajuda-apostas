@@ -43,19 +43,6 @@ function validarCpf(cpf) {
     return true;
 }
 
-function escolherIcone(tipo) {
-    if (tipo.includes("Atendimento")) {
-        return iconeVermelho;
-    }
-    if (tipo.includes("Hospital")) {
-        return iconeAzul;
-    }
-    if (tipo.includes("Grupo")) {
-        return iconeVerde;
-    }
-    return iconeAzul;
-}
-
 function validarDataNascimento() {
     const dataNascimento = document.getElementById("dataNascimento");
     const erroNascimento = document.getElementById("erroNascimento");
@@ -64,9 +51,13 @@ function validarDataNascimento() {
         return true;
     }
 
-    const valor = dataNascimento.value;
-    const partes = valor.split("/");
+    const valor = dataNascimento.value.trim();
+    if (!valor) {
+        invalido("Data de nascimento obrigatória.");
+        return false;
+    }
 
+    const partes = valor.split("/");
     if (partes.length !== 3) {
         invalido("Formato inválido.");
         return false;
@@ -75,10 +66,9 @@ function validarDataNascimento() {
     const dia = parseInt(partes[0], 10);
     const mes = parseInt(partes[1], 10);
     const ano = parseInt(partes[2], 10);
-    const hoje = new Date();
 
-    if (ano < hoje.getFullYear() - 100 || ano > hoje.getFullYear() - 18) {
-        invalido("Idade deve estar entre 18 e 100 anos.");
+    if ([dia, mes, ano].some((valor) => Number.isNaN(valor))) {
+        invalido("Formato inválido.");
         return false;
     }
 
@@ -87,9 +77,34 @@ function validarDataNascimento() {
         return false;
     }
 
+    const dataInformada = new Date(ano, mes - 1, dia);
+    const hoje = new Date();
     const diasMes = [31, (ano % 4 === 0 && (ano % 100 !== 0 || ano % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
     if (dia < 1 || dia > diasMes[mes - 1]) {
         invalido("Dia inválido.");
+        return false;
+    }
+
+    if (
+        dataInformada.getFullYear() !== ano ||
+        dataInformada.getMonth() !== mes - 1 ||
+        dataInformada.getDate() !== dia
+    ) {
+        invalido("Data de nascimento inválida.");
+        return false;
+    }
+
+    let idade = hoje.getFullYear() - dataInformada.getFullYear();
+    const mesAtual = hoje.getMonth() - dataInformada.getMonth();
+    const diaAtual = hoje.getDate() - dataInformada.getDate();
+
+    if (mesAtual < 0 || (mesAtual === 0 && diaAtual < 0)) {
+        idade -= 1;
+    }
+
+    if (idade < 18 || idade > 100) {
+        invalido("Idade deve estar entre 18 e 100 anos.");
         return false;
     }
 
@@ -325,15 +340,18 @@ function normalizarTexto(texto) {
     }
 
     if (formulario) {
+        formulario.noValidate = true;
+
         formulario.addEventListener("submit", function (event) {
+            let formularioValido = true;
+
             if (cpf && !validarCpf(cpf.value.replace(/\D/g, ""))) {
-                event.preventDefault();
                 cpf.classList.add("is-invalid");
                 if (erroCpf) {
                     erroCpf.textContent = "CPF inválido.";
                 }
                 cpf.focus();
-                return false;
+                formularioValido = false;
             }
 
             const email = document.getElementById("email");
@@ -342,26 +360,45 @@ function normalizarTexto(texto) {
                 const emailValor = email.value.trim();
                 const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                 if (!regexEmail.test(emailValor)) {
-                    event.preventDefault();
                     email.classList.add("is-invalid");
                     if (erroEmail) {
                         erroEmail.textContent = "Digite um e-mail válido.";
                     }
                     email.focus();
-                    return false;
+                    formularioValido = false;
                 }
             }
 
+            if (dataNascimento && !validarDataNascimento()) {
+                dataNascimento.focus();
+                formularioValido = false;
+            }
+
+            const termos = document.getElementById("termos");
+            if (termos && !termos.checked) {
+                termos.classList.add("is-invalid");
+                termos.focus();
+                formularioValido = false;
+            }
+
+            if (confirmar && senha) {
+                if (confirmar.value !== senha.value || !confirmar.value) {
+                    confirmar.classList.remove("is-valid");
+                    confirmar.classList.add("is-invalid");
+                    formularioValido = false;
+                }
+            }
+
+            if (!formularioValido) {
+                event.preventDefault();
+                return false;
+            }
         });
     }
 
-
     if (dataNascimento) {
-
         dataNascimento.addEventListener("input", function () {
-
             let valor = this.value.replace(/\D/g, "");
-
             valor = valor.substring(0, 8);
 
             if (valor.length >= 3) {
@@ -373,37 +410,27 @@ function normalizarTexto(texto) {
             }
 
             this.value = valor;
-
             this.classList.remove("is-valid", "is-invalid");
 
             if (valor.length === 10) {
                 validarDataNascimento();
             }
         });
-
-        formulario && formulario.addEventListener("submit", function (e) {
-
-            if (!validarDataNascimento()) {
-                e.preventDefault();
-                dataNascimento.focus();
-            }
-
-        });
     }
 
     const emailInput = document.getElementById("email");
-    const erroEmail = document.getElementById("erroEmail");
+    const erroEmailInput = document.getElementById("erroEmail");
     if (emailInput) {
         emailInput.addEventListener("input", function () {
             const valor = this.value.trim();
             this.classList.remove("is-valid", "is-invalid");
-            if (erroEmail) {
-                erroEmail.textContent = "";
+            if (erroEmailInput) {
+                erroEmailInput.textContent = "";
             }
             if (valor.length === 0) {
                 this.classList.add("is-invalid");
-                if (erroEmail) {
-                    erroEmail.textContent = "O e-mail é obrigatório.";
+                if (erroEmailInput) {
+                    erroEmailInput.textContent = "O e-mail é obrigatório.";
                 }
                 return;
             }
@@ -412,8 +439,8 @@ function normalizarTexto(texto) {
                 this.classList.add("is-valid");
             } else {
                 this.classList.add("is-invalid");
-                if (erroEmail) {
-                    erroEmail.textContent = "Digite um e-mail válido.";
+                if (erroEmailInput) {
+                    erroEmailInput.textContent = "Digite um e-mail válido.";
                 }
             }
         });
