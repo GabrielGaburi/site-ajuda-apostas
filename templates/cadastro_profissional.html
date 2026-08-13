@@ -33,7 +33,7 @@
 
 
                     <form id="formCadastroProfissional" method="POST" enctype="multipart/form-data"
-                        action="{{ url_for('cadastro_profissional') }}" novalidate>
+                        action="{{ url_for('cadastro_profissional') }}">
                         <h5 class="mb-3 text-primary">
                             Informações Pessoais
                         </h5>
@@ -46,8 +46,8 @@
                                     Nome
                                 </label>
 
-                                <input type="text" class="form-control" name="nome" required
-                                    value="{{ dados.get('nome', '') }}">
+                                <input type="text" class="form-control" name="nome" value="{{ dados.get('nome', '') }}"
+                                    required>
 
                                 {% if campo_erro == "nome" %}
                                 <div class="text-danger small mt-1">
@@ -69,7 +69,7 @@
                                 </label>
 
                                 <input type="text" class="form-control" name="sobrenome"
-                                    value="{{ dados.get('sobrenome', '') }}">
+                                    value="{{ dados.get('sobrenome', '') }}" required>
 
                                 {% if campo_erro == "sobrenome" %}
                                 <div class="text-danger small mt-1">
@@ -98,7 +98,8 @@
                                     </span>
 
                                     <input type="text" id="cpf" class="form-control" name="cpf"
-                                        placeholder="000.000.000-00" maxlength="14" value="{{ dados.cpf }}" required>
+                                        placeholder="000.000.000-00" maxlength="14" value="{{ dados.get('cpf', '') }}"
+                                        required>
 
                                     <div id="erroCpf" class="invalid-feedback">
                                         CPF inválido.
@@ -119,7 +120,7 @@
 
                                 <input type="text" class="form-control" id="dataNascimento" name="data_de_nascimento"
                                     placeholder="dd/mm/aaaa" maxlength="10" autocomplete="bday"
-                                    value="{{ dados.data_de_nascimento }}" required>
+                                    value="{{ dados.get('data_de_nascimento', '') }}" required>
 
 
                                 <div id="erroNascimento" class="invalid-feedback">
@@ -136,7 +137,7 @@
 
                             <div class="col-md-4 mb-3">
                                 <label class="form-label">Sexo</label>
-                                <select class="form-select" name="sexo">
+                                <select class="form-select" name="sexo" required>
 
                                     <option value="">Selecione</option>
 
@@ -179,7 +180,7 @@
                                 </span>
 
                                 <input type="text" id="email" class="form-control" name="email"
-                                    placeholder="email@exemplo.com" value="{{ dados['email'] }}" required>
+                                    placeholder="email@exemplo.com" value="{{ dados.get('email', '') }}" required>
 
                             </div>
 
@@ -207,7 +208,8 @@
                                 </span>
 
                                 <input type="text" id="telefone" class="form-control" name="telefone"
-                                    placeholder="(00) 00000-0000" maxlength="15" value="{{ dados.telefone }}" required>
+                                    placeholder="(00) 00000-0000" maxlength="15" value="{{ dados.get('telefone', '') }}"
+                                    required>
 
                             </div>
 
@@ -236,7 +238,7 @@
                                 <div class="input-group">
 
                                     <input type="text" class="form-control" id="cep" name="cep" maxlength="9"
-                                        placeholder="00000-000" value="{{ dados.cep }}" required>
+                                        placeholder="00000-000" value="{{ dados.get('cep', '') }}" required>
 
                                     <button class="btn btn-primary" type="button" id="btnBuscarCep" title="Buscar CEP">
 
@@ -274,7 +276,7 @@
                                 </label>
 
                                 <input type="text" class="form-control" id="estado" name="estado" readonly
-                                    value="{{ dados.estado }}">
+                                    value="{{ dados.get('estado', '') }}">
 
                             </div>
 
@@ -286,7 +288,7 @@
                                 </label>
 
                                 <input type="text" class="form-control" id="cidade" name="cidade" readonly
-                                    value="{{ dados.cidade }}">
+                                    value="{{ dados.get('cidade', '') }}">
 
                             </div>
 
@@ -300,7 +302,7 @@
                             </label>
 
                             <input type="text" class="form-control" id="rua" name="rua" readonly
-                                value="{{ dados.rua }}">
+                                value="{{ dados.get('rua', '') }}">
 
                         </div>
 
@@ -314,7 +316,7 @@
                                     Número
                                 </label>
 
-                                <input type="text" class="form-control" id="numero" name="numero" placeholder=""
+                                <input type="text" class="form-control" id="numero" name="numero"
                                     value="{{ dados.get('numero', '') }}" required>
 
                                 {% if campo_erro == "numero" %}
@@ -333,7 +335,7 @@
                                 </label>
 
                                 <input type="text" class="form-control" id="bairro" name="bairro" readonly
-                                    value="{{ dados.bairro }}">
+                                    value="{{ dados.get('bairro', '') }}">
 
 
                             </div>
@@ -363,7 +365,7 @@
                                     </span>
 
                                     <input type="text" id="crp" class="form-control" name="crp" placeholder="00/123456"
-                                        maxlength="9" value="{{ dados.crp }}" required>
+                                        maxlength="9" value="{{ dados.get('crp', '') }}" required>
 
                                 </div>
 
@@ -386,7 +388,7 @@
                                 </label>
 
                                 <input type="text" id="uf_crp" name="uf_crp" class="form-control" readonly
-                                    value="{{ dados.uf_crp }}">
+                                    value="{{ dados.get('uf_crp', '') }}">
 
                             </div>
 
@@ -397,7 +399,7 @@
                                 </label>
 
                                 <input type="number" class="form-control" name="experiencia" min="0" max="60"
-                                    placeholder="Anos" value="{{ dados.experiencia }}">
+                                    placeholder="Anos" value="{{ dados.get('experiencia', '') }}" required>
 
                                 {% if campo_erro == "experiencia" %}
                                 <div class="text-danger small mt-1">
@@ -415,55 +417,58 @@
 
                                 <select class="form-select" name="especialidade" required>
 
-                                    <option value="" {% if dados.especialidade=="" %}selected{% endif %}>
+                                    <option value="" {% if dados.get('especialidade')=="" %}selected{% endif %}>
                                         Selecione
                                     </option>
 
-                                    <option value="Psicologia Clínica" {% if dados.especialidade=="Psicologia Clínica"
-                                        %}selected{% endif %}>
+                                    <option value="Psicologia Clínica" {% if
+                                        dados.get('especialidade')=="Psicologia Clínica" %}selected{% endif %}>
                                         Psicologia Clínica
                                     </option>
 
                                     <option value="Terapia Cognitivo-Comportamental" {% if
-                                        dados.especialidade=="Terapia Cognitivo-Comportamental" %}selected{% endif %}>
+                                        dados.get('especialidade')=="Terapia Cognitivo-Comportamental" %}selected{%
+                                        endif %}>
                                         Terapia Cognitivo-Comportamental
                                     </option>
 
-                                    <option value="Dependência Química" {% if dados.especialidade=="Dependência Química"
-                                        %}selected{% endif %}>
+                                    <option value="Dependência Química" {% if
+                                        dados.get('especialidade')=="Dependência Química" %}selected{% endif %}>
                                         Dependência Química
                                     </option>
 
                                     <option value="Dependência em Jogos" {% if
-                                        dados.especialidade=="Dependência em Jogos" %}selected{% endif %}>
+                                        dados.get('especialidade')=="Dependência em Jogos" %}selected{% endif %}>
                                         Dependência em Jogos
                                     </option>
 
-                                    <option value="Ansiedade" {% if dados.especialidade=="Ansiedade" %}selected{% endif
-                                        %}>
+                                    <option value="Ansiedade" {% if dados.get('especialidade')=="Ansiedade" %}selected{%
+                                        endif %}>
                                         Ansiedade
                                     </option>
 
-                                    <option value="Depressão" {% if dados.especialidade=="Depressão" %}selected{% endif
-                                        %}>
+                                    <option value="Depressão" {% if dados.get('especialidade')=="Depressão" %}selected{%
+                                        endif %}>
                                         Depressão
                                     </option>
 
-                                    <option value="Relacionamentos" {% if dados.especialidade=="Relacionamentos"
+                                    <option value="Relacionamentos" {% if dados.get('especialidade')=="Relacionamentos"
                                         %}selected{% endif %}>
                                         Relacionamentos
                                     </option>
 
-                                    <option value="Infantil" {% if dados.especialidade=="Infantil" %}selected{% endif
-                                        %}>
+                                    <option value="Infantil" {% if dados.get('especialidade')=="Infantil" %}selected{%
+                                        endif %}>
                                         Infantil
                                     </option>
 
-                                    <option value="Casais" {% if dados.especialidade=="Casais" %}selected{% endif %}>
+                                    <option value="Casais" {% if dados.get('especialidade')=="Casais" %}selected{% endif
+                                        %}>
                                         Casais
                                     </option>
 
-                                    <option value="Outro" {% if dados.especialidade=="Outro" %}selected{% endif %}>
+                                    <option value="Outro" {% if dados.get('especialidade')=="Outro" %}selected{% endif
+                                        %}>
                                         Outro
                                     </option>
 
@@ -488,7 +493,7 @@
                                     </label>
 
                                     <input type="text" class="form-control" id="faculdade" name="faculdade"
-                                        value="{{ dados.faculdade }}" required>
+                                        value="{{ dados.get('faculdade', '') }}" required>
 
                                     {% if campo_erro == "faculdade" %}
                                     <div class="text-danger small mt-1">
@@ -506,8 +511,8 @@
 
                                     </label>
 
-                                    <input type="text" class="form-control" id="pos" name="pos" value="{{ dados.pos }}"
-                                        required>
+                                    <input type="text" class="form-control" id="pos" name="pos"
+                                        value="{{ dados.get('pos', '') }}" required>
 
                                     {% if campo_erro == "pos" %}
                                     <div class="text-danger small mt-1">
@@ -535,7 +540,7 @@
                             </label>
 
                             <textarea class="form-control" rows="5" name="biografia"
-                                placeholder="Descreva sua experiência profissional...">{{ dados.biografia }}</textarea>
+                                placeholder="Descreva sua experiência profissional...">{{ dados.get('biografia', '') }}</textarea>
 
                             {% if campo_erro == "biografia" %}
                             <div class="text-danger small mt-1">
@@ -786,8 +791,8 @@
 
                             <div class="form-check mb-3">
 
-                                <input class="form-check-input" type="checkbox" id="termos" name="termos"
-                                    value="aceito">
+                                <input class="form-check-input" type="checkbox" id="termos" name="termos" value="aceito"
+                                    required>
 
                                 <label class="form-check-label" for="termos">
                                     Li e aceito os Termos de Uso e a Política de Privacidade.
@@ -821,9 +826,8 @@
                     </div>
                     <script src="{{ url_for('static', filename='js/cadastro_profissional.js') }}"></script>
 
+                    {% endblock %}
 
-
-
-
-
+                    {% block scripts %}
+                    <script src="{{ url_for('static', filename='js/cadastro_profissional.js') }}"></script>
                     {% endblock %}

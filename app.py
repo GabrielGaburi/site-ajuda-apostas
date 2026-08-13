@@ -406,6 +406,8 @@ def cadastro_profissional():
 
         senha = request.form.get("senha", "")
         confirmar_senha = request.form.get("confirmar_senha", "")
+        
+        termos = request.form.get("termos")
 
         # Senhas iguais
         if senha != confirmar_senha:
@@ -414,6 +416,8 @@ def cadastro_profissional():
                 "cadastro_profissional.html",
                 dados=dados
             )
+            
+       
             
     
             
@@ -487,6 +491,18 @@ def cadastro_profissional():
                     campo_erro=campo,
                     mensagem_erro=mensagem
                 )
+                
+         # Validar Termos
+                
+            if termos != "aceito":
+                flash("Você deve aceitar os Termos de Uso e a Política de Privacidade.", "danger")
+        
+                return render_template(
+                    "cadastro_profissional.html",
+                    dados=dados,
+                    campo_erro="termos",
+                    mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
+                )    
                 
         # Validar email
                
@@ -787,43 +803,63 @@ def excluir_mensagem(topico_id, msg_index):
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+
     if request.method == "POST":
 
-        # mantém os dados digitados caso dê erro
+        # Dados digitados
         email = request.form.get("email", "").strip().lower()
         senha = request.form.get("senha", "")
 
-        # procura usuário pelo email
+        # Procura primeiro nos usuários
         usuario = next(
             (u for u in usuarios if u["email"].lower() == email),
             None
         )
 
-        # verifica se existe
-        if not usuario:
+        # Se não encontrou, procura nos profissionais
+        if usuario is None:
+            usuario = next(
+                (p for p in profissional if p["email"].lower() == email),
+                None
+            )
+
+        # Email não encontrado
+        if usuario is None:
             flash("Email não encontrado.", "danger")
-            return render_template("login.html", email=email)
-
-        # verifica confirmação de email
-        if not usuario.get("email_confirmado", False):
-            flash("Confirme seu email antes de fazer login.", "warning")
-            return render_template("login.html", email=email)
-
-        if not check_password_hash(usuario["senha"], senha):
-            flash("Senha incorreta.", "danger")
-
-            # mantém o email preenchido
             return render_template(
                 "login.html",
                 email=email
             )
 
-        # login OK
+        # Verifica confirmação do email
+        if not usuario.get("email_confirmado", False):
+            flash(
+                "Confirme seu email antes de fazer login.",
+                "warning"
+            )
+            return render_template(
+                "login.html",
+                email=email
+            )
+
+        # Verifica senha
+        if not check_password_hash(usuario["senha"], senha):
+            flash("Senha incorreta.", "danger")
+
+            return render_template(
+                "login.html",
+                email=email
+            )
+
+        # Login OK
         session["usuario_id"] = usuario["id"]
         session["usuario_nome"] = usuario["nome"]
         session["tipo_usuario"] = usuario.get("tipo", "usuario")
 
-        flash(f"Bem-vindo(a), {usuario['nome']}!", "success")
+        flash(
+            f"Bem-vindo(a), {usuario['nome']}!",
+            "success"
+        )
 
         return redirect(url_for("dashboard"))
 
