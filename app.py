@@ -351,7 +351,7 @@ def confirmar_email(token):
     # Se não encontrou, procura entre os profissionais
     if cadastro is None:
         cadastro = next(
-            (p for p in profissional if p["email"].lower() == email.lower()),
+            (p for p in profissionais if p["email"].lower() == email.lower()),
             None
         )
 
@@ -597,7 +597,7 @@ def cadastro_profissional():
             )
 
         email_existente = next(
-            (u for u in usuarios + profissional if u["email"].lower() == dados["email"]),
+            (u for u in usuarios + profissionais if u["email"].lower() == dados["email"]),
             None
         )
 
@@ -644,7 +644,7 @@ def cadastro_profissional():
             "tipo": "profissional"
         }
 
-        profissional.append(novo_profissional)
+        profissionais.append(novo_profissional)
 
         if enviar_email_confirmacao(dados["email"]):
             flash("Cadastro realizado! Confirme seu email.", "success")
@@ -824,7 +824,7 @@ def login():
         # Se não encontrou, procura nos profissionais
         if usuario is None:
             usuario = next(
-                (p for p in profissional if p["email"].lower() == email),
+                (p for p in profissionais if p["email"].lower() == email),
                 None
             )
 
@@ -1264,7 +1264,7 @@ def esqueci_senha():
 
         if usuario is None:
             usuario = next(
-                (p for p in profissional if p["email"].lower() == email),
+                (p for p in profissionais if p["email"].lower() == email),
                 None
             )
 
@@ -1301,7 +1301,7 @@ def redefinir_senha(token):
 
     if usuario is None:
         usuario = next(
-            (p for p in profissional if p["email"].lower() == email.lower()),
+            (p for p in profissionais if p["email"].lower() == email.lower()),
             None
         )
 
