@@ -341,59 +341,8 @@ function normalizarTexto(texto) {
 
     if (formulario) {
         formulario.noValidate = true;
-
-        formulario.addEventListener("submit", function (event) {
-            let formularioValido = true;
-
-            if (cpf && !validarCpf(cpf.value.replace(/\D/g, ""))) {
-                cpf.classList.add("is-invalid");
-                if (erroCpf) {
-                    erroCpf.textContent = "CPF inválido.";
-                }
-                cpf.focus();
-                formularioValido = false;
-            }
-
-            const email = document.getElementById("email");
-            const erroEmail = document.getElementById("erroEmail");
-            if (email) {
-                const emailValor = email.value.trim();
-                const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                if (!regexEmail.test(emailValor)) {
-                    email.classList.add("is-invalid");
-                    if (erroEmail) {
-                        erroEmail.textContent = "Digite um e-mail válido.";
-                    }
-                    email.focus();
-                    formularioValido = false;
-                }
-            }
-
-            if (dataNascimento && !validarDataNascimento()) {
-                dataNascimento.focus();
-                formularioValido = false;
-            }
-
-            const termos = document.getElementById("termos");
-            if (termos && !termos.checked) {
-                termos.classList.add("is-invalid");
-                termos.focus();
-                formularioValido = false;
-            }
-
-            if (confirmar && senha) {
-                if (confirmar.value !== senha.value || !confirmar.value) {
-                    confirmar.classList.remove("is-valid");
-                    confirmar.classList.add("is-invalid");
-                    formularioValido = false;
-                }
-            }
-
-            if (!formularioValido) {
-                event.preventDefault();
-                return false;
-            }
-        });
+        // A validação será feita no backend em ordem de cima para baixo
+        // O JavaScript apenas faz validações de formato para feedback visual
     }
 
     if (dataNascimento) {
