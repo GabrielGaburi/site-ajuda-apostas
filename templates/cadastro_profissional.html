@@ -34,7 +34,7 @@
 
                     <form id="formCadastroProfissional" method="POST" enctype="multipart/form-data"
                         action="{{ url_for('cadastro_profissional') }}">
-                        <h5 class="mb-3 text-primary">
+                        <h5 class="mb-3 text-primary" novalidate>
                             Informações Pessoais
                         </h5>
 
@@ -54,11 +54,7 @@
                                     {{ mensagem_erro }}
                                 </div>
                                 {% endif %}
-                                {% if erros and erros.nome %}
-                                <div class="text-danger small mt-1">
-                                    {{ erros.nome }}
-                                </div>
-                                {% endif %}
+
                             </div>
 
 
@@ -554,8 +550,7 @@
                                     Foto de Perfil
                                 </label>
 
-                                <input type="file" class="form-control" name="foto" accept="image/png, image/jpeg"
-                                    required>
+                                <input type="file" class="form-control" name="foto" accept="image/png, image/jpeg">
 
                                 <small class="text-muted">
                                     Formatos aceitos: JPG ou PNG.
@@ -611,6 +606,12 @@
                                 <div id="forcaSenha" class="small mt-2 fw-bold">
                                 </div>
 
+                                {% if campo_erro == "senha" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
+
                             </div>
 
 
@@ -638,6 +639,12 @@
                                     </button>
 
                                 </div>
+
+                                {% if campo_erro == "confirmar_senha" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
 
                             </div>
 

@@ -10,7 +10,7 @@ app = Flask(__name__)
 MODERADOR = True
 app.secret_key = secrets.token_hex(16)
 usuarios = []
-profissional = []
+profissionais = []
 
 UPLOAD_FOLDER = os.path.join(app.root_path, "uploads")
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
@@ -126,10 +126,12 @@ def cadastro_usuario():
         "tipo": "usuario",
         "nome": "",
         "sobrenome": "",
+        "cpf": "",
+        "data_de_nascimento": "",
+        "sexo": "",
         "email": "",
         "telefone": "",
         "cep": "",
-        "UF": "",
         "rua": "",
         "numero": "",
         "bairro": "",
@@ -141,9 +143,12 @@ def cadastro_usuario():
 
         # captura TODOS os campos
         dados = {
-            "tipo": request.form.get("tipo", "usuario"),
+            "tipo": "usuario",
             "nome": request.form.get("nome", "").strip(),
             "sobrenome": request.form.get("sobrenome", "").strip(),
+            "cpf": request.form.get("cpf", "").strip(),
+            "data_de_nascimento": request.form.get("data_de_nascimento", "").strip(),
+            "sexo": request.form.get("sexo", "").strip(),
             "email": request.form.get("email", "").strip().lower(),
             "telefone": request.form.get("telefone", "").strip(),
             "cep": request.form.get("cep", "").strip(),
@@ -154,47 +159,112 @@ def cadastro_usuario():
             "estado": request.form.get("estado", "").strip()
         }
         
+        senha = request.form.get('senha', '').strip()
+        confirmar_senha = request.form.get("confirmar_senha", "").strip()
+        termos = request.form.get("termos")
 
-        senha = request.form.get('senha', '')
-        confirmar_senha = request.form.get("confirmar_senha", "")
+        # Validação em ordem de cima para baixo conforme o formulário
+        campos_validacao = [
+            ("nome", "Nome"),
+            ("sobrenome", "Sobrenome"),
+            ("cpf", "CPF"),
+            ("data_de_nascimento", "Data de nascimento"),
+            ("sexo", "Sexo"),
+            ("email", "E-mail"),
+            ("telefone", "Telefone"),
+            ("cep", "CEP"),
+            ("rua", "Rua"),
+            ("numero", "Número"),
+            ("bairro", "Bairro"),
+            ("cidade", "Cidade"),
+            ("estado", "Estado")
+        ]
+
+        # Valida campos obrigatórios
+        for campo, nome_campo in campos_validacao:
+            if not dados[campo]:
+                return render_template(
+                    "cadastro_usuario.html",
+                    dados=dados,
+                    campo_erro=campo,
+                    mensagem_erro=f"O campo {nome_campo} é obrigatório."
+                )
+
+        # Valida CPF
+        if not validar_cpf(dados["cpf"]):
+            return render_template(
+                "cadastro_usuario.html",
+                dados=dados,
+                campo_erro="cpf",
+                mensagem_erro="CPF inválido."
+            )
+
+        # Valida data de nascimento
+        try:
+            data_nascimento = datetime.strptime(dados["data_de_nascimento"], "%d/%m/%Y")
+        except ValueError:
+            return render_template(
+                "cadastro_usuario.html",
+                dados=dados,
+                campo_erro="data_de_nascimento",
+                mensagem_erro="Data de nascimento inválida."
+            )
+
+        hoje = datetime.today()
+        idade = hoje.year - data_nascimento.year - ((hoje.month, hoje.day) < (data_nascimento.month, data_nascimento.day))
+        if idade < 18 or idade > 100:
+            return render_template(
+                "cadastro_usuario.html",
+                dados=dados,
+                campo_erro="data_de_nascimento",
+                mensagem_erro="Idade deve estar entre 18 e 100 anos."
+            )
+
+        # Valida email
+        padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+        if not re.match(padrao, dados["email"]):
+            return render_template(
+                "cadastro_usuario.html",
+                dados=dados,
+                campo_erro="email",
+                mensagem_erro="Digite um e-mail válido."
+            )
+
+        # Valida senha
+        if not senha or not confirmar_senha:
+            return render_template(
+                "cadastro_usuario.html",
+                dados=dados,
+                campo_erro="senha",
+                mensagem_erro="Informe e confirme sua senha."
+            )
 
         if senha != confirmar_senha:
-            flash("As senhas não coincidem.", "danger")
-            return render_template(
-            "cadastro_usuario.html",
-            dados=dados
-        )
-            
-            
-
-      
-
-        # Só continua se as senhas forem iguais
-        senha_hash = generate_password_hash(senha)
-
-        # CAMPOS OBRIGATÓRIOS
-        if not dados["nome"] or not dados["email"] or not senha:
-            flash("Preencha todos os campos obrigatórios.", "danger")
-
             return render_template(
                 "cadastro_usuario.html",
-                dados=dados
+                dados=dados,
+                campo_erro="senha",
+                mensagem_erro="As senhas não coincidem."
             )
 
-        # SENHA INVÁLIDA
         if not senha_valida(senha):
-            flash(
-                "A senha deve ter 8-16 caracteres, incluindo maiúscula, número e caractere especial.",
-                "danger"
-            )
-
-            # devolve TODOS os campos preenchidos
             return render_template(
                 "cadastro_usuario.html",
-                dados=dados
+                dados=dados,
+                campo_erro="senha",
+                mensagem_erro="A senha deve ter entre 8 e 16 caracteres, conter letra maiúscula, número e caractere especial."
             )
 
-                # EMAIL JÁ CADASTRADO
+        # Valida termos (por último)
+        if termos != "aceito":
+            return render_template(
+                "cadastro_usuario.html",
+                dados=dados,
+                campo_erro="termos",
+                mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
+            )
+
+        # EMAIL JÁ CADASTRADO
         usuario_existente = next(
             (u for u in usuarios if u["email"].lower() == dados["email"]),
             None
@@ -205,29 +275,33 @@ def cadastro_usuario():
 
             return render_template(
                 "cadastro_usuario.html",
-                dados=dados
+                dados=dados,
+                campo_erro=None,
+                mensagem_erro=""
             )
 
-            
         # SENHA HASH
         senha_hash = generate_password_hash(senha)
 
         # NOVO USUÁRIO
         novo_usuario = {
-            "id": len(profissional) + 1,
+            "id": len(usuarios) + 1,
             "nome": dados["nome"],
             "sobrenome": dados["sobrenome"],
+            "cpf": dados["cpf"],
+            "data_de_nascimento": dados["data_de_nascimento"],
+            "sexo": dados["sexo"],
             "email": dados["email"],
             "telefone": dados["telefone"],
             "cep": dados["cep"],
             "rua": dados["rua"],
-            "numero": dados ["numero"],
-            "bairro": dados ["bairro"],
+            "numero": dados["numero"],
+            "bairro": dados["bairro"],
             "cidade": dados["cidade"],
             "estado": dados["estado"],
             "senha": senha_hash,
             "email_confirmado": False,
-            "tipo": dados["tipo"]
+            "tipo": "usuario"
         }
 
         usuarios.append(novo_usuario)
@@ -249,7 +323,9 @@ def cadastro_usuario():
     # GET
     return render_template(
         'cadastro_usuario.html',
-        dados=dados
+        dados=dados,
+        campo_erro=None,
+        mensagem_erro=""
     )
     
 @app.route('/confirmar_email/<token>')
@@ -391,97 +467,41 @@ def cadastro_profissional():
         confirmar_senha = request.form.get("confirmar_senha", "").strip()
         termos = request.form.get("termos")
 
-        if not senha or not confirmar_senha:
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="senha",
-                mensagem_erro="Informe e confirme sua senha."
-            )
-
-        if senha != confirmar_senha:
-            flash("As senhas não coincidem.", "danger")
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="senha",
-                mensagem_erro="As senhas não coincidem."
-            )
-
-        campos_obrigatorios = [
-            "nome",
-            "sobrenome",
-            "cpf",
-            "data_de_nascimento",
-            "sexo",
-            "email",
-            "telefone",
-            "cep",
-            "rua",
-            "numero",
-            "bairro",
-            "cidade",
-            "estado",
-            "crp",
-            "uf_crp",
-            "experiencia",
-            "especialidade",
-            "faculdade",
-            "pos",
-            "biografia"
+        # Validação em ordem de cima para baixo conforme o formulário
+        campos_validacao = [
+            ("nome", "Nome"),
+            ("sobrenome", "Sobrenome"),
+            ("cpf", "CPF"),
+            ("data_de_nascimento", "Data de nascimento"),
+            ("sexo", "Sexo"),
+            ("email", "E-mail"),
+            ("telefone", "Telefone"),
+            ("cep", "CEP"),
+            ("rua", "Rua"),
+            ("numero", "Número"),
+            ("bairro", "Bairro"),
+            ("cidade", "Cidade"),
+            ("estado", "Estado"),
+            ("crp", "CRP"),
+            ("uf_crp", "UF do CRP"),
+            ("experiencia", "Experiência"),
+            ("especialidade", "Especialidade"),
+            ("faculdade", "Instituição de ensino"),
+            ("pos", "Pós-graduação"),
+            ("biografia", "Biografia")
         ]
 
-        nomes_campos = {
-            "nome": "Nome",
-            "sobrenome": "Sobrenome",
-            "cpf": "CPF",
-            "data_de_nascimento": "Data de nascimento",
-            "sexo": "Sexo",
-            "email": "E-mail",
-            "telefone": "Telefone",
-            "cep": "CEP",
-            "rua": "Rua",
-            "numero": "Número",
-            "bairro": "Bairro",
-            "cidade": "Cidade",
-            "estado": "Estado",
-            "crp": "CRP",
-            "uf_crp": "UF do CRP",
-            "experiencia": "Experiência",
-            "especialidade": "Especialidade",
-            "faculdade": "Instituição de ensino",
-            "pos": "Pós-graduação",
-            "biografia": "Biografia"
-        }
-
-        for campo in campos_obrigatorios:
+        # Valida campos obrigatórios (de cima para baixo)
+        for campo, nome_campo in campos_validacao:
             if not dados[campo]:
-                mensagem = f"O campo {nomes_campos[campo]} é obrigatório."
                 return render_template(
                     "cadastro_profissional.html",
                     dados=dados,
                     campo_erro=campo,
-                    mensagem_erro=mensagem
+                    mensagem_erro=f"O campo {nome_campo} é obrigatório."
                 )
 
-        if termos != "aceito":
-            flash("Você deve aceitar os Termos de Uso e a Política de Privacidade.", "danger")
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="termos",
-                mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
-            )
-
-        padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
-        if not re.match(padrao, dados["email"]):
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="email",
-                mensagem_erro="Digite um e-mail válido."
-            )
-
+        # Valida CPF
         if not validar_cpf(dados["cpf"]):
             return render_template(
                 "cadastro_profissional.html",
@@ -490,6 +510,7 @@ def cadastro_profissional():
                 mensagem_erro="CPF inválido."
             )
 
+        # Valida data de nascimento
         try:
             data_nascimento = datetime.strptime(dados["data_de_nascimento"], "%d/%m/%Y")
         except ValueError:
@@ -510,34 +531,23 @@ def cadastro_profissional():
                 mensagem_erro="Idade deve estar entre 18 e 100 anos."
             )
 
+        # Valida email
+        padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
+        if not re.match(padrao, dados["email"]):
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="email",
+                mensagem_erro="Digite um e-mail válido."
+            )
+
+        # Valida foto
         if not foto or foto.filename == "":
             return render_template(
                 "cadastro_profissional.html",
                 dados=dados,
                 campo_erro="foto",
                 mensagem_erro="Selecione uma foto de perfil."
-            )
-
-        if not senha_valida(senha):
-            flash(
-                "A senha deve ter entre 8 e 16 caracteres, conter letra maiúscula, número e caractere especial.",
-                "danger"
-            )
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados
-            )
-
-        email_existente = next(
-            (u for u in usuarios + profissional if u["email"].lower() == dados["email"]),
-            None
-        )
-
-        if email_existente:
-            flash("Este email já está cadastrado.", "warning")
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados
             )
 
         nome_original = secure_filename(foto.filename)
@@ -552,13 +562,61 @@ def cadastro_profissional():
                 mensagem_erro="Formato de imagem inválido. Use JPG ou PNG."
             )
 
+        # Valida senha
+        if not senha or not confirmar_senha:
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="senha",
+                mensagem_erro="Informe e confirme sua senha."
+            )
+
+        if senha != confirmar_senha:
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="senha",
+                mensagem_erro="As senhas não coincidem."
+            )
+
+        if not senha_valida(senha):
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="senha",
+                mensagem_erro="A senha deve ter entre 8 e 16 caracteres, conter letra maiúscula, número e caractere especial."
+            )
+
+        # Valida termos (por último)
+        if termos != "aceito":
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="termos",
+                mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
+            )
+
+        email_existente = next(
+            (u for u in usuarios + profissional if u["email"].lower() == dados["email"]),
+            None
+        )
+
+        if email_existente:
+            flash("Este email já está cadastrado.", "warning")
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro=None,
+                mensagem_erro=""
+            )
+
         senha_hash = generate_password_hash(senha)
         nome_foto = f"{uuid.uuid4().hex}{extensao}"
         caminho_foto = os.path.join(app.config["UPLOAD_FOLDER"], nome_foto)
         foto.save(caminho_foto)
 
         novo_profissional = {
-            "id": len(profissional) + 1,
+            "id": len(profissionais) + 1,
             "nome": dados["nome"],
             "sobrenome": dados["sobrenome"],
             "data_de_nascimento": dados["data_de_nascimento"],
@@ -597,7 +655,9 @@ def cadastro_profissional():
 
     return render_template(
         "cadastro_profissional.html",
-        dados=dados
+        dados=dados,
+        campo_erro=None,
+        mensagem_erro=""
     )
 
 
@@ -985,7 +1045,7 @@ Se você não criou essa conta, ignore esta mensagem.
         """
 
         print("MAIL_USERNAME:", app.config['MAIL_USERNAME'])
-        print("MAIL_PASSWORD:", os.getenv("MAIL_PASSWORD"))
+        app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
         print("MAIL_DEFAULT_SENDER:", app.config['MAIL_DEFAULT_SENDER'])
         print("DESTINATÁRIO:", email)
         print("LINK:", link)
@@ -1230,7 +1290,7 @@ def redefinir_senha(token):
             max_age=3600
         )
 
-    except:
+    except Exception:
         flash("Link inválido ou expirado.", "danger")
         return redirect(url_for("login"))
 

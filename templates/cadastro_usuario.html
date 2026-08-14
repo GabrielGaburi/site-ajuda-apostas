@@ -40,8 +40,7 @@
                     {% endif %}
                     {% endwith %}
 
-                    <form method="POST" action="{{ url_for('cadastro_usuario') }}">
-
+                    <form method="POST" action="{{ url_for('cadastro_usuario') }}" novalidate>
                         <h5 class="mb-3 text-primary">
                             Informações Pessoais
                         </h5>
@@ -54,7 +53,14 @@
                                     Nome
                                 </label>
 
-                                <input type="text" class="form-control" name="nome" required value="{{ dados.nome }}">
+                                <input type="text" class="form-control" name="nome" value="{{ dados.get('nome', '') }}"
+                                    required>
+
+                                {% if campo_erro == "nome" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
 
                             </div>
 
@@ -65,11 +71,105 @@
                                     Sobrenome
                                 </label>
 
-                                <input type="text" class="form-control" name="sobrenome" value="{{ dados.sobrenome }}">
+                                <input type="text" class="form-control" name="sobrenome"
+                                    value="{{ dados.get('sobrenome', '') }}" required>
+
+                                {% if campo_erro == "sobrenome" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
 
                             </div>
 
                         </div>
+
+                        <div class="row">
+
+
+
+                            <div class="col-md-4 mb-3">
+
+                                <label class="form-label">
+                                    CPF
+                                </label>
+
+                                <div class="input-group has-validation">
+
+                                    <span class="input-group-text">
+                                        <i class="bi bi-person-vcard-fill"></i>
+                                    </span>
+
+                                    <input type="text" id="cpf" class="form-control" name="cpf"
+                                        placeholder="000.000.000-00" maxlength="14" value="{{ dados.get('cpf', '') }}"
+                                        required>
+
+                                    <div id="erroCpf" class="invalid-feedback">
+                                        CPF inválido.
+                                    </div>
+
+                                </div>
+
+                                {% if campo_erro == "cpf" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
+
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Data de nascimento</label>
+
+                                <input type="text" class="form-control" id="dataNascimento" name="data_de_nascimento"
+                                    placeholder="dd/mm/aaaa" maxlength="10" autocomplete="bday"
+                                    value="{{ dados.get('data_de_nascimento', '') }}" required>
+
+
+                                <div id="erroNascimento" class="invalid-feedback">
+                                    Data de nascimento inválida.
+                                </div>
+
+                                {% if campo_erro == "data_de_nascimento" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
+                            </div>
+
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Sexo</label>
+                                <select class="form-select" name="sexo" required>
+
+                                    <option value="">Selecione</option>
+
+                                    <option value="Masculino" {% if dados.get('sexo')=='Masculino' %}selected{% endif
+                                        %}>
+                                        Masculino
+                                    </option>
+
+                                    <option value="Feminino" {% if dados.get('sexo')=='Feminino' %}selected{% endif %}>
+                                        Feminino
+                                    </option>
+
+                                    <option value="Prefiro não informar" {% if dados.get('sexo')=='Prefiro não informar'
+                                        %}selected{% endif %}>
+                                        Prefiro não informar
+                                    </option>
+
+                                </select>
+
+                                {% if campo_erro == "sexo" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
+
+                            </div>
+
+                        </div>
+
                         <div class="mb-3">
 
                             <label class="form-label">
@@ -82,10 +182,19 @@
                                     <i class="bi bi-envelope-fill"></i>
                                 </span>
 
-                                <input type="email" class="form-control" name="email" required
-                                    placeholder="email@exemplo.com" value="{{ dados.email }}">
+                                <input type="email" id="email" class="form-control" name="email"
+                                    placeholder="email@exemplo.com" value="{{ dados.get('email', '') }}" required>
 
                             </div>
+
+                            <div id="erroEmail" class="text-danger small mt-1"></div>
+
+
+                            {% if campo_erro == "email" %}
+                            <div class="text-danger small mt-1">
+                                {{ mensagem_erro }}
+                            </div>
+                            {% endif %}
 
                         </div>
 
@@ -102,9 +211,18 @@
                                 </span>
 
                                 <input type="text" id="telefone" class="form-control" name="telefone"
-                                    placeholder="(00) 00000-0000" maxlength="15" value="{{ dados.telefone }}" required>
+                                    placeholder="(00) 00000-0000" maxlength="15" value="{{ dados.get('telefone', '') }}"
+                                    required>
 
                             </div>
+
+
+                            {% if campo_erro == "telefone" %}
+                            <div class="text-danger small mt-1">
+                                {{ mensagem_erro }}
+                            </div>
+                            {% endif %}
+
 
                         </div>
 
@@ -116,22 +234,41 @@
                         <div class="row">
 
 
-                            <!-- CEP -->
                             <div class="col-md-4 mb-3">
 
-                                <label class="form-label">
-                                    CEP
-                                </label>
+                                <label class="form-label">CEP</label>
 
-                                <input type="text" class="form-control" id="cep" name="cep" maxlength="9"
-                                    placeholder="00000-000" value="{{ dados.cep }}">
+                                <div class="input-group">
+
+                                    <input type="text" class="form-control" id="cep" name="cep" maxlength="9"
+                                        placeholder="00000-000" value="{{ dados.get('cep', '') }}" required>
+
+                                    <button class="btn btn-primary" type="button" id="btnBuscarCep" title="Buscar CEP">
+
+                                        <i class="bi bi-search"></i>
+
+                                    </button>
+
+                                </div>
+
+                                <small class="text-muted d-block mt-1">
+                                    Não sabe seu CEP?
+                                    <a href="https://buscacepinter.correios.com.br/" target="_blank">
+                                        Buscar nos Correios
+                                    </a>
+                                </small>
 
                                 <div id="erroCep" class="invalid-feedback">
                                     CEP não encontrado.
                                 </div>
 
-                            </div>
+                                {% if campo_erro == "cep" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
 
+                            </div>
 
 
                             <!-- ESTADO -->
@@ -142,7 +279,7 @@
                                 </label>
 
                                 <input type="text" class="form-control" id="estado" name="estado" readonly
-                                    value="{{ dados.estado }}">
+                                    value="{{ dados.get('estado', '') }}">
 
                             </div>
 
@@ -154,7 +291,7 @@
                                 </label>
 
                                 <input type="text" class="form-control" id="cidade" name="cidade" readonly
-                                    value="{{ dados.cidade }}">
+                                    value="{{ dados.get('cidade', '') }}">
 
                             </div>
 
@@ -168,7 +305,7 @@
                             </label>
 
                             <input type="text" class="form-control" id="rua" name="rua" readonly
-                                value="{{ dados.rua }}">
+                                value="{{ dados.get('rua', '') }}">
 
                         </div>
 
@@ -182,8 +319,14 @@
                                     Número
                                 </label>
 
-                                <input type="number" class="form-control" id="numero" name="numero" placeholder="123"
-                                    min="0">
+                                <input type="text" class="form-control" id="numero" name="numero"
+                                    value="{{ dados.get('numero', '') }}" required>
+
+                                {% if campo_erro == "numero" %}
+                                <div class="text-danger small mt-1">
+                                    {{ mensagem_erro }}
+                                </div>
+                                {% endif %}
 
                             </div>
 
@@ -194,11 +337,15 @@
                                     Bairro
                                 </label>
 
-                                <input type="text" class="form-control" id="bairro" name="bairro" readonly>
+                                <input type="text" class="form-control" id="bairro" name="bairro" readonly
+                                    value="{{ dados.get('bairro', '') }}">
+
 
                             </div>
 
                         </div>
+
+
 
 
                         <hr class="my-4">
@@ -243,6 +390,12 @@
                             <div id="forcaSenha" class="small mt-2 fw-bold">
                             </div>
 
+                            {% if campo_erro == "senha" %}
+                            <div class="text-danger small mt-1">
+                                {{ mensagem_erro }}
+                            </div>
+                            {% endif %}
+
                         </div>
 
 
@@ -271,30 +424,183 @@
 
                             </div>
 
+                            {% if campo_erro == "confirmar_senha" %}
+                            <div class="text-danger small mt-1">
+                                {{ mensagem_erro }}
+                            </div>
+                            {% endif %}
+
                         </div>
 
 
-                        <div class="form-check mb-4">
+                        <!-- TERMOS E PRIVACIDADE -->
 
-                            <input class="form-check-input" type="checkbox" required id="termos">
+                        <div class="mb-4">
+
+                            <div class="accordion" id="accordionTermos">
+
+                                <!-- TERMOS DE USO -->
+                                <div class="accordion-item">
+
+                                    <h2 class="accordion-header" id="headingTermos">
+
+                                        <button class="accordion-button collapsed" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#collapseTermos"
+                                            aria-expanded="false" aria-controls="collapseTermos">
+
+                                            <i class="bi bi-file-text me-2"></i>
+                                            Termos de Uso
+
+                                        </button>
+
+                                    </h2>
+
+                                    <div id="collapseTermos" class="accordion-collapse collapse"
+                                        aria-labelledby="headingTermos" data-bs-parent="#accordionTermos">
+
+                                        <div class="accordion-body">
+
+                                            <h6>1. Aceitação dos termos</h6>
+
+                                            <p>
+                                                Ao utilizar esta plataforma, o usuário declara estar
+                                                ciente e de acordo com os presentes Termos de Uso.
+                                            </p>
+
+                                            <h6>2. Utilização da plataforma</h6>
+
+                                            <p>
+                                                Esta plataforma tem finalidade informativa e busca
+                                                disponibilizar recursos relacionados à prevenção e
+                                                conscientização sobre problemas relacionados a apostas.
+                                            </p>
+
+                                            <h6>3. Responsabilidades do usuário</h6>
+
+                                            <p>
+                                                O usuário é responsável pelas informações fornecidas
+                                                durante o cadastro e pela utilização adequada dos
+                                                recursos disponibilizados pela plataforma.
+                                            </p>
+
+                                            <h6>4. Alterações</h6>
+
+                                            <p>
+                                                Estes termos poderão ser atualizados para adequação
+                                                às necessidades da plataforma e à legislação aplicável.
+                                            </p>
+
+                                            <hr>
+
+                                            <p class="text-muted mb-0">
+                                                <small>
+                                                    Texto provisório. Os termos definitivos serão
+                                                    elaborados após a revisão das informações legais.
+                                                </small>
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- POLÍTICA DE PRIVACIDADE -->
+                                <div class="accordion-item">
+
+                                    <h2 class="accordion-header" id="headingPrivacidade">
+
+                                        <button class="accordion-button collapsed" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#collapsePrivacidade"
+                                            aria-expanded="false" aria-controls="collapsePrivacidade">
+
+                                            <i class="bi bi-shield-check me-2"></i>
+                                            Política de Privacidade
+
+                                        </button>
+
+                                    </h2>
+
+                                    <div id="collapsePrivacidade" class="accordion-collapse collapse"
+                                        aria-labelledby="headingPrivacidade" data-bs-parent="#accordionTermos">
+
+                                        <div class="accordion-body">
+
+                                            <h6>1. Informações coletadas</h6>
+
+                                            <p>
+                                                A plataforma poderá coletar informações fornecidas
+                                                pelo usuário durante o processo de cadastro e utilização
+                                                dos seus recursos.
+                                            </p>
+
+                                            <h6>2. Utilização das informações</h6>
+
+                                            <p>
+                                                As informações coletadas serão utilizadas para permitir
+                                                o funcionamento da plataforma, autenticação do usuário
+                                                e disponibilização dos recursos oferecidos.
+                                            </p>
+
+                                            <h6>3. Proteção dos dados</h6>
+
+                                            <p>
+                                                A plataforma adotará medidas técnicas e organizacionais
+                                                destinadas à proteção das informações dos usuários.
+                                            </p>
+
+                                            <h6>4. Direitos do usuário</h6>
+
+                                            <p>
+                                                O usuário poderá exercer os direitos previstos na
+                                                legislação aplicável em relação aos seus dados pessoais.
+                                            </p>
+
+                                            <hr>
+
+                                            <p class="text-muted mb-0">
+                                                <small>
+                                                    Texto provisório. A política definitiva será
+                                                    elaborada após a pesquisa e revisão da legislação
+                                                    aplicável.
+                                                </small>
+                                            </p>
+
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+
+                        <!-- ACEITE -->
+
+                        <div class="form-check mb-3">
+
+                            <input class="form-check-input" type="checkbox" id="termos" name="termos" value="aceito"
+                                required>
 
                             <label class="form-check-label" for="termos">
-
-                                Li e aceito os
-                                <a href="#">Termos de Uso</a>
-                                e a
-                                <a href="#">Política de Privacidade</a>.
-
+                                Li e aceito os Termos de Uso e a Política de Privacidade.
                             </label>
+
+                            {% if campo_erro == "termos" %}
+                            <div class="text-danger small mt-1">
+                                {{ mensagem_erro }}
+                            </div>
+                            {% endif %}
 
                         </div>
 
-
-                        <button class="btn btn-primary w-100 py-2 fw-bold">
-
-                            Criar Conta
-
+                        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
+                            Solicitar Cadastro
                         </button>
+
                     </form>
 
                     <div class="text-center mt-4">
@@ -310,231 +616,17 @@
 
                     </div>
 
+                </div> <!-- fecha card -->
 
-                    <script>
-                        // =======================
-                        // MOSTRAR / OCULTAR SENHA
-                        // =======================
+            </div> <!-- fecha col-lg-8 -->
 
-                        function toggleSenha(campoId, iconeId) {
+        </div> <!-- fecha row -->
 
-                            const campo = document.getElementById(campoId);
-                            const icone = document.getElementById(iconeId);
+    </div> <!-- fecha container-fluid -->
 
-                            if (campo.type === "password") {
-                                campo.type = "text";
-                                icone.classList.remove("bi-eye");
-                                icone.classList.add("bi-eye-slash");
-                            } else {
-                                campo.type = "password";
-                                icone.classList.remove("bi-eye-slash");
-                                icone.classList.add("bi-eye");
-                            }
 
-                        }
+    {% endblock %}
 
-
-
-                        // =======================
-                        // MÁSCARA TELEFONE
-                        // =======================
-
-                        const telefone = document.getElementById("telefone");
-
-                        telefone.addEventListener("input", function () {
-
-                            let valor = this.value.replace(/\D/g, "");
-
-                            valor = valor.replace(/^(\d{2})(\d)/, "($1) $2");
-                            valor = valor.replace(/(\d{5})(\d)/, "$1-$2");
-
-                            this.value = valor;
-
-                        });
-
-
-
-                        // =======================
-                        // MÁSCARA CEP
-                        // =======================
-
-                        // =======================
-                        // MÁSCARA CEP
-                        // =======================
-
-                        // =======================
-                        // CEP
-                        // =======================
-
-                        const cep = document.getElementById("cep");
-                        const erroCep = document.getElementById("erroCep");
-
-
-                        function buscarCEP() {
-
-                            const valor = cep.value.replace(/\D/g, "");
-
-                            if (valor.length !== 8) {
-                                return;
-                            }
-
-
-                            // limpa mensagens anteriores
-                            cep.classList.remove("is-invalid");
-                            cep.classList.remove("is-valid");
-
-                            if (erroCep) {
-                                erroCep.textContent = "";
-                            }
-
-
-                            fetch(`https://viacep.com.br/ws/${valor}/json/`)
-                                .then(res => res.json())
-                                .then(dados => {
-
-
-                                    if (dados.erro) {
-
-
-                                        cep.classList.add("is-invalid");
-
-                                        if (erroCep) {
-                                            erroCep.textContent = "CEP não encontrado.";
-                                        }
-
-
-                                        document.getElementById("rua").value = "";
-                                        document.getElementById("bairro").value = "";
-                                        document.getElementById("cidade").value = "";
-                                        document.getElementById("estado").value = "";
-
-
-                                        return;
-
-                                    }
-
-
-
-                                    document.getElementById("rua").value = dados.logradouro;
-                                    document.getElementById("bairro").value = dados.bairro;
-                                    document.getElementById("cidade").value = dados.localidade;
-                                    document.getElementById("estado").value = dados.uf;
-
-
-                                    cep.classList.add("is-valid");
-
-
-                                })
-
-
-                                .catch(() => {
-
-
-                                    cep.classList.add("is-invalid");
-
-
-                                    if (erroCep) {
-                                        erroCep.textContent = "Erro ao consultar o CEP.";
-                                    }
-
-
-                                });
-
-                        }
-
-
-
-                        // =======================
-                        // MÁSCARA CEP
-                        // =======================
-
-                        cep.addEventListener("input", function () {
-
-
-                            let valor = this.value.replace(/\D/g, "");
-
-
-                            // máximo 8 números
-                            valor = valor.substring(0, 8);
-
-
-                            // aplica máscara 00000-000
-                            if (valor.length > 5) {
-
-                                valor = valor.replace(/^(\d{5})(\d)/, "$1-$2");
-
-                            }
-
-
-                            this.value = valor;
-
-
-
-                            // remove mensagens enquanto digita
-                            cep.classList.remove("is-invalid");
-                            cep.classList.remove("is-valid");
-
-
-                            if (erroCep) {
-                                erroCep.textContent = "";
-                            }
-
-
-
-                            // busca automaticamente
-                            if (valor.replace(/\D/g, "").length === 8) {
-
-                                buscarCEP();
-
-                            }
-
-
-                        });
-
-
-
-                        // =======================
-                        // FORÇA DA SENHA
-                        // =======================
-
-                        const senha = document.getElementById("senha");
-
-                        senha.addEventListener("keyup", () => {
-
-                            const texto = senha.value;
-
-                            const forca = document.getElementById("forcaSenha");
-
-                            let pontos = 0;
-
-                            if (texto.length >= 8 && texto.length <= 16)
-                                pontos++;
-
-                            if (texto.length > 16) {
-                                forca.innerHTML = "<span class='text-danger'>Máximo de 16 caracteres</span>";
-                                return;
-                            }
-
-                            if (/[A-Z]/.test(texto))
-                                pontos++;
-
-                            if (/[0-9]/.test(texto))
-                                pontos++;
-
-                            if (/[!@#$%^&*(),.?":{}|<>]/.test(texto))
-                                pontos++;
-
-
-
-                            if (pontos <= 1) { forca.innerHTML = "<span class='text-danger'>Senha fraca</span>"; } else
-                                if (pontos == 2 || pontos == 3) {
-                                    forca.innerHTML = "<span class='text-warning'>Senha média</span>";
-                                } else {
-                                    forca.innerHTML = "<span class='text-success'>Senha forte</span>";
-                                }
-                        });
-
-
-                        src = "{{ url_for('static', filename='js/cadastro_usuario.js') }}" ></script>
-
-                    {% endblock %}
+    {% block scripts %}
+    <script src="{{ url_for('static', filename='js/cadastro_usuario.js') }}"></script>
+    {% endblock %}
