@@ -1,4 +1,4 @@
-import secrets, re, json, os, traceback, uuid
+import secrets, re, json, os, traceback, uuid, mysql.connector
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -9,6 +9,43 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 MODERADOR = True
 app.secret_key = secrets.token_hex(16)
+# =========================
+# CONEXÃO COM MYSQL
+# =========================
+
+db_config = {
+    "host": "localhost",
+    "user": "root",
+    "port": 3305,
+    "password": "Behemoth666**",
+    "database": "plataforma_apostas"
+}
+
+def get_db_connection():
+    return mysql.connector.connect(**db_config)
+
+def testar_banco():
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor()
+
+        cursor.execute("SELECT DATABASE()")
+        banco = cursor.fetchone()
+
+        print("================================")
+        print("BANCO CONECTADO:", banco[0])
+        print("================================")
+
+        cursor.close()
+        conexao.close()
+
+    except Exception as erro:
+        print("================================")
+        print("ERRO AO CONECTAR AO MYSQL:")
+        print(erro)
+        print("================================")
+        
+        
 usuarios = []
 profissionais = []
 
@@ -140,6 +177,14 @@ def cadastro_usuario():
     }
 
     if request.method == 'POST':
+        
+        print("================================")
+        print("ENTROU NO POST DO CADASTRO")
+        print("EMAIL RECEBIDO:", request.form.get("email"))
+        print("SENHA RECEBIDA:", bool(request.form.get("senha")))
+        print("================================")
+        
+        
 
         # captura TODOS os campos
         dados = {
@@ -263,15 +308,115 @@ def cadastro_usuario():
                 campo_erro="termos",
                 mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
             )
+        # =========================
+        # VERIFICA SE O EMAIL JÁ EXISTE NO MYSQL
+        # =========================
 
-        # EMAIL JÁ CADASTRADO
-        usuario_existente = next(
-            (u for u in usuarios if u["email"].lower() == dados["email"]),
-            None
-        )
+        conexao = None
+        cursor = None
 
-        if usuario_existente:
-            flash("Este email já está cadastrado.", "warning")
+        try:
+            conexao = get_db_connection()
+            cursor = conexao.cursor()
+
+            cursor.execute(
+                "SELECT id FROM usuarios WHERE email = %s",
+                (dados["email"],)
+            )
+
+            usuario_existente = cursor.fetchone()
+
+            if usuario_existente:
+                flash("Este email já está cadastrado.", "warning")
+
+                return render_template(
+                    "cadastro_usuario.html",
+                    dados=dados,
+                    campo_erro=None,
+                    mensagem_erro=""
+                )
+
+            # =========================
+            # CRIA O HASH DA SENHA
+            # =========================
+
+            senha_hash = generate_password_hash(senha)
+
+            # =========================
+            # INSERE O USUÁRIO NO MYSQL
+            # =========================
+            
+            print("================================")
+            print("VALOR DO NUMERO:", repr(dados["numero"]))
+            print("TAMANHO DO NUMERO:", len(dados["numero"]))
+            print("================================")
+
+            cursor.execute(
+                """
+                INSERT INTO usuarios (
+                    nome,
+                    sobrenome,
+                    cpf,
+                    data_nascimento,
+                    sexo,
+                    email,
+                    telefone,
+                    cep,
+                    estado,
+                    cidade,
+                    rua,
+                    numero,
+                    bairro,
+                    senha_hash,
+                    tipo,
+                    status,
+                    email_confirmado,
+                    termos_aceitos
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s
+                )
+                """,
+                (
+                    dados["nome"],
+                    dados["sobrenome"],
+                    dados["cpf"],
+                    data_nascimento.strftime("%Y-%m-%d"),
+                    dados["sexo"],
+                    dados["email"],
+                    dados["telefone"],
+                    dados["cep"],
+                    dados["estado"],
+                    dados["cidade"],
+                    dados["rua"],
+                    dados["numero"],
+                    dados["bairro"],
+                    senha_hash,
+                    "usuario",
+                    "ativo",
+                    False,
+                    True
+                )
+            )
+
+            conexao.commit()
+
+            print("USUÁRIO INSERIDO NO MYSQL:", dados["email"])
+
+        except Exception as erro:
+
+            if conexao:
+                conexao.rollback()
+
+            print("ERRO AO CADASTRAR USUÁRIO NO MYSQL:")
+            traceback.print_exc()
+
+            flash(
+                "Ocorreu um erro ao realizar o cadastro. Tente novamente.",
+                "danger"
+            )
 
             return render_template(
                 "cadastro_usuario.html",
@@ -280,39 +425,27 @@ def cadastro_usuario():
                 mensagem_erro=""
             )
 
-        # SENHA HASH
-        senha_hash = generate_password_hash(senha)
+        finally:
 
-        # NOVO USUÁRIO
-        novo_usuario = {
-            "id": len(usuarios) + 1,
-            "nome": dados["nome"],
-            "sobrenome": dados["sobrenome"],
-            "cpf": dados["cpf"],
-            "data_de_nascimento": dados["data_de_nascimento"],
-            "sexo": dados["sexo"],
-            "email": dados["email"],
-            "telefone": dados["telefone"],
-            "cep": dados["cep"],
-            "rua": dados["rua"],
-            "numero": dados["numero"],
-            "bairro": dados["bairro"],
-            "cidade": dados["cidade"],
-            "estado": dados["estado"],
-            "senha": senha_hash,
-            "email_confirmado": False,
-            "tipo": "usuario"
-        }
+            if cursor:
+                cursor.close()
 
-        usuarios.append(novo_usuario)
+            if conexao:
+                conexao.close()
 
-        # EMAIL
+        # =========================
+        # EMAIL DE CONFIRMAÇÃO
+        # =========================
+
         if enviar_email_confirmacao(dados["email"]):
+
             flash(
                 "Conta criada! Verifique seu email para confirmar o cadastro.",
                 "success"
             )
+
         else:
+
             flash(
                 "Conta criada, mas houve erro ao enviar o email de confirmação.",
                 "warning"
@@ -320,7 +453,10 @@ def cadastro_usuario():
 
         return redirect(url_for('login'))
 
+    # =========================
     # GET
+    # =========================
+
     return render_template(
         'cadastro_usuario.html',
         dados=dados,
@@ -1649,6 +1785,8 @@ def ajuda():
     ]
 
     return render_template("ajuda.html", locais=locais)
+
+testar_banco()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
