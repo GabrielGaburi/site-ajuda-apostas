@@ -7,7 +7,6 @@ from itsdangerous import URLSafeTimedSerializer
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
-MODERADOR = True
 app.secret_key = secrets.token_hex(16)
 # =========================
 # CONEXÃO COM MYSQL
@@ -471,41 +470,93 @@ def confirmar_email(token):
         email = serializer.loads(
             token,
             salt='confirmacao-email',
-            max_age=3600  # 1 hora
+            max_age=3600
         )
 
     except Exception:
         flash("Link inválido ou expirado.", "danger")
         return redirect(url_for("login"))
 
-    # Procura primeiro entre os usuários
-    cadastro = next(
-        (u for u in usuarios if u["email"].lower() == email.lower()),
-        None
-    )
+    conexao = None
+    cursor = None
 
-    # Se não encontrou, procura entre os profissionais
-    if cadastro is None:
-        cadastro = next(
-            (p for p in profissionais if p["email"].lower() == email.lower()),
-            None
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # Procura o email no MySQL
+        cursor.execute(
+            """
+            SELECT id, email, email_confirmado, tipo
+            FROM usuarios
+            WHERE email = %s
+            """,
+            (email.lower(),)
         )
 
-    # Não encontrou em nenhuma lista
-    if cadastro is None:
-        flash("Cadastro não encontrado.", "danger")
+        usuario = cursor.fetchone()
+
+        # Email não encontrado
+        if not usuario:
+            flash("Cadastro não encontrado.", "danger")
+            return redirect(url_for("login"))
+
+        # Já confirmado
+        if usuario["email_confirmado"]:
+            flash(
+                "E-mail já confirmado. Faça login.",
+                "info"
+            )
+            return redirect(url_for("login"))
+
+        # Confirma o email
+        cursor.execute(
+            """
+            UPDATE usuarios
+            SET email_confirmado = TRUE
+            WHERE id = %s
+            """,
+            (usuario["id"],)
+        )
+
+        conexao.commit()
+
+        print("================================")
+        print("EMAIL CONFIRMADO")
+        print("ID:", usuario["id"])
+        print("EMAIL:", usuario["email"])
+        print("TIPO:", usuario["tipo"])
+        print("================================")
+
+        flash(
+            "E-mail confirmado com sucesso! Agora você pode fazer login.",
+            "success"
+        )
+
         return redirect(url_for("login"))
 
-    # Já confirmou anteriormente
-    if cadastro["email_confirmado"]:
-        flash("E-mail já confirmado. Faça login.", "info")
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO CONFIRMAR EMAIL NO MYSQL:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao confirmar o email.",
+            "danger"
+        )
+
         return redirect(url_for("login"))
 
-    # Confirma o cadastro
-    cadastro["email_confirmado"] = True
+    finally:
 
-    flash("E-mail confirmado com sucesso! Agora você pode fazer login.", "success")
-    return redirect(url_for("login"))
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
 
 # Funções auxiliares
 def carregar_forum():
@@ -537,10 +588,6 @@ def senha_valida(senha):
 # Carregar tópicos existentes
 forum = carregar_forum()
 
-
-# Usuário atual e flag de moderador (apenas para exemplo, normalmente viria do login)
-usuario_atual = "Anônimo"
-moderador = True  # Defina como True apenas para você, o moderador
 
 
 
@@ -732,13 +779,180 @@ def cadastro_profissional():
                 mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
             )
 
-        email_existente = next(
-            (u for u in usuarios + profissionais if u["email"].lower() == dados["email"]),
-            None
-        )
+                # =========================
+        # VERIFICA SE O EMAIL JÁ EXISTE NO MYSQL
+        # =========================
 
-        if email_existente:
-            flash("Este email já está cadastrado.", "warning")
+        conexao = None
+        cursor = None
+
+        try:
+            conexao = get_db_connection()
+            cursor = conexao.cursor()
+
+            cursor.execute(
+                """
+                SELECT id
+                FROM usuarios
+                WHERE email = %s
+                """,
+                (dados["email"],)
+            )
+
+            usuario_existente = cursor.fetchone()
+
+            if usuario_existente:
+                flash("Este email já está cadastrado.", "warning")
+
+                return render_template(
+                    "cadastro_profissional.html",
+                    dados=dados,
+                    campo_erro="email",
+                    mensagem_erro="Este email já está cadastrado."
+                )
+
+            # =========================
+            # CRIA O HASH DA SENHA
+            # =========================
+
+            senha_hash = generate_password_hash(senha)
+
+            # =========================
+            # SALVA A FOTO
+            # =========================
+
+            nome_original = secure_filename(foto.filename)
+            extensao = os.path.splitext(nome_original)[1].lower()
+
+            nome_foto = f"{uuid.uuid4().hex}{extensao}"
+
+            caminho_foto = os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                nome_foto
+            )
+
+            foto.save(caminho_foto)
+
+            # =========================
+            # INSERE O USUÁRIO
+            # =========================
+
+            cursor.execute(
+                """
+                INSERT INTO usuarios (
+                    nome,
+                    sobrenome,
+                    cpf,
+                    data_nascimento,
+                    sexo,
+                    email,
+                    telefone,
+                    cep,
+                    estado,
+                    cidade,
+                    rua,
+                    numero,
+                    bairro,
+                    senha_hash,
+                    tipo,
+                    status,
+                    email_confirmado,
+                    termos_aceitos
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s
+                )
+                """,
+                (
+                    dados["nome"],
+                    dados["sobrenome"],
+                    dados["cpf"],
+                    data_nascimento.strftime("%Y-%m-%d"),
+                    dados["sexo"],
+                    dados["email"],
+                    dados["telefone"],
+                    dados["cep"],
+                    dados["estado"],
+                    dados["cidade"],
+                    dados["rua"],
+                    dados["numero"],
+                    dados["bairro"],
+                    senha_hash,
+                    "profissional",
+                    "ativo",
+                    False,
+                    True
+                )
+            )
+
+            # ID do usuário recém-criado
+            usuario_id = cursor.lastrowid
+
+            print("================================")
+            print("USUÁRIO PROFISSIONAL CRIADO")
+            print("ID:", usuario_id)
+            print("EMAIL:", dados["email"])
+            print("================================")
+
+            # =========================
+            # INSERE O PROFISSIONAL
+            # =========================
+
+            cursor.execute(
+                """
+                INSERT INTO profissionais (
+                    usuario_id,
+                    crp,
+                    uf_crp,
+                    experiencia,
+                    especialidade,
+                    faculdade,
+                    pos,
+                    biografia,
+                    foto,
+                    status_aprovacao
+                )
+                VALUES (
+                    %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s
+                )
+                """,
+                (
+                    usuario_id,
+                    dados["crp"],
+                    dados["uf_crp"],
+                    dados["experiencia"],
+                    dados["especialidade"],
+                    dados["faculdade"],
+                    dados["pos"],
+                    dados["biografia"],
+                    nome_foto,
+                    "pendente"
+                )
+            )
+
+            conexao.commit()
+
+            print("================================")
+            print("PROFISSIONAL INSERIDO NO MYSQL")
+            print("USUARIO_ID:", usuario_id)
+            print("CRP:", dados["crp"])
+            print("================================")
+
+        except Exception:
+            if conexao:
+                conexao.rollback()
+
+            print("ERRO AO CADASTRAR PROFISSIONAL NO MYSQL:")
+            traceback.print_exc()
+
+            flash(
+                "Ocorreu um erro ao realizar o cadastro. Tente novamente.",
+                "danger"
+            )
+
             return render_template(
                 "cadastro_profissional.html",
                 dados=dados,
@@ -746,46 +960,30 @@ def cadastro_profissional():
                 mensagem_erro=""
             )
 
-        senha_hash = generate_password_hash(senha)
-        nome_foto = f"{uuid.uuid4().hex}{extensao}"
-        caminho_foto = os.path.join(app.config["UPLOAD_FOLDER"], nome_foto)
-        foto.save(caminho_foto)
+        finally:
+            if cursor:
+                cursor.close()
 
-        novo_profissional = {
-            "id": len(profissionais) + 1,
-            "nome": dados["nome"],
-            "sobrenome": dados["sobrenome"],
-            "data_de_nascimento": dados["data_de_nascimento"],
-            "sexo": dados["sexo"],
-            "email": dados["email"],
-            "telefone": dados["telefone"],
-            "cpf": dados["cpf"],
-            "cep": dados["cep"],
-            "rua": dados["rua"],
-            "numero": dados["numero"],
-            "bairro": dados["bairro"],
-            "cidade": dados["cidade"],
-            "estado": dados["estado"],
-            "crp": dados["crp"],
-            "uf_crp": dados["uf_crp"],
-            "experiencia": dados["experiencia"],
-            "especialidade": dados["especialidade"],
-            "faculdade": dados["faculdade"],
-            "pos": dados["pos"],
-            "biografia": dados["biografia"],
-            "foto": nome_foto,
-            "modalidade": "Online",
-            "senha": senha_hash,
-            "email_confirmado": False,
-            "tipo": "profissional"
-        }
+            if conexao:
+                conexao.close()
 
-        profissionais.append(novo_profissional)
+        # =========================
+        # ENVIA EMAIL DE CONFIRMAÇÃO
+        # =========================
 
         if enviar_email_confirmacao(dados["email"]):
-            flash("Cadastro realizado! Confirme seu email.", "success")
+
+            flash(
+                "Cadastro realizado! Confirme seu email.",
+                "success"
+            )
+
         else:
-            flash("Cadastro criado, mas houve erro no envio do email.", "warning")
+
+            flash(
+                "Cadastro criado, mas houve erro no envio do email.",
+                "warning"
+            )
 
         return redirect(url_for("login"))
 
@@ -795,15 +993,6 @@ def cadastro_profissional():
         campo_erro=None,
         mensagem_erro=""
     )
-
-
-
-
-
-    
-    
-
-    
    
 
 @app.route("/")
@@ -902,111 +1091,282 @@ def forum_novo():
 
 @app.route("/forum/<int:topico_id>", methods=["GET", "POST"])
 def forum_topico(topico_id):
-    topico = next((t for t in forum if t["id"] == topico_id), None)
+
+    topico = next(
+        (t for t in forum if t["id"] == topico_id),
+        None
+    )
+
     if not topico:
         abort(404)
 
-    usuario_atual = request.form.get("autor") or "Anônimo"
+    # Verifica se existe usuário logado
+    usuario_id = session.get("usuario_id")
+
+    if not usuario_id:
+        flash("Você precisa estar logado para participar do fórum.", "warning")
+        return redirect(url_for("login"))
 
     if request.method == "POST":
-        mensagem = request.form.get("mensagem")
+
+        mensagem = request.form.get("mensagem", "").strip()
 
         if mensagem:
-            topico["mensagens"].append({
-                "autor": usuario_atual,
+
+            nova_mensagem = {
+                "usuario_id": usuario_id,
                 "mensagem": mensagem,
                 "data": datetime.now().strftime("%d/%m/%Y %H:%M")
-            })
+            }
+
+            topico["mensagens"].append(nova_mensagem)
+
             salvar_forum(forum)
-            return redirect(url_for("forum_topico", topico_id=topico_id))
+
+            return redirect(
+                url_for("forum_topico", topico_id=topico_id)
+            )
+
+    # Verifica se o usuário logado é administrador
+    moderador = session.get("tipo_usuario") == "admin"
 
     return render_template(
         "topico.html",
         topico=topico,
-        usuario_atual=usuario_atual,
-        moderador=MODERADOR
+        usuario_id=usuario_id,
+        moderador=moderador
     )
 
-
-@app.route("/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir", methods=["POST"])
+@app.route(
+    "/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir",
+    methods=["POST"]
+)
+@app.route(
+    "/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir",
+    methods=["POST"]
+)
 def excluir_mensagem(topico_id, msg_index):
-    topico = next((t for t in forum if t["id"] == topico_id), None)
+
+    topico = next(
+        (t for t in forum if t["id"] == topico_id),
+        None
+    )
+
     if not topico:
         abort(404)
 
+    usuario_id = session.get("usuario_id")
+
+    if not usuario_id:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
     try:
-        topico["mensagens"].pop(msg_index)
-        salvar_forum(forum)
+        mensagem = topico["mensagens"][msg_index]
     except IndexError:
         abort(404)
 
-    return redirect(url_for("forum_topico", topico_id=topico_id))
+    # Administrador pode excluir qualquer mensagem
+    if session.get("tipo_usuario") == "admin":
+
+        topico["mensagens"].pop(msg_index)
+
+        salvar_forum(forum)
+
+        return redirect(
+            url_for("forum_topico", topico_id=topico_id)
+        )
+
+    # Usuário comum só pode excluir a própria mensagem
+    if mensagem.get("usuario_id") != usuario_id:
+
+        flash(
+            "Você não pode excluir esta mensagem.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("forum_topico", topico_id=topico_id)
+        )
+
+    topico["mensagens"].pop(msg_index)
+
+    salvar_forum(forum)
+
+    return redirect(
+        url_for("forum_topico", topico_id=topico_id)
+    )
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
 
     if request.method == "POST":
 
-        # Dados digitados
+        # =========================
+        # DADOS DIGITADOS
+        # =========================
+
         email = request.form.get("email", "").strip().lower()
         senha = request.form.get("senha", "")
 
-        # Procura primeiro nos usuários
-        usuario = next(
-            (u for u in usuarios if u["email"].lower() == email),
-            None
-        )
+        conexao = None
+        cursor = None
 
-        # Se não encontrou, procura nos profissionais
-        if usuario is None:
-            usuario = next(
-                (p for p in profissionais if p["email"].lower() == email),
-                None
+        try:
+
+            # =========================
+            # CONECTA AO MYSQL
+            # =========================
+
+            conexao = get_db_connection()
+            cursor = conexao.cursor(dictionary=True)
+
+            # =========================
+            # PROCURA O EMAIL
+            # =========================
+
+            cursor.execute(
+                """
+                SELECT
+                    id,
+                    nome,
+                    sobrenome,
+                    email,
+                    senha_hash,
+                    tipo,
+                    status,
+                    email_confirmado
+                FROM usuarios
+                WHERE email = %s
+                """,
+                (email,)
             )
 
-        # Email não encontrado
-        if usuario is None:
-            flash("Email não encontrado.", "danger")
-            return render_template(
-                "login.html",
-                email=email
-            )
+            usuario = cursor.fetchone()
 
-        # Verifica confirmação do email
-        if not usuario.get("email_confirmado", False):
+            # =========================
+            # EMAIL NÃO ENCONTRADO
+            # =========================
+
+            if usuario is None:
+
+                flash(
+                    "Email não encontrado.",
+                    "danger"
+                )
+
+                return render_template(
+                    "login.html",
+                    email=email
+                )
+
+            # =========================
+            # VERIFICA STATUS
+            # =========================
+
+            if usuario["status"] == "banido":
+
+                flash(
+                    "Esta conta está bloqueada.",
+                    "danger"
+                )
+
+                return render_template(
+                    "login.html",
+                    email=email
+                )
+
+            # =========================
+            # VERIFICA EMAIL
+            # =========================
+
+            if not usuario["email_confirmado"]:
+
+                flash(
+                    "Confirme seu email antes de fazer login.",
+                    "warning"
+                )
+
+                return render_template(
+                    "login.html",
+                    email=email
+                )
+
+            # =========================
+            # VERIFICA SENHA
+            # =========================
+
+            if not check_password_hash(
+                usuario["senha_hash"],
+                senha
+            ):
+
+                flash(
+                    "Senha incorreta.",
+                    "danger"
+                )
+
+                return render_template(
+                    "login.html",
+                    email=email
+                )
+
+            # =========================
+            # LOGIN REALIZADO
+            # =========================
+
+            session["usuario_id"] = usuario["id"]
+            session["usuario_nome"] = usuario["nome"]
+            session["tipo_usuario"] = usuario["tipo"]
+
+            print("================================")
+            print("LOGIN REALIZADO")
+            print("ID:", usuario["id"])
+            print("NOME:", usuario["nome"])
+            print("EMAIL:", usuario["email"])
+            print("TIPO:", usuario["tipo"])
+            print("================================")
+
             flash(
-                "Confirme seu email antes de fazer login.",
-                "warning"
+                f"Bem-vindo(a), {usuario['nome']}!",
+                "success"
             )
+
+            return redirect(
+                url_for("dashboard")
+            )
+
+        except Exception:
+
+            if conexao:
+                conexao.rollback()
+
+            print("ERRO AO REALIZAR LOGIN NO MYSQL:")
+            traceback.print_exc()
+
+            flash(
+                "Ocorreu um erro ao realizar o login. Tente novamente.",
+                "danger"
+            )
+
             return render_template(
                 "login.html",
                 email=email
             )
 
-        # Verifica senha
-        if not check_password_hash(usuario["senha"], senha):
-            flash("Senha incorreta.", "danger")
+        finally:
 
-            return render_template(
-                "login.html",
-                email=email
-            )
+            if cursor:
+                cursor.close()
 
-        # Login OK
-        session["usuario_id"] = usuario["id"]
-        session["usuario_nome"] = usuario["nome"]
-        session["tipo_usuario"] = usuario.get("tipo", "usuario")
+            if conexao:
+                conexao.close()
 
-        flash(
-            f"Bem-vindo(a), {usuario['nome']}!",
-            "success"
-        )
-
-        return redirect(url_for("dashboard"))
-
+    # =========================
     # GET
-    return render_template("login.html")
+    # =========================
 
+    return render_template("login.html")
 @app.route('/escolher_cadastro')
 def escolher_cadastro():
     return render_template('escolher_cadastro.html')
