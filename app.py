@@ -1066,26 +1066,42 @@ def forum_home():
 # Criar novo tópico
 @app.route("/forum/novo", methods=["GET", "POST"])
 def forum_novo():
+
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado para criar um tópico.", "warning")
+        return redirect(url_for("login"))
+
     if request.method == "POST":
-        titulo = request.form.get("titulo")
-        autor = request.form.get("autor") or "Anônimo"
-        mensagem = request.form.get("mensagem")
-        
+
+        titulo = request.form.get("titulo", "").strip()
+        mensagem = request.form.get("mensagem", "").strip()
+
         if titulo and mensagem:
+
             novo_topico = {
                 "id": len(forum) + 1,
+
+                # Dono do tópico
+                "usuario_id": session["usuario_id"],
+                "usuario_nome": session["usuario_nome"],
+
                 "titulo": titulo,
+
                 "mensagens": [
                     {
-                        "autor": autor,
+                        "usuario_id": session["usuario_id"],
+                        "autor": session["usuario_nome"],
                         "mensagem": mensagem,
                         "data": datetime.now().strftime("%d/%m/%Y %H:%M")
                     }
                 ]
             }
+
             forum.append(novo_topico)
             salvar_forum(forum)
+
             return redirect(url_for("forum_home"))
+
     return render_template("novo_topico.html")
 
 
@@ -1103,32 +1119,46 @@ def forum_topico(topico_id):
     # Verifica se existe usuário logado
     usuario_id = session.get("usuario_id")
 
-    if not usuario_id:
-        flash("Você precisa estar logado para participar do fórum.", "warning")
-        return redirect(url_for("login"))
+    # Verifica se é administrador
+    moderador = session.get("tipo_usuario") == "admin"
+
+    # =====================================
+    # RESPOSTA NO TÓPICO
+    # =====================================
 
     if request.method == "POST":
+
+        # Visitante não pode responder
+        if not usuario_id:
+            flash(
+                "Você precisa estar logado para participar do fórum.",
+                "warning"
+            )
+
+            return redirect(url_for("login"))
 
         mensagem = request.form.get("mensagem", "").strip()
 
         if mensagem:
 
-            nova_mensagem = {
+            topico["mensagens"].append({
                 "usuario_id": usuario_id,
                 "mensagem": mensagem,
                 "data": datetime.now().strftime("%d/%m/%Y %H:%M")
-            }
-
-            topico["mensagens"].append(nova_mensagem)
+            })
 
             salvar_forum(forum)
 
             return redirect(
-                url_for("forum_topico", topico_id=topico_id)
+                url_for(
+                    "forum_topico",
+                    topico_id=topico_id
+                )
             )
 
-    # Verifica se o usuário logado é administrador
-    moderador = session.get("tipo_usuario") == "admin"
+    # =====================================
+    # MOSTRA O TÓPICO
+    # =====================================
 
     return render_template(
         "topico.html",
@@ -1136,17 +1166,18 @@ def forum_topico(topico_id):
         usuario_id=usuario_id,
         moderador=moderador
     )
+    
+@app.route("/forum/<int:topico_id>/excluir", methods=["POST"])
+def excluir_topico(topico_id):
 
-@app.route(
-    "/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir",
-    methods=["POST"]
-)
-@app.route(
-    "/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir",
-    methods=["POST"]
-)
-def excluir_mensagem(topico_id, msg_index):
+    # Precisa estar logado
+    usuario_id = session.get("usuario_id")
 
+    if not usuario_id:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
+    # Procura o tópico
     topico = next(
         (t for t in forum if t["id"] == topico_id),
         None
@@ -1155,33 +1186,35 @@ def excluir_mensagem(topico_id, msg_index):
     if not topico:
         abort(404)
 
-    usuario_id = session.get("usuario_id")
+    # =====================================
+    # ADMINISTRADOR
+    # =====================================
 
-    if not usuario_id:
-        flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
-
-    try:
-        mensagem = topico["mensagens"][msg_index]
-    except IndexError:
-        abort(404)
-
-    # Administrador pode excluir qualquer mensagem
     if session.get("tipo_usuario") == "admin":
 
-        topico["mensagens"].pop(msg_index)
-
+        forum.remove(topico)
         salvar_forum(forum)
 
-        return redirect(
-            url_for("forum_topico", topico_id=topico_id)
-        )
+        flash("Tópico excluído com sucesso.", "success")
 
-    # Usuário comum só pode excluir a própria mensagem
-    if mensagem.get("usuario_id") != usuario_id:
+        return redirect(url_for("forum_home"))
+
+    # =====================================
+    # IDENTIFICA O DONO DO TÓPICO
+    # =====================================
+
+
+
+    dono_id = topico.get("usuario_id")
+
+    # =====================================
+    # VERIFICA SE O USUÁRIO É O DONO
+    # =====================================
+
+    if dono_id != usuario_id:
 
         flash(
-            "Você não pode excluir esta mensagem.",
+            "Você só pode excluir seus próprios tópicos.",
             "danger"
         )
 
@@ -1189,13 +1222,105 @@ def excluir_mensagem(topico_id, msg_index):
             url_for("forum_topico", topico_id=topico_id)
         )
 
+    # =====================================
+    # EXCLUI O TÓPICO
+    # =====================================
+
+    forum.remove(topico)
+    salvar_forum(forum)
+
+    flash("Tópico excluído com sucesso.", "success")
+
+    return redirect(url_for("forum_home"))
+
+
+@app.route(
+    "/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir",
+    methods=["POST"]
+)
+def excluir_mensagem(topico_id, msg_index):
+
+    # Precisa estar logado
+    usuario_id = session.get("usuario_id")
+
+    if not usuario_id:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
+    # Procura o tópico
+    topico = next(
+        (t for t in forum if t["id"] == topico_id),
+        None
+    )
+
+    if not topico:
+        abort(404)
+
+    # Verifica se a mensagem existe
+    if msg_index < 0 or msg_index >= len(topico["mensagens"]):
+        abort(404)
+
+    mensagem = topico["mensagens"][msg_index]
+
+    # =====================================
+    # ADMINISTRADOR
+    # =====================================
+
+    if session.get("tipo_usuario") == "admin":
+
+        topico["mensagens"].pop(msg_index)
+        salvar_forum(forum)
+
+        flash("Mensagem excluída com sucesso.", "success")
+
+        return redirect(
+            url_for("forum_topico", topico_id=topico_id)
+        )
+        
+    # A mensagem inicial não pode ser excluída pelo usuário
+    if msg_index == 0 and session.get("tipo_usuario") != "admin":
+
+        flash(
+            "A mensagem inicial não pode ser excluída.",
+            "warning"
+        )
+
+        return redirect(
+            url_for("forum_topico", topico_id=topico_id)
+        )
+
+    # =====================================
+    # VERIFICA SE A MENSAGEM É DO USUÁRIO
+    # =====================================
+
+    if mensagem.get("usuario_id") != usuario_id:
+
+        flash(
+            "Você só pode excluir suas próprias mensagens.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("forum_topico", topico_id=topico_id)
+        )
+
+    # =====================================
+    # EXCLUI A MENSAGEM
+    # =====================================
+
     topico["mensagens"].pop(msg_index)
 
     salvar_forum(forum)
 
+    flash("Mensagem excluída com sucesso.", "success")
+
     return redirect(
         url_for("forum_topico", topico_id=topico_id)
     )
+
+
+
+
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
