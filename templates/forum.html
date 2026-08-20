@@ -1,25 +1,88 @@
 {% extends "base.html" %}
+
 {% block title %}Fórum{% endblock %}
+
 {% block content %}
 
 <div class="container my-5">
-    <h2 class="mb-4 text-center">Fórum Anônimo</h2>
 
-    <a href="{{ url_for('forum_novo') }}" class="btn btn-primary mb-3">Criar novo tópico</a>
+    <h2 class="mb-4 text-center">Fórum</h2>
+
+    {% if session.get("usuario_id") %}
+
+    <a href="{{ url_for('forum_novo') }}" class="btn btn-primary mb-3">
+        Criar novo tópico
+    </a>
+
+    {% else %}
+
+    <div class="alert alert-info">
+        Faça login para participar do fórum.
+    </div>
+
+    {% endif %}
+
 
     {% if forum %}
+
     {% for topico in forum %}
-    <div class="card mb-3">
+
+    <div class="card mb-3 shadow-sm">
+
         <div class="card-body">
-            <h5 class="card-title">{{ topico.titulo }}</h5>
-            <p class="card-text text-muted">Criado por Anônimo</p>
-            <a href="{{ url_for('forum_topico', topico_id=topico.id) }}" class="btn btn-outline-primary">Ver tópico</a>
+
+            <h5 class="card-title">
+                {{ topico.titulo }}
+            </h5>
+
+            <p class="card-text text-muted">
+                Criado por {{ topico.usuario_nome or "Usuário" }}
+            </p>
+
+
+            <div class="d-flex gap-2">
+
+                <!-- Ver tópico -->
+                <a href="{{ url_for('forum_topico', topico_id=topico.id) }}" class="btn btn-outline-primary">
+
+                    Ver tópico
+
+                </a>
+
+
+                <!-- Excluir tópico -->
+                {% if session.get("tipo_usuario") == "admin"
+                or topico.get("usuario_id") == session.get("usuario_id") %}
+
+                <form method="POST" action="{{ url_for('excluir_topico', topico_id=topico.id) }}"
+                    class="form-excluir-topico">
+
+                    <button type="submit" class="btn btn-outline-danger">
+
+                        Excluir tópico
+
+                    </button>
+
+                </form>
+
+                {% endif %}
+
+            </div>
+
         </div>
+
     </div>
+
     {% endfor %}
+
     {% else %}
-    <p class="text-muted">Nenhum tópico criado ainda. Seja o primeiro!</p>
+
+    <p class="text-muted text-center">
+        Nenhum tópico criado ainda. Seja o primeiro!
+    </p>
+
     {% endif %}
+
 </div>
 
 {% endblock %}
