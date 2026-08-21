@@ -1,15 +1,13 @@
 [
     {
         "id": 1,
-        "usuario_id": 4,
-        "usuario_nome": "Lucio",
-        "titulo": "Vicio em Apostas",
+        "titulo": "fda",
         "mensagens": [
             {
                 "usuario_id": 4,
                 "autor": "Lucio",
-                "mensagem": "Olá",
-                "data": "20/08/2026 10:42"
+                "mensagem": "sdadsa",
+                "data": "21/08/2026 10:13"
             }
         ]
     }
