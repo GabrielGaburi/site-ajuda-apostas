@@ -6,67 +6,43 @@
 
 <div class="container my-5">
 
-    <!-- TÍTULO DO TÓPICO -->
     <h2>{{ topico.titulo }}</h2>
 
+    {% if topico.mensagens %}
     <p class="text-muted">
-        Criado por {{ topico.usuario_nome or "Usuário" }}
+        Criado por {{ topico.mensagens[0].autor }}
     </p>
+    {% endif %}
 
     <hr>
 
-    <!-- MENSAGENS -->
+    <h4 class="mb-4">Mensagens</h4>
+
     {% for msg in topico.mensagens %}
 
     <div class="mb-3 p-3 border rounded position-relative">
 
-        <!-- IDENTIFICAÇÃO DA MENSAGEM -->
-        {% if loop.index0 == 0 %}
+        <strong>
+            {{ msg.autor }}
+        </strong>
 
-        <div class="mb-2">
-            <strong>Mensagem inicial</strong>
-        </div>
+        <small class="text-muted ms-2">
+            {{ msg.data }}
+        </small>
 
-        {% else %}
-
-        <div class="mb-2">
-            <strong>Comentário</strong>
-        </div>
-
-        {% endif %}
-
-
-        <!-- AUTOR E DATA -->
-        <div>
-
-            <strong>{{ msg.autor or "Usuário" }}</strong>
-
-            <small class="text-muted">
-                {{ msg.data }}
-            </small>
-
-        </div>
-
-
-        <!-- TEXTO -->
         <p class="mt-2 mb-0">
             {{ msg.mensagem }}
         </p>
 
+        {% if loop.index0 > 0 and
+        (msg.usuario_id == session["usuario_id"]
+        or session.get("tipo_usuario") == "admin") %}
 
-        <!-- EXCLUIR MENSAGEM -->
-        {% if msg.usuario_id == usuario_id or moderador %}
+        <form method="POST" action="{{ url_for('excluir_mensagem',
+                         topico_id=topico.id,
+                         msg_index=loop.index0) }}" class="position-absolute top-0 end-0 m-2">
 
-        <!-- A primeira mensagem só pode ser excluída pelo administrador -->
-        {% if loop.index0 > 0 or moderador %}
-
-        <form method="POST" action="{{ url_for(
-                          'excluir_mensagem',
-                          topico_id=topico.id,
-                          msg_index=loop.index0
-                      ) }}" class="position-absolute top-0 end-0 m-2">
-
-            <button type="submit" class="btn btn-sm btn-outline-danger">
+            <button type="submit" class="btn btn-sm btn-danger">
                 Excluir
             </button>
 
@@ -74,77 +50,38 @@
 
         {% endif %}
 
-        {% endif %}
-
     </div>
 
     {% endfor %}
 
-
-    <!-- ÁREA DE RESPOSTA -->
-    {% if usuario_id %}
-
     <hr>
-
-    <h4>Comentar</h4>
 
     <form method="POST">
 
         <div class="mb-3">
 
-            <label class="form-label">
-                Identificação
-            </label>
-
-            <input type="text" class="form-control" value="{{ usuario_nome }}" readonly>
-
-            <small class="text-muted">
-                Seu nome será exibido junto ao comentário.
-            </small>
+            <p class="fw-bold mb-0">
+                {{ usuario_nome }}
+            </p>
 
         </div>
-
 
         <div class="mb-3">
 
             <label class="form-label">
-                Comentário
+                Mensagem
             </label>
 
-            <textarea name="mensagem" class="form-control" rows="3" required></textarea>
+            <textarea name="mensagem" class="form-control" rows="4" placeholder="Escreva sua mensagem..."
+                required></textarea>
 
         </div>
 
-
         <button type="submit" class="btn btn-success">
-            Enviar comentário
+            Enviar
         </button>
 
     </form>
-
-    {% else %}
-
-    <hr>
-
-    <div class="alert alert-info text-center">
-
-        <strong>Quer participar da discussão?</strong>
-
-        <p class="mb-2">
-            Faça login ou crie uma conta para comentar.
-        </p>
-
-        <a href="{{ url_for('login') }}" class="btn btn-primary">
-            Fazer login
-        </a>
-
-        <a href="{{ url_for('escolher_cadastro') }}" class="btn btn-outline-primary">
-            Criar conta
-        </a>
-
-    </div>
-
-    {% endif %}
 
 </div>
 

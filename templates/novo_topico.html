@@ -15,14 +15,14 @@
                     <form method="POST">
 
                         <div class="mb-3">
-                            <label for="autor" class="form-label fw-semibold">Seu nome</label>
-                            <input type="text" class="form-control" id="autor" name="autor"
-                                placeholder="Opcional (padrão: Anônimo)">
-                            <small class="text-muted">
-                                Você pode usar qualquer nome ou permanecer anônimo.
-                            </small>
-                        </div>
+                            <label class="form-label fw-semibold">
+                                Você está criando este tópico como:
+                            </label>
 
+                            <p class="fw-bold mb-0">
+                                {{ usuario_nome }}
+                            </p>
+                        </div>
                         <div class="mb-3">
                             <label for="titulo" class="form-label fw-semibold">Título do tópico</label>
                             <input type="text" class="form-control" id="titulo" name="titulo"
