@@ -1116,6 +1116,7 @@ def forum_novo():
                 {
                     "usuario_id": usuario_id,
                     "autor": usuario_nome,
+                    "tipo_usuario": session.get("tipo_usuario"),
                     "mensagem": mensagem,
                     "data": datetime.now().strftime("%d/%m/%Y %H:%M")
                 }
@@ -1166,6 +1167,7 @@ def forum_topico(topico_id):
             topico["mensagens"].append({
                 "usuario_id": usuario_id,
                 "autor": usuario_nome,
+                "tipo_usuario": session.get("tipo_usuario"),
                 "mensagem": mensagem,
                 "data": datetime.now().strftime("%d/%m/%Y %H:%M")
             })
@@ -1300,6 +1302,7 @@ def login():
 
         email = request.form.get("email", "").strip().lower()
         senha = request.form.get("senha", "")
+        
 
         conexao = None
         cursor = None
@@ -2228,11 +2231,6 @@ def ajuda():
             "lat": -23.9608,
             "lng": -46.3336
         },
-       
-        
-        
-        
-      
 
     ]
 

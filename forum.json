@@ -10,5 +10,25 @@
                 "data": "21/08/2026 10:13"
             }
         ]
+    },
+    {
+        "id": 2,
+        "titulo": "Oi",
+        "mensagens": [
+            {
+                "usuario_id": 3,
+                "autor": "Gabriel",
+                "tipo_usuario": "profissional",
+                "mensagem": "Oi",
+                "data": "24/08/2026 09:41"
+            },
+            {
+                "usuario_id": 4,
+                "autor": "Lucio",
+                "tipo_usuario": "usuario",
+                "mensagem": "oi",
+                "data": "24/08/2026 09:42"
+            }
+        ]
     }
 ]
