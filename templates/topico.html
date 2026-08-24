@@ -24,6 +24,13 @@
 
         <strong>
             {{ msg.autor }}
+
+            {% if msg.tipo_usuario == "profissional" %}
+            🩺 <span class="text-muted">(Profissional)</span>
+
+            {% elif msg.tipo_usuario == "admin" %}
+            🛡️ <span class="text-muted">(Administrador)</span>
+            {% endif %}
         </strong>
 
         <small class="text-muted ms-2">
