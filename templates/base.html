@@ -70,11 +70,20 @@
 
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0">
 
-                            <!-- PERFIL -->
                             <li>
+                                {% if session.get("tipo_usuario") == "profissional" %}
+
+                                <a class="dropdown-item" href="{{ url_for('perfil_profissional') }}">
+                                    <i class="bi bi-person"></i> Meu Perfil
+                                </a>
+
+                                {% else %}
+
                                 <a class="dropdown-item" href="{{ url_for('perfil') }}">
                                     <i class="bi bi-person"></i> Meu Perfil
                                 </a>
+
+                                {% endif %}
                             </li>
 
                             <li>

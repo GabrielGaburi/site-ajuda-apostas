@@ -1,37 +1,84 @@
 {% extends "base.html" %}
 
+{% block title %}Painel{% endblock %}
+
 {% block content %}
+
 <div class="container my-5">
 
-    <h2 class="mb-4">Bem-vindo de volta 👋</h2>
+    <div class="mb-5">
+        <h2>Olá, {{ session["usuario_nome"] }}! 👋</h2>
+        <p class="text-muted">
+            Encontre informações, apoio e ferramentas para ajudá-lo.
+        </p>
+    </div>
 
-    <div class="row">
+    <div class="row g-4">
 
-        <div class="col-md-4 mb-3">
-            <div class="card p-3 shadow">
+        <!-- FÓRUM -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0 p-4">
+
+                <div class="fs-1 mb-3">💬</div>
+
                 <h5>Fórum</h5>
-                <p>Participe das discussões</p>
-                <a href="{{ url_for('forum_home') }}" class="btn btn-dark">Acessar</a>
+
+                <p class="text-muted">
+                    Converse, compartilhe experiências e participe
+                    das discussões da comunidade.
+                </p>
+
+                <a href="{{ url_for('forum_home') }}" class="btn btn-dark mt-auto">
+                    Acessar fórum
+                </a>
+
             </div>
         </div>
 
-        <div class="col-md-4 mb-3">
-            <div class="card p-3 shadow">
-                <h5>Ajuda</h5>
-                <p>Centros de apoio próximos</p>
-                <a href="{{ url_for('ajuda') }}" class="btn btn-dark">Ver mapa</a>
+
+        <!-- AJUDA -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0 p-4">
+
+                <div class="fs-1 mb-3">🗺️</div>
+
+                <h5>Encontre ajuda</h5>
+
+                <p class="text-muted">
+                    Encontre centros e serviços de apoio próximos
+                    de você.
+                </p>
+
+                <a href="{{ url_for('ajuda') }}" class="btn btn-dark mt-auto">
+                    Ver mapa
+                </a>
+
             </div>
         </div>
 
-        <div class="col-md-4 mb-3">
-            <div class="card p-3 shadow">
-                <h5>Bloqueio</h5>
-                <p>Ferramentas para controle</p>
-                <a href="{{ url_for('bloqueio') }}" class="btn btn-dark">Acessar</a>
+
+        <!-- BLOQUEIO -->
+        <div class="col-md-4">
+            <div class="card h-100 shadow-sm border-0 p-4">
+
+                <div class="fs-1 mb-3">🛡️</div>
+
+                <h5>Controle de apostas</h5>
+
+                <p class="text-muted">
+                    Acesse ferramentas que podem ajudar no controle
+                    e na redução do acesso às apostas.
+                </p>
+
+                <a href="{{ url_for('bloqueio') }}" class="btn btn-dark mt-auto">
+                    Acessar
+                </a>
+
             </div>
         </div>
 
     </div>
 
 </div>
+
 {% endblock %}
