@@ -127,28 +127,101 @@ def logout():
 # =========================
 @app.route("/perfil")
 def perfil():
-    # se não estiver logado
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
     if "usuario_id" not in session:
-        flash("Faça login para acessar seu perfil.", "warning")
+        flash(
+            "Faça login para acessar seu perfil.",
+            "warning"
+        )
         return redirect(url_for("login"))
+    
+    print("================================")
+    print("ACESSANDO PERFIL")
+    print("ID DA SESSÃO:", session.get("usuario_id"))
+    print("NOME DA SESSÃO:", session.get("usuario_nome"))
+    print("TIPO DA SESSÃO:", session.get("tipo_usuario"))
+    print("================================")
 
-    # procura usuário na lista
-    usuario = next(
-        (u for u in usuarios if u["id"] == session["usuario_id"]),
-        None
-    )
+    conexao = None
+    cursor = None
 
-    # segurança extra
-    if not usuario:
-        session.clear()
-        flash("Usuário não encontrado.", "danger")
-        return redirect(url_for("login"))
+    try:
 
-    # renderiza página de perfil
-    return render_template(
-        "perfil.html",
-        usuario=usuario
-    )
+        # =========================
+        # CONECTA AO MYSQL
+        # =========================
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # PROCURA USUÁRIO PELO ID
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM usuarios
+            WHERE id = %s
+            """,
+            (session["usuario_id"],)
+        )
+
+        usuario = cursor.fetchone()
+
+        # =========================
+        # USUÁRIO NÃO ENCONTRADO
+        # =========================
+
+        if not usuario:
+
+            session.clear()
+
+            flash(
+                "Usuário não encontrado.",
+                "danger"
+            )
+
+            return redirect(url_for("login"))
+
+        # =========================
+        # ABRE O PERFIL
+        # =========================
+
+        return render_template(
+            "dashboard_usuario.html",
+            usuario=usuario
+        )
+
+    except Exception:
+
+        print("================================")
+        print("ERRO AO CARREGAR PERFIL")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar seu perfil.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("dashboard")
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
 # Arquivo JSON para salvar o fórum
 FORUM_FILE = "forum.json"
 # =========================
@@ -549,6 +622,62 @@ def confirmar_email(token):
         )
 
         return redirect(url_for("login"))
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+            
+@app.route("/perfil_profissional")
+def perfil_profissional():
+
+    if "usuario_id" not in session:
+        flash("Faça login para acessar seu perfil.", "warning")
+        return redirect(url_for("login"))
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM usuarios
+            WHERE id = %s
+            AND tipo = 'profissional'
+            """,
+            (session["usuario_id"],)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+            flash("Profissional não encontrado.", "danger")
+            return redirect(url_for("dashboard"))
+
+        return render_template(
+            "dashboard_profissional.html",
+            profissional=profissional
+        )
+
+    except Exception:
+
+        print("ERRO AO CARREGAR PERFIL PROFISSIONAL:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar seu perfil.",
+            "danger"
+        )
+
+        return redirect(url_for("dashboard"))
 
     finally:
 
