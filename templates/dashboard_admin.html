@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}Painel Administrativo{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+    <div class="mb-5">
+        <h2>Painel Administrativo</h2>
+
+        <p class="text-muted">
+            Gerencie usuários, profissionais e conteúdos da plataforma.
+        </p>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- USUÁRIOS -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-4">
+
+                <div class="fs-1 mb-3">👥</div>
+
+                <h5>Usuários</h5>
+
+                <p class="text-muted">
+                    Visualize e gerencie os usuários cadastrados na plataforma.
+                </p>
+
+                <button class="btn btn-dark mt-auto">
+                    Gerenciar usuários
+                </button>
+
+            </div>
+        </div>
+
+        <!-- PROFISSIONAIS -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-4">
+
+                <div class="fs-1 mb-3">👨‍⚕️</div>
+
+                <h5>Profissionais</h5>
+
+                <p class="text-muted">
+                    Analise os cadastros e gerencie a aprovação dos profissionais.
+                </p>
+
+                <button class="btn btn-dark mt-auto">
+                    Gerenciar profissionais
+                </button>
+
+            </div>
+        </div>
+
+        <!-- FÓRUM -->
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm p-4">
+
+                <div class="fs-1 mb-3">💬</div>
+
+                <h5>Fórum</h5>
+
+                <p class="text-muted">
+                    Gerencie tópicos e mensagens publicados no fórum.
+                </p>
+
+                <a href="{{ url_for('forum_home') }}" class="btn btn-dark mt-auto">
+                    Acessar fórum
+                </a>
+
+            </div>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -16,7 +16,7 @@
     <div class="row g-4">
 
         <!-- FÓRUM -->
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-3">
             <div class="card h-100 shadow-sm border-0 p-4">
 
                 <div class="fs-1 mb-3">💬</div>
@@ -37,7 +37,7 @@
 
 
         <!-- AJUDA -->
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-3">
             <div class="card h-100 shadow-sm border-0 p-4">
 
                 <div class="fs-1 mb-3">🗺️</div>
@@ -58,7 +58,7 @@
 
 
         <!-- BLOQUEIO -->
-        <div class="col-md-4">
+        <div class="col-md-6 col-lg-3">
             <div class="card h-100 shadow-sm border-0 p-4">
 
                 <div class="fs-1 mb-3">🛡️</div>
@@ -72,6 +72,27 @@
 
                 <a href="{{ url_for('bloqueio') }}" class="btn btn-dark mt-auto">
                     Acessar
+                </a>
+
+            </div>
+        </div>
+
+
+        <!-- TESTE -->
+        <div class="col-md-6 col-lg-3">
+            <div class="card h-100 shadow-sm border-0 p-4">
+
+                <div class="fs-1 mb-3">📋</div>
+
+                <h5>Teste de risco</h5>
+
+                <p class="text-muted">
+                    Responda algumas perguntas para refletir
+                    sobre sua relação com as apostas.
+                </p>
+
+                <a href="{{ url_for('teste') }}" class="btn btn-dark mt-auto">
+                    Fazer teste
                 </a>
 
             </div>

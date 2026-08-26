@@ -6,31 +6,66 @@
 
 <div class="container my-5">
 
-    <div class="text-center mb-4">
-        <h2>Locais de Acolhimento – Estado de São Paulo</h2>
-        <p class="text-muted">Centros de Ajuda</p>
+    <!-- AVISO CVV -->
+    <!-- AVISO CVV -->
+    <div class="card border-0 shadow-sm rounded-4 mb-5">
+        <div class="card-body py-4 px-4 text-center">
+
+            <h6 class="fw-bold mb-2">
+                Precisa conversar com alguém?
+            </h6>
+
+            <p class="text-muted mb-2">
+                Se estiver passando por um momento difícil ou tiver
+                pensamentos suicidas, procure apoio.
+            </p>
+
+            <div class="d-inline-flex align-items-center gap-2">
+                <span class="fs-4">📞</span>
+
+                <span class="text-danger fw-bold fs-4">
+                    Ligue 188
+                </span>
+            </div>
+
+            <small class="d-block text-muted mt-1">
+                Centro de Valorização da Vida — atendimento gratuito e sigiloso.
+            </small>
+
+        </div>
     </div>
 
+    <!-- TÍTULO -->
+    <div class="text-center mb-4">
+
+        <h2>
+            Locais de Acolhimento – Estado de São Paulo
+        </h2>
+
+        <p class="text-muted">
+            Encontre serviços de saúde e apoio próximos a você.
+        </p>
+
+    </div>
+
+
+    <!-- MAPA -->
     <div id="map" style="height: 500px; width: 100%;" data-locais='{{ locais | tojson | safe }}'>
     </div>
 
 </div>
 
 
+<!-- LISTA DE LOCAIS -->
 <div class="container my-5">
 
     <div class="row">
-
-        <div class="container mb-4">
-            <input type="text" id="buscaCidade" class="form-control" placeholder="Digite sua cidade...">
-        </div>
-
 
         {% for item in locais %}
 
         <div class="col-md-4 mb-4 card-local" data-cidade="{{ item.cidade }}">
 
-            <div class="card shadow-sm h-100">
+            <div class="card shadow-sm h-100 border-0">
 
                 <div class="card-body">
 
@@ -58,7 +93,9 @@
                         data-lng="{{ item.lng }}" data-nome="{{ item.nome | escape }}"
                         data-cidade="{{ item.cidade | escape }}" data-tipo="{{ item.tipo | escape }}"
                         data-endereco="{{ item.endereco | escape }}" data-telefone="{{ item.telefone | escape }}">
+
                         Ver no mapa 📍
+
                     </button>
 
                 </div>

@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+
+{% block title %}Teste de risco relacionado às apostas{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+    <!-- CABEÇALHO -->
+    <div class="text-center mb-5">
+
+        <div class="fs-1 mb-3">
+            🧠
+        </div>
+
+        <h2 class="fw-bold">
+            Avalie sua relação com as apostas
+        </h2>
+
+        <p class="text-muted mx-auto" style="max-width: 700px;">
+            Este questionário foi desenvolvido para ajudar você a refletir
+            sobre alguns comportamentos relacionados às apostas.
+        </p>
+
+    </div>
+
+
+    <!-- AVISO -->
+    <div class="alert alert-info border-0 shadow-sm mx-auto mb-4" style="max-width: 800px;">
+
+        <div class="d-flex">
+
+            <div class="fs-4 me-3">
+                ℹ️
+            </div>
+
+            <div>
+                <strong>Antes de começar</strong>
+
+                <p class="mb-0 mt-1">
+                    Responda às perguntas pensando no seu comportamento
+                    recente. O resultado é apenas informativo e não constitui
+                    diagnóstico médico ou psicológico.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- TESTE -->
+    <div class="card border-0 shadow-sm mx-auto" style="max-width: 800px;">
+
+        <div class="card-body p-4 p-md-5">
+
+            <!-- PROGRESSO -->
+            <div class="mb-4">
+
+                <div class="d-flex justify-content-between mb-2">
+
+                    <small class="text-muted">
+                        Progresso
+                    </small>
+
+                    <small class="fw-semibold" id="contador">
+                        Pergunta 1 de 4
+                    </small>
+
+                </div>
+
+                <div class="progress" style="height: 8px;">
+
+                    <div id="barraProgresso" class="progress-bar" role="progressbar" style="width: 25%;"></div>
+
+                </div>
+
+            </div>
+
+
+            <form method="POST" action="{{ url_for('teste') }}" id="formTeste">
+
+
+                <!-- PERGUNTA 1 -->
+                <div class="pergunta" id="pergunta1">
+
+                    <span class="badge text-bg-dark mb-3">
+                        Pergunta 1
+                    </span>
+
+                    <h4 class="fw-bold mb-4">
+                        Você já sentiu necessidade de apostar
+                        cada vez mais dinheiro?
+                    </h4>
+
+                    <div class="opcoes">
+
+                        <label class="opcao">
+
+                            <input type="radio" name="q1" value="sim" required>
+
+                            <span>
+                                Sim
+                            </span>
+
+                        </label>
+
+
+                        <label class="opcao">
+
+                            <input type="radio" name="q1" value="nao">
+
+                            <span>
+                                Não
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <!-- PERGUNTA 2 -->
+                <div class="pergunta d-none" id="pergunta2">
+
+                    <span class="badge text-bg-dark mb-3">
+                        Pergunta 2
+                    </span>
+
+                    <h4 class="fw-bold mb-4">
+                        Você já tentou diminuir ou parar de apostar
+                        e teve dificuldade?
+                    </h4>
+
+                    <div class="opcoes">
+
+                        <label class="opcao">
+
+                            <input type="radio" name="q2" value="sim" required>
+
+                            <span>
+                                Sim
+                            </span>
+
+                        </label>
+
+
+                        <label class="opcao">
+
+                            <input type="radio" name="q2" value="nao">
+
+                            <span>
+                                Não
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <!-- PERGUNTA 3 -->
+                <div class="pergunta d-none" id="pergunta3">
+
+                    <span class="badge text-bg-dark mb-3">
+                        Pergunta 3
+                    </span>
+
+                    <h4 class="fw-bold mb-4">
+                        As apostas já causaram problemas financeiros,
+                        familiares ou profissionais?
+                    </h4>
+
+                    <div class="opcoes">
+
+                        <label class="opcao">
+
+                            <input type="radio" name="q3" value="sim" required>
+
+                            <span>
+                                Sim
+                            </span>
+
+                        </label>
+
+
+                        <label class="opcao">
+
+                            <input type="radio" name="q3" value="nao">
+
+                            <span>
+                                Não
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <!-- PERGUNTA 4 -->
+                <div class="pergunta d-none" id="pergunta4">
+
+                    <span class="badge text-bg-dark mb-3">
+                        Pergunta 4
+                    </span>
+
+                    <h4 class="fw-bold mb-4">
+                        Você já apostou novamente para tentar
+                        recuperar dinheiro perdido?
+                    </h4>
+
+                    <div class="opcoes">
+
+                        <label class="opcao">
+
+                            <input type="radio" name="q4" value="sim" required>
+
+                            <span>
+                                Sim
+                            </span>
+
+                        </label>
+
+
+                        <label class="opcao">
+
+                            <input type="radio" name="q4" value="nao">
+
+                            <span>
+                                Não
+                            </span>
+
+                        </label>
+
+                    </div>
+
+                </div>
+
+
+                <!-- BOTÕES -->
+                <div class="d-flex justify-content-between mt-5">
+
+                    <button type="button" class="btn btn-outline-secondary px-4" id="btnAnterior"
+                        onclick="anteriorPergunta()" disabled>
+                        ← Anterior
+                    </button>
+
+
+                    <button type="button" class="btn btn-dark px-4" id="btnProxima" onclick="proximaPergunta()">
+                        Próxima →
+                    </button>
+
+
+                    <button type="submit" class="btn btn-dark px-4 d-none" id="btnFinalizar">
+                        Ver resultado
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- RODAPÉ -->
+    <div class="text-center mt-4">
+
+        <small class="text-muted">
+            Suas respostas não são exibidas publicamente.
+        </small>
+
+    </div>
+
+</div>
+
+
+<style>
+    .opcoes {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+
+    .opcao {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        padding: 18px 20px;
+
+        border: 1px solid #dee2e6;
+        border-radius: 12px;
+
+        cursor: pointer;
+
+        transition: all 0.2s ease;
+    }
+
+
+    .opcao:hover {
+        border-color: #212529;
+        background-color: #f8f9fa;
+    }
+
+
+    .opcao input {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+
+
+    .opcao span {
+        font-size: 16px;
+    }
+
+
+    .progress {
+        background-color: #e9ecef;
+        border-radius: 10px;
+    }
+
+
+    .progress-bar {
+        transition: width 0.3s ease;
+    }
+</style>
+
+
+<script>
+
+    let perguntaAtual = 1;
+
+    const totalPerguntas = 4;
+
+
+    function mostrarPergunta(numero) {
+
+        // Esconde todas
+        for (let i = 1; i <= totalPerguntas; i++) {
+
+            document
+                .getElementById("pergunta" + i)
+                .classList.add("d-none");
+
+        }
+
+
+        // Mostra a atual
+        document
+            .getElementById("pergunta" + numero)
+            .classList.remove("d-none");
+
+
+        // Atualiza contador
+        document.getElementById("contador").textContent =
+            "Pergunta " + numero + " de " + totalPerguntas;
+
+
+        // Atualiza barra
+        const porcentagem =
+            (numero / totalPerguntas) * 100;
+
+        document.getElementById("barraProgresso").style.width =
+            porcentagem + "%";
+
+
+        // Botão anterior
+        document.getElementById("btnAnterior").disabled =
+            numero === 1;
+
+
+        // Botões finais
+        if (numero === totalPerguntas) {
+
+            document
+                .getElementById("btnProxima")
+                .classList.add("d-none");
+
+            document
+                .getElementById("btnFinalizar")
+                .classList.remove("d-none");
+
+        } else {
+
+            document
+                .getElementById("btnProxima")
+                .classList.remove("d-none");
+
+            document
+                .getElementById("btnFinalizar")
+                .classList.add("d-none");
+
+        }
+
+    }
+
+
+    function proximaPergunta() {
+
+        const pergunta =
+            document.getElementById(
+                "pergunta" + perguntaAtual
+            );
+
+
+        const resposta =
+            pergunta.querySelector(
+                'input[type="radio"]:checked'
+            );
+
+
+        if (!resposta) {
+
+            alert("Selecione uma resposta antes de continuar.");
+
+            return;
+
+        }
+
+
+        if (perguntaAtual < totalPerguntas) {
+
+            perguntaAtual++;
+
+            mostrarPergunta(perguntaAtual);
+
+        }
+
+    }
+
+
+    function anteriorPergunta() {
+
+        if (perguntaAtual > 1) {
+
+            perguntaAtual--;
+
+            mostrarPergunta(perguntaAtual);
+
+        }
+
+    }
+
+</script>
+
+{% endblock %}

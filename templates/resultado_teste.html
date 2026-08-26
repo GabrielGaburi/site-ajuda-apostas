@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}Resultado do Autoteste{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+    <div class="row justify-content-center">
+
+        <div class="col-lg-8">
+
+            <!-- CABEÇALHO -->
+            <div class="text-center mb-5">
+
+                <span class="badge bg-light text-primary border px-3 py-2 rounded-pill mb-3">
+                    Resultado do autoteste
+                </span>
+
+                <h1 class="fw-bold mb-3">
+                    Seu resultado
+                </h1>
+
+                <p class="text-muted mb-4">
+                    Veja abaixo o resultado das suas respostas.
+                </p>
+
+                <!-- PONTUAÇÃO -->
+                <div class="mx-auto" style="max-width: 220px;">
+
+                    <div class="card border-0 shadow-sm rounded-4">
+
+                        <div class="card-body py-4">
+
+                            <small class="text-muted d-block mb-1">
+                                Pontuação
+                            </small>
+
+                            <div class="display-3 fw-bold text-primary">
+                                {{ pontos }}
+                                <span class="fs-4 text-muted">/ 4</span>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- RESULTADO -->
+            <div class="card border-0 shadow rounded-4 overflow-hidden">
+
+                <div class="card-body p-4 p-md-5">
+
+                    <!-- STATUS -->
+                    <div class="text-center mb-4">
+
+                        <div class="mb-3">
+
+                            {% if resultado.classe == "success" %}
+
+                            <i class="bi bi-check-circle-fill text-success" style="font-size: 3.5rem;"></i>
+
+                            {% elif resultado.classe == "warning" %}
+
+                            <i class="bi bi-exclamation-circle-fill text-warning" style="font-size: 3.5rem;"></i>
+
+                            {% else %}
+
+                            <i class="bi bi-exclamation-triangle-fill text-danger" style="font-size: 3.5rem;"></i>
+
+                            {% endif %}
+
+                        </div>
+
+                        <h2 class="fw-bold mb-2">
+                            {{ resultado.titulo }}
+                        </h2>
+
+                    </div>
+
+
+                    <!-- MENSAGEM -->
+                    <div class="mb-4">
+
+                        <p class="fs-5 text-secondary text-center mb-0">
+                            {{ resultado.mensagem }}
+                        </p>
+
+                    </div>
+
+
+                    <hr class="my-4">
+
+
+                    <!-- ORIENTAÇÃO -->
+                    <div class="mb-4">
+
+                        <div class="d-flex align-items-center mb-3">
+
+                            <div class="me-3">
+
+                                <i class="bi bi-heart-pulse-fill text-primary fs-4"></i>
+
+                            </div>
+
+                            <h5 class="fw-bold mb-0">
+                                O que você pode fazer
+                            </h5>
+
+                        </div>
+
+                        <p class="text-secondary mb-0">
+                            {{ resultado.orientacao }}
+                        </p>
+
+                    </div>
+
+
+                    <!-- AVISO -->
+                    <div class="alert alert-light border rounded-4 p-4 mt-4">
+
+                        <div class="d-flex">
+
+                            <i class="bi bi-info-circle-fill text-primary fs-5 me-3"></i>
+
+                            <div>
+
+                                <h6 class="fw-bold mb-2">
+                                    Importante
+                                </h6>
+
+                                <p class="mb-0 text-secondary">
+                                    Este autoteste é uma ferramenta de
+                                    reflexão e triagem. O resultado não
+                                    representa um diagnóstico e não substitui
+                                    uma avaliação realizada por um profissional
+                                    de saúde.
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- BOTÕES -->
+                    <div class="d-flex flex-column flex-sm-row
+                                justify-content-center gap-2 mt-4">
+
+                        <a href="{{ url_for('teste') }}" class="btn btn-outline-primary rounded-pill px-4">
+
+                            <i class="bi bi-arrow-repeat me-1"></i>
+                            Refazer autoteste
+
+                        </a>
+
+                        <a href="{{ url_for('ajuda') }}" class="btn btn-primary rounded-pill px-4">
+
+                            <i class="bi bi-geo-alt me-1"></i>
+                            Procurar ajuda
+
+                        </a>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- FONTE -->
+            <div class="text-center mt-4">
+
+                <small class="text-muted">
+                    Autoteste baseado em instrumento de referência do
+                    Ministério da Saúde.
+                </small>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
