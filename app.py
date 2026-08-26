@@ -1591,27 +1591,92 @@ def login():
     # =========================
 
     return render_template("login.html")
+
+@app.route("/criar_admin")
+def criar_admin():
+
+    senha = "Behemoth666**"
+    senha_hash = generate_password_hash(senha)
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor()
+
+        cursor.execute(
+            """
+            UPDATE usuarios
+            SET senha_hash = %s
+            WHERE email = %s
+            AND tipo = 'admin'
+            """,
+            (
+                senha_hash,
+                "capetagago@gmail.com"
+            )
+        )
+
+        conexao.commit()
+
+        return "Senha do administrador atualizada com sucesso!"
+
+    except Exception:
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO ATUALIZAR SENHA DO ADMIN:")
+        traceback.print_exc()
+
+        return "Erro ao atualizar senha."
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
 @app.route('/escolher_cadastro')
 def escolher_cadastro():
     return render_template('escolher_cadastro.html')
 
+@app.route("/dashboard_admin")
+def dashboard_admin():
+
+    # Verifica se está logado
+    if "usuario_id" not in session:
+        flash("Faça login para acessar o painel administrativo.", "warning")
+        return redirect(url_for("login"))
+
+    # Verifica se é administrador
+    if session.get("tipo_usuario") != "admin":
+        flash("Você não tem permissão para acessar esta área.", "danger")
+        return redirect(url_for("dashboard"))
+
+    return render_template("dashboard_admin.html")
+
 @app.route('/dashboard')
 def dashboard():
+
     if 'usuario_id' not in session:
         return redirect(url_for('login'))
 
-    # pega o tipo salvo no login/cadastro
     tipo_usuario = session.get("tipo_usuario", "usuario")
 
-    # DASHBOARD USUÁRIO NORMAL
+    # USUÁRIO NORMAL
     if tipo_usuario == "usuario":
         return render_template("dashboard_usuario.html")
 
-    # DASHBOARD PROFISSIONAL
+    # PROFISSIONAL
     elif tipo_usuario == "profissional":
         return render_template("dashboard_profissional.html")
 
-    # segurança extra
+    # ADMINISTRADOR
+    elif tipo_usuario == "admin":
+        return redirect(url_for("dashboard_admin"))
+
     flash("Tipo de usuário inválido.", "danger")
     return redirect(url_for("login"))
 
@@ -2043,6 +2108,103 @@ def redefinir_senha(token):
         return redirect(url_for("login"))
 
     return render_template("redefinir_senha.html")
+
+@app.route("/teste", methods=["GET", "POST"])
+def teste():
+
+    if request.method == "POST":
+
+        pontos = 0
+
+        # Conta as respostas "sim"
+        for pergunta in ["q1", "q2", "q3", "q4"]:
+            if request.form.get(pergunta) == "sim":
+                pontos += 1
+
+        # Resultado
+        if pontos == 0:
+
+            resultado = {
+                "titulo": "Nenhum sinal identificado",
+                "mensagem": (
+                    "Você respondeu não a todas as perguntas. "
+                    "Isso indica ausência de sinais de risco relacionados às apostas."
+                ),
+                "orientacao": (
+                    "Mantenha atenção aos sinais de alerta e procure "
+                    "informações e orientação caso sua relação com as apostas mude."
+                ),
+                "classe": "success"
+            }
+
+        elif pontos == 1:
+
+            resultado = {
+                "titulo": "Possível problema com o jogo",
+                "mensagem": (
+                    "Você pode estar apresentando sinais de problemas "
+                    "relacionados ao jogo."
+                ),
+                "orientacao": (
+                    "Reflita sobre sua relação com as apostas, converse "
+                    "com pessoas de confiança e considere buscar acolhimento "
+                    "em uma Unidade Básica de Saúde (UBS)."
+                ),
+                "classe": "warning"
+            }
+
+        elif pontos == 2:
+
+            resultado = {
+                "titulo": "Possível problema relacionado ao jogo",
+                "mensagem": (
+                    "Sua pontuação indica que pode existir um problema "
+                    "relacionado às apostas."
+                ),
+                "orientacao": (
+                    "É recomendado buscar apoio em uma Unidade Básica "
+                    "de Saúde (UBS) ou Centro de Atenção Psicossocial (CAPS)."
+                ),
+                "classe": "warning"
+            }
+
+        elif pontos == 3:
+
+            resultado = {
+                "titulo": "Impactos significativos",
+                "mensagem": (
+                    "Sua relação com o jogo pode estar causando "
+                    "impactos significativos."
+                ),
+                "orientacao": (
+                    "Procure apoio em uma Unidade Básica de Saúde (UBS) "
+                    "ou Centro de Atenção Psicossocial (CAPS)."
+                ),
+                "classe": "danger"
+            }
+
+        else:
+
+            resultado = {
+                "titulo": "Sinais de problemas com o jogo",
+                "mensagem": (
+                    "Sua pontuação indica sinais importantes "
+                    "de problemas relacionados ao jogo."
+                ),
+                "orientacao": (
+                    "Procure rapidamente apoio em uma Unidade Básica "
+                    "de Saúde (UBS) ou Centro de Atenção Psicossocial (CAPS)."
+                ),
+                "classe": "danger"
+            }
+
+        return render_template(
+            "resultado_teste.html",
+            pontos=pontos,
+            resultado=resultado
+        )
+
+    return render_template("teste.html")
 
 @app.route("/ajuda")
 def ajuda():
