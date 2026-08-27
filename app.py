@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.utils import secure_filename
+from flask import send_from_directory
 
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
@@ -600,11 +601,20 @@ def confirmar_email(token):
         print("EMAIL:", usuario["email"])
         print("TIPO:", usuario["tipo"])
         print("================================")
+        
+        if usuario["tipo"] == "profissional":
 
-        flash(
-            "E-mail confirmado com sucesso! Agora você pode fazer login.",
-            "success"
-        )
+            flash(
+                "E-mail confirmado com sucesso! Seu cadastro está aguardando aprovação do administrador.",
+                "success"
+            )
+
+        else:
+
+            flash(
+                "E-mail confirmado com sucesso! Agora você pode fazer login.",
+                "success"
+            )
 
         return redirect(url_for("login"))
 
@@ -1238,7 +1248,7 @@ def forum_novo():
 
         # Cria o tópico
         novo_topico = {
-            "id": len(forum) + 1,
+            "id": max((t["id"] for t in forum), default=0) + 1,
             "titulo": titulo,
 
             "mensagens": [
@@ -1255,6 +1265,11 @@ def forum_novo():
         forum.append(novo_topico)
 
         salvar_forum(forum)
+        
+        print("NOVO TÓPICO CRIADO:")
+        print(novo_topico)
+        print("ID DO NOVO TÓPICO:", novo_topico["id"])
+        print("TOTAL DE TÓPICOS:", len(forum))
 
         return redirect(
             url_for(
@@ -1419,6 +1434,265 @@ def excluir_mensagem(topico_id, msg_index):
     )
 
 
+@app.route("/dashboard_admin")
+def dashboard_admin():
+
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("tipo_usuario") != "admin":
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("dashboard_usuario"))
+
+    return render_template("dashboard_admin.html")
+
+@app.route("/admin/profissionais")
+def gerenciar_profissionais():
+
+    # =========================
+    # VERIFICA SE ESTÁ LOGADO
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA SE É ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para acessar esta página.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA PROFISSIONAIS PENDENTES
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id AS profissional_id,
+                p.usuario_id,
+                p.crp,
+                p.uf_crp,
+                p.especialidade,
+                p.faculdade,
+                p.pos,
+                p.experiencia,
+                p.foto,
+                p.status_aprovacao,
+
+                u.nome,
+                u.sobrenome,
+                u.email,
+                u.telefone,
+                u.cidade,
+                u.estado,
+                u.email_confirmado
+
+            FROM profissionais p
+
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+
+            WHERE p.status_aprovacao = 'pendente'
+
+            ORDER BY p.id DESC
+            """
+        )
+
+        profissionais = cursor.fetchall()
+
+        return render_template(
+            "admin_profissionais.html",
+            profissionais=profissionais
+        )
+
+    except Exception:
+
+        print("ERRO AO BUSCAR PROFISSIONAIS:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar os profissionais.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("dashboard_admin")
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
+
+@app.route("/dashboard_profissional")
+def dashboard_profissional():
+
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("tipo_usuario") != "profissional":
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("dashboard_usuario"))
+
+    return render_template("dashboard_profissional.html")
+
+
+@app.route("/admin/profissionais/<int:profissional_id>")
+def detalhes_profissional(profissional_id):
+
+    # =========================
+    # VERIFICA SE ESTÁ LOGADO
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA SE É ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para acessar esta página.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA DADOS DO PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id AS profissional_id,
+                p.usuario_id,
+                p.crp,
+                p.uf_crp,
+                p.experiencia,
+                p.especialidade,
+                p.faculdade,
+                p.pos,
+                p.biografia,
+                p.foto,
+                p.status_aprovacao,
+                p.data_aprovacao,
+
+                u.nome,
+                u.sobrenome,
+                u.cpf,
+                u.data_nascimento,
+                u.sexo,
+                u.email,
+                u.telefone,
+                u.cep,
+                u.estado,
+                u.cidade,
+                u.rua,
+                u.numero,
+                u.bairro,
+                u.email_confirmado,
+                u.status
+
+            FROM profissionais p
+
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+
+            WHERE p.id = %s
+            """,
+            (profissional_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        # =========================
+        # PROFISSIONAL NÃO ENCONTRADO
+        # =========================
+
+        if not profissional:
+            flash(
+                "Profissional não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_profissionais")
+            )
+
+        return render_template(
+            "admin_profissional_detalhes.html",
+            profissional=profissional
+        )
+
+    except Exception:
+
+        print("ERRO AO BUSCAR DETALHES DO PROFISSIONAL:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar o cadastro.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("gerenciar_profissionais")
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
+
+@app.route("/dashboard_usuario")
+def dashboard_usuario():
+
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("tipo_usuario") != "usuario":
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("login"))
+
+    return render_template("dashboard_usuario.html")
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -1431,7 +1705,6 @@ def login():
 
         email = request.form.get("email", "").strip().lower()
         senha = request.form.get("senha", "")
-        
 
         conexao = None
         cursor = None
@@ -1451,17 +1724,20 @@ def login():
 
             cursor.execute(
                 """
-                SELECT
-                    id,
-                    nome,
-                    sobrenome,
-                    email,
-                    senha_hash,
-                    tipo,
-                    status,
-                    email_confirmado
-                FROM usuarios
-                WHERE email = %s
+                SELECT 
+                    u.id,
+                    u.nome,
+                    u.sobrenome,
+                    u.email,
+                    u.senha_hash,
+                    u.tipo,
+                    u.status,
+                    u.email_confirmado,
+                    p.status_aprovacao
+                FROM usuarios u
+                LEFT JOIN profissionais p
+                    ON p.usuario_id = u.id
+                WHERE u.email = %s
                 """,
                 (email,)
             )
@@ -1485,7 +1761,7 @@ def login():
                 )
 
             # =========================
-            # VERIFICA STATUS
+            # VERIFICA STATUS DA CONTA
             # =========================
 
             if usuario["status"] == "banido":
@@ -1515,6 +1791,37 @@ def login():
                     "login.html",
                     email=email
                 )
+
+            # =========================
+            # VERIFICA APROVAÇÃO
+            # SOMENTE PARA PROFISSIONAL
+            # =========================
+
+            if usuario["tipo"] == "profissional":
+
+                if usuario["status_aprovacao"] == "pendente":
+
+                    flash(
+                        "Seu email foi confirmado, mas seu cadastro profissional ainda está aguardando aprovação do administrador.",
+                        "warning"
+                    )
+
+                    return render_template(
+                        "login.html",
+                        email=email
+                    )
+
+                if usuario["status_aprovacao"] == "recusado":
+
+                    flash(
+                        "Seu cadastro profissional não foi aprovado pelo administrador.",
+                        "danger"
+                    )
+
+                    return render_template(
+                        "login.html",
+                        email=email
+                    )
 
             # =========================
             # VERIFICA SENHA
@@ -1556,9 +1863,27 @@ def login():
                 "success"
             )
 
-            return redirect(
-                url_for("dashboard")
-            )
+            # =========================
+            # REDIRECIONAMENTO
+            # =========================
+
+            if usuario["tipo"] == "admin":
+
+                return redirect(
+                    url_for("dashboard_admin")
+                )
+
+            elif usuario["tipo"] == "profissional":
+
+                return redirect(
+                    url_for("dashboard_profissional")
+                )
+
+            else:
+
+                return redirect(
+                    url_for("dashboard_usuario")
+                )
 
         except Exception:
 
@@ -1642,43 +1967,6 @@ def criar_admin():
 def escolher_cadastro():
     return render_template('escolher_cadastro.html')
 
-@app.route("/dashboard_admin")
-def dashboard_admin():
-
-    # Verifica se está logado
-    if "usuario_id" not in session:
-        flash("Faça login para acessar o painel administrativo.", "warning")
-        return redirect(url_for("login"))
-
-    # Verifica se é administrador
-    if session.get("tipo_usuario") != "admin":
-        flash("Você não tem permissão para acessar esta área.", "danger")
-        return redirect(url_for("dashboard"))
-
-    return render_template("dashboard_admin.html")
-
-@app.route('/dashboard')
-def dashboard():
-
-    if 'usuario_id' not in session:
-        return redirect(url_for('login'))
-
-    tipo_usuario = session.get("tipo_usuario", "usuario")
-
-    # USUÁRIO NORMAL
-    if tipo_usuario == "usuario":
-        return render_template("dashboard_usuario.html")
-
-    # PROFISSIONAL
-    elif tipo_usuario == "profissional":
-        return render_template("dashboard_profissional.html")
-
-    # ADMINISTRADOR
-    elif tipo_usuario == "admin":
-        return redirect(url_for("dashboard_admin"))
-
-    flash("Tipo de usuário inválido.", "danger")
-    return redirect(url_for("login"))
 
 def enviar_email_confirmacao(email):
     try:
@@ -2205,6 +2493,14 @@ def teste():
         )
 
     return render_template("teste.html")
+
+@app.route("/uploads/<filename>")
+def uploaded_file(filename):
+
+    return send_from_directory(
+        app.config["UPLOAD_FOLDER"],
+        filename
+    )
 
 @app.route("/ajuda")
 def ajuda():
