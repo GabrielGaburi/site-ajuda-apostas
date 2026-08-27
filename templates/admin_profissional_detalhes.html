@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block title %}Análise do Profissional{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2>Análise do profissional</h2>
+
+            <p class="text-muted mb-0">
+                Confira os dados antes de aprovar o cadastro.
+            </p>
+        </div>
+
+        <a href="{{ url_for('gerenciar_profissionais') }}" class="btn btn-outline-secondary">
+            Voltar
+        </a>
+
+    </div>
+
+
+    <!-- DADOS PESSOAIS -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Dados pessoais
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <strong>Nome:</strong><br>
+                    {{ profissional.nome }}
+                    {{ profissional.sobrenome }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>CPF:</strong><br>
+                    {{ profissional.cpf }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Data de nascimento:</strong><br>
+                    {{ profissional.data_nascimento }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Sexo:</strong><br>
+                    {{ profissional.sexo }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>E-mail:</strong><br>
+                    {{ profissional.email }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Telefone:</strong><br>
+                    {{ profissional.telefone }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ENDEREÇO -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Endereço
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <strong>CEP:</strong><br>
+                    {{ profissional.cep }}
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Estado:</strong><br>
+                    {{ profissional.estado }}
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Cidade:</strong><br>
+                    {{ profissional.cidade }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Rua:</strong><br>
+                    {{ profissional.rua }}
+                </div>
+
+                <div class="col-md-2">
+                    <strong>Número:</strong><br>
+                    {{ profissional.numero }}
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Bairro:</strong><br>
+                    {{ profissional.bairro }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- DADOS PROFISSIONAIS -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Dados profissionais
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <strong>CRP:</strong><br>
+                    {{ profissional.crp }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>UF do CRP:</strong><br>
+                    {{ profissional.uf_crp }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Experiência:</strong><br>
+                    {{ profissional.experiencia }} anos
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Especialidade:</strong><br>
+                    {{ profissional.especialidade }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Instituição de ensino:</strong><br>
+                    {{ profissional.faculdade }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Pós-graduação:</strong><br>
+                    {{ profissional.pos }}
+                </div>
+
+                <div class="col-12">
+
+                    <strong>Biografia:</strong>
+
+                    <p class="mt-2 mb-0">
+                        {{ profissional.biografia }}
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- FOTO -->
+
+    {% if profissional.foto %}
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-3">
+                Foto de perfil
+            </h5>
+
+            <img src="{{ url_for(
+        'uploaded_file',
+        filename=profissional.foto
+    ) }}" alt="Foto do profissional" class="img-fluid rounded" style="max-width: 250px;">
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- STATUS -->
+
+    <div class="card border-0 shadow-sm">
+
+        <div class="card-body">
+
+            <h5 class="mb-3">
+                Situação do cadastro
+            </h5>
+
+            <span class="badge text-bg-warning">
+                {{ profissional.status_aprovacao|capitalize }}
+            </span>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
