@@ -139,7 +139,7 @@ def perfil():
             "warning"
         )
         return redirect(url_for("login"))
-    
+
     print("================================")
     print("ACESSANDO PERFIL")
     print("ID DA SESSÃO:", session.get("usuario_id"))
@@ -160,7 +160,7 @@ def perfil():
         cursor = conexao.cursor(dictionary=True)
 
         # =========================
-        # PROCURA USUÁRIO PELO ID
+        # BUSCA O USUÁRIO
         # =========================
 
         cursor.execute(
@@ -190,13 +190,60 @@ def perfil():
             return redirect(url_for("login"))
 
         # =========================
-        # ABRE O PERFIL
+        # IDENTIFICA O TIPO
         # =========================
 
-        return render_template(
-            "dashboard_usuario.html",
-            usuario=usuario
-        )
+        tipo = usuario["tipo"]
+
+        # =========================
+        # ADMINISTRADOR
+        # =========================
+
+        if tipo == "admin":
+
+            return render_template(
+                "dashboard_admin.html",
+                usuario=usuario
+            )
+
+        # =========================
+        # PROFISSIONAL
+        # =========================
+
+        elif tipo == "profissional":
+
+            return render_template(
+                "dashboard_profissional.html",
+                usuario=usuario
+            )
+
+        # =========================
+        # USUÁRIO COMUM
+        # =========================
+
+        elif tipo == "usuario":
+
+            return render_template(
+                "dashboard_usuario.html",
+                usuario=usuario
+            )
+
+        # =========================
+        # TIPO INVÁLIDO
+        # =========================
+
+        else:
+
+            print("TIPO DE USUÁRIO INVÁLIDO:", tipo)
+
+            session.clear()
+
+            flash(
+                "Tipo de usuário inválido.",
+                "danger"
+            )
+
+            return redirect(url_for("login"))
 
     except Exception:
 
@@ -211,9 +258,7 @@ def perfil():
             "danger"
         )
 
-        return redirect(
-            url_for("dashboard")
-        )
+        return redirect(url_for("index"))
 
     finally:
 
@@ -1776,11 +1821,9 @@ def login():
                     email=email
                 )
 
-            # =========================
-            # VERIFICA EMAIL
-            # =========================
-
-            if not usuario["email_confirmado"]:
+            #Somente usuários comuns precisam confirmar o email.
+            # Profissionais entram após aprovação do administrador.
+            if usuario["tipo"] == "usuario" and not usuario["email_confirmado"]:
 
                 flash(
                     "Confirme seu email antes de fazer login.",
@@ -1791,7 +1834,6 @@ def login():
                     "login.html",
                     email=email
                 )
-
             # =========================
             # VERIFICA APROVAÇÃO
             # SOMENTE PARA PROFISSIONAL
@@ -1802,7 +1844,7 @@ def login():
                 if usuario["status_aprovacao"] == "pendente":
 
                     flash(
-                        "Seu email foi confirmado, mas seu cadastro profissional ainda está aguardando aprovação do administrador.",
+                        "Seu cadastro profissional ainda está aguardando aprovação do administrador.",
                         "warning"
                     )
 
@@ -1917,6 +1959,376 @@ def login():
 
     return render_template("login.html")
 
+@app.route(
+    "/admin/profissionais/<int:profissional_id>/aprovar",
+    methods=["POST"]
+)
+def aprovar_profissional(profissional_id):
+
+    # =========================
+    # VERIFICA SE ESTÁ LOGADO
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA SE É ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id,
+                p.usuario_id,
+                p.status_aprovacao,
+                u.nome,
+                u.email
+            FROM profissionais p
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+            WHERE p.id = %s
+            """,
+            (profissional_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+
+            flash(
+                "Profissional não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_profissionais")
+            )
+
+        # =========================
+        # VERIFICA SE JÁ FOI DECIDIDO
+        # =========================
+
+        if profissional["status_aprovacao"] != "pendente":
+
+            flash(
+                "Este cadastro já foi analisado.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_profissional",
+                    profissional_id=profissional_id
+                )
+            )
+
+        # =========================
+        # APROVA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            UPDATE profissionais
+            SET
+                status_aprovacao = 'aprovado',
+                data_aprovacao = NOW()
+            WHERE id = %s
+            """,
+            (profissional_id,)
+        )
+
+        conexao.commit()
+
+        # =========================
+        # ENVIA EMAIL DE APROVAÇÃO
+        # =========================
+
+        email_enviado = enviar_email_aprovacao(
+            profissional["email"],
+            profissional["nome"]
+        )
+
+        # =========================
+        # DEBUG
+        # =========================
+
+        print("================================")
+        print("PROFISSIONAL APROVADO")
+        print("ID PROFISSIONAL:", profissional_id)
+        print("USUARIO_ID:", profissional["usuario_id"])
+        print("EMAIL:", profissional["email"])
+        print("EMAIL ENVIADO:", email_enviado)
+        print("================================")
+
+        # =========================
+        # MENSAGEM PARA O ADMIN
+        # =========================
+
+        if email_enviado:
+
+            flash(
+                f"O cadastro de {profissional['nome']} foi aprovado e o profissional foi notificado por email.",
+                "success"
+            )
+
+        else:
+
+            flash(
+                f"O cadastro de {profissional['nome']} foi aprovado, mas não foi possível enviar o email.",
+                "warning"
+            )
+
+        return redirect(
+            url_for("gerenciar_profissionais")
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO APROVAR PROFISSIONAL:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao aprovar o cadastro.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_profissional",
+                profissional_id=profissional_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+@app.route(
+    "/admin/profissionais/<int:profissional_id>/recusar",
+    methods=["POST"]
+)
+def recusar_profissional(profissional_id):
+
+    # =========================
+    # VERIFICA SE ESTÁ LOGADO
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA SE É ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    motivo = request.form.get("motivo_recusa", "").strip()
+
+    # =========================
+    # VALIDA O MOTIVO
+    # =========================
+
+    if not motivo:
+
+        flash(
+            "Informe o motivo da recusa.",
+            "warning"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_profissional",
+                profissional_id=profissional_id
+            )
+        )
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id,
+                p.usuario_id,
+                p.status_aprovacao,
+                u.nome,
+                u.email
+            FROM profissionais p
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+            WHERE p.id = %s
+            """,
+            (profissional_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+
+            flash(
+                "Profissional não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_profissionais")
+            )
+
+        # =========================
+        # VERIFICA SE JÁ FOI ANALISADO
+        # =========================
+
+        if profissional["status_aprovacao"] != "pendente":
+
+            flash(
+                "Este cadastro já foi analisado.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_profissional",
+                    profissional_id=profissional_id
+                )
+            )
+
+        # =========================
+        # RECUSA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            UPDATE profissionais
+            SET
+                status_aprovacao = 'recusado',
+                motivo_recusa = %s,
+                data_aprovacao = NOW()
+            WHERE id = %s
+            """,
+            (
+                motivo,
+                profissional_id
+            )
+        )
+
+        conexao.commit()
+
+        print("================================")
+        print("PROFISSIONAL RECUSADO")
+        print("ID PROFISSIONAL:", profissional_id)
+        print("USUARIO_ID:", profissional["usuario_id"])
+        print("EMAIL:", profissional["email"])
+        print("MOTIVO:", motivo)
+        print("================================")
+
+
+        # =========================
+        # ENVIA EMAIL DE RECUSA
+        # =========================
+
+        email_enviado = enviar_email_recusa(
+            profissional["email"],
+            profissional["nome"],
+            motivo
+        )
+
+
+        if email_enviado:
+
+            flash(
+                f"O cadastro de {profissional['nome']} foi recusado e o profissional foi notificado por email.",
+                "success"
+            )
+
+        else:
+
+            flash(
+                f"O cadastro de {profissional['nome']} foi recusado, mas não foi possível enviar o email.",
+                "warning"
+            )
+
+
+        return redirect(
+            url_for("gerenciar_profissionais")
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO RECUSAR PROFISSIONAL:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao recusar o cadastro.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_profissional",
+                profissional_id=profissional_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
 @app.route("/criar_admin")
 def criar_admin():
 
@@ -2396,6 +2808,429 @@ def redefinir_senha(token):
         return redirect(url_for("login"))
 
     return render_template("redefinir_senha.html")
+
+
+def enviar_email_aprovacao(email, nome):
+    try:
+
+        msg = Message(
+            subject='Seu cadastro profissional foi aprovado - Apoio & Consciência',
+            recipients=[email],
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+
+        # =========================
+        # VERSÃO TEXTO
+        # =========================
+
+        msg.body = f"""
+Olá, {nome}.
+
+Temos uma boa notícia!
+
+Seu cadastro profissional na plataforma Apoio & Consciência foi analisado e aprovado pela nossa equipe administrativa.
+
+Sua conta profissional está pronta para ser utilizada.
+
+Agora você pode acessar a plataforma utilizando o e-mail e a senha cadastrados.
+
+Atenciosamente,
+
+Equipe Apoio & Consciência
+"""
+
+        # =========================
+        # VERSÃO HTML
+        # =========================
+
+        msg.html = f"""
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+</head>
+
+<body style="
+    margin:0;
+    padding:0;
+    background-color:#f4f6f9;
+    font-family:Arial, Helvetica, sans-serif;
+">
+
+    <div style="
+        max-width:600px;
+        margin:40px auto;
+        background:#ffffff;
+        border-radius:16px;
+        overflow:hidden;
+        box-shadow:0 8px 25px rgba(0,0,0,0.08);
+    ">
+
+        <!-- TOPO -->
+
+        <div style="
+            background:linear-gradient(135deg, #1d3557, #457b9d);
+            padding:30px;
+            text-align:center;
+            color:white;
+        ">
+
+            <h1 style="
+                margin:0;
+                font-size:28px;
+            ">
+                Apoio & Consciência
+            </h1>
+
+            <p style="
+                margin-top:8px;
+                font-size:15px;
+                opacity:0.9;
+            ">
+                Cadastro profissional
+            </p>
+
+        </div>
+
+
+        <!-- CONTEÚDO -->
+
+        <div style="
+            padding:40px 30px;
+            color:#333;
+        ">
+
+            <h2 style="
+                color:#198754;
+                margin-top:0;
+                text-align:center;
+            ">
+                Cadastro aprovado!
+            </h2>
+
+            <p style="
+                font-size:16px;
+                line-height:1.6;
+                color:#555;
+            ">
+                Olá, <strong>{nome}</strong>.
+            </p>
+
+            <p style="
+                font-size:16px;
+                line-height:1.6;
+                color:#555;
+            ">
+                Temos uma boa notícia!
+            </p>
+
+            <p style="
+                font-size:16px;
+                line-height:1.6;
+                color:#555;
+            ">
+                Seu cadastro profissional na plataforma
+                <strong>Apoio & Consciência</strong> foi analisado
+                e <strong>aprovado</strong> pela nossa equipe administrativa.
+            </p>
+
+
+            <!-- AVISO -->
+
+            <div style="
+                margin:25px 0;
+                padding:20px;
+                background:#d1e7dd;
+                border:1px solid #a3cfbb;
+                border-radius:10px;
+                text-align:center;
+            ">
+
+                <p style="
+                    margin:0;
+                    font-size:16px;
+                    line-height:1.6;
+                    color:#0f5132;
+                ">
+                    Sua conta profissional está pronta para ser utilizada.
+                </p>
+
+            </div>
+
+
+            <p style="
+                font-size:15px;
+                line-height:1.6;
+                color:#555;
+                text-align:center;
+            ">
+                Agora você pode acessar a plataforma utilizando
+                o e-mail e a senha cadastrados.
+            </p>
+
+        </div>
+
+
+        <!-- RODAPÉ -->
+
+        <div style="
+            background:#f8f9fa;
+            padding:20px;
+            text-align:center;
+            font-size:13px;
+            color:#6c757d;
+            border-top:1px solid #e9ecef;
+        ">
+
+            Equipe Apoio & Consciência<br>
+
+            © Apoio & Consciência
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>
+"""
+
+        # =========================
+        # DEBUG
+        # =========================
+
+        print("================================")
+        print("ENVIANDO EMAIL DE APROVAÇÃO")
+        print("DESTINATÁRIO:", email)
+        print("NOME:", nome)
+        print("================================")
+
+        mail.send(msg)
+
+        print("EMAIL DE APROVAÇÃO ENVIADO PARA:", email)
+
+        return True
+
+    except Exception:
+
+        print("ERRO AO ENVIAR EMAIL DE APROVAÇÃO:")
+        traceback.print_exc()
+
+        return False
+
+def enviar_email_recusa(email, nome, motivo):
+    try:
+
+        msg = Message(
+            subject='Atualização do seu cadastro profissional - Apoio & Consciência',
+            recipients=[email],
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+
+        # =========================
+        # VERSÃO TEXTO
+        # =========================
+
+        msg.body = f"""
+Olá, {nome}.
+
+Agradecemos pelo seu interesse em fazer parte da plataforma Apoio & Consciência.
+
+Após a análise realizada pela nossa equipe administrativa, informamos que seu cadastro profissional não foi aprovado neste momento.
+
+Motivo informado pela administração:
+
+{motivo}
+
+Caso você entenda que houve algum equívoco ou queira realizar um novo cadastro futuramente, poderá entrar em contato pelo email gabrielgaburi@hotmail.com.
+
+Atenciosamente,
+
+Equipe Apoio & Consciência
+"""
+
+        # =========================
+        # VERSÃO HTML
+        # =========================
+
+        msg.html = f"""
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+</head>
+
+<body style="
+    margin:0;
+    padding:0;
+    background-color:#f4f6f9;
+    font-family:Arial, Helvetica, sans-serif;
+">
+
+    <div style="
+        max-width:600px;
+        margin:40px auto;
+        background:#ffffff;
+        border-radius:16px;
+        overflow:hidden;
+        box-shadow:0 8px 25px rgba(0,0,0,0.08);
+    ">
+
+        <!-- TOPO -->
+
+        <div style="
+            background:linear-gradient(135deg, #1d3557, #457b9d);
+            padding:30px;
+            text-align:center;
+            color:white;
+        ">
+
+            <h1 style="
+                margin:0;
+                font-size:28px;
+            ">
+                Apoio & Consciência
+            </h1>
+
+            <p style="
+                margin-top:8px;
+                font-size:15px;
+                opacity:0.9;
+            ">
+                Atualização do seu cadastro
+            </p>
+
+        </div>
+
+
+        <!-- CONTEÚDO -->
+
+        <div style="
+            padding:40px 30px;
+            color:#333;
+        ">
+
+            <h2 style="
+                color:#1d3557;
+                margin-top:0;
+                text-align:center;
+            ">
+                Cadastro profissional
+            </h2>
+
+            <p style="
+                font-size:16px;
+                line-height:1.6;
+                color:#555;
+            ">
+                Olá, <strong>{nome}</strong>.
+            </p>
+
+            <p style="
+                font-size:16px;
+                line-height:1.6;
+                color:#555;
+            ">
+                Após a análise realizada pela nossa equipe administrativa,
+                informamos que seu cadastro profissional
+                <strong>não foi aprovado neste momento.</strong>
+            </p>
+
+
+            <!-- MOTIVO -->
+
+            <div style="
+                margin:25px 0;
+                padding:20px;
+                background:#fff3cd;
+                border:1px solid #ffe69c;
+                border-radius:10px;
+            ">
+
+                <p style="
+                    margin-top:0;
+                    font-size:15px;
+                    font-weight:bold;
+                    color:#856404;
+                ">
+                    Motivo informado pela administração:
+                </p>
+
+                <p style="
+                    margin-bottom:0;
+                    font-size:15px;
+                    line-height:1.6;
+                    color:#664d03;
+                    white-space:pre-line;
+                ">
+                    {motivo}
+                </p>
+
+            </div>
+
+
+            <p style="
+                font-size:15px;
+                line-height:1.6;
+                color:#555;
+            ">
+                Caso você entenda que houve algum equívoco ou queira
+                realizar um novo cadastro futuramente, poderá entrar
+                em contato com a plataforma.
+            </p>
+
+        </div>
+
+
+        <!-- RODAPÉ -->
+
+        <div style="
+            background:#f8f9fa;
+            padding:20px;
+            text-align:center;
+            font-size:13px;
+            color:#6c757d;
+            border-top:1px solid #e9ecef;
+        ">
+
+            Equipe Apoio & Consciência<br>
+
+            © Apoio & Consciência
+
+        </div>
+
+    </div>
+
+</body>
+
+</html>
+"""
+
+        # =========================
+        # DEBUG
+        # =========================
+
+        print("================================")
+        print("ENVIANDO EMAIL DE RECUSA")
+        print("DESTINATÁRIO:", email)
+        print("NOME:", nome)
+        print("MOTIVO:", motivo)
+        print("================================")
+
+        mail.send(msg)
+
+        print("EMAIL DE RECUSA ENVIADO PARA:", email)
+
+        return True
+
+    except Exception:
+
+        print("ERRO AO ENVIAR EMAIL DE RECUSA:")
+        traceback.print_exc()
+
+        return False
 
 @app.route("/teste", methods=["GET", "POST"])
 def teste():
