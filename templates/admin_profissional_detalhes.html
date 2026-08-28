@@ -215,14 +215,110 @@
                 Situação do cadastro
             </h5>
 
-            <span class="badge text-bg-warning">
-                {{ profissional.status_aprovacao|capitalize }}
+            {% if profissional.status_aprovacao == "pendente" %}
+
+            <span class="badge text-bg-warning mb-3">
+                Pendente
             </span>
+
+            <div class="d-flex gap-2 mt-3">
+
+                <!-- APROVAR -->
+
+                <form method="POST" action="{{ url_for(
+                    'aprovar_profissional',
+                    profissional_id=profissional.profissional_id
+                ) }}">
+
+                    <button type="submit" class="btn btn-success">
+                        Aprovar cadastro
+                    </button>
+
+                </form>
+
+
+                <!-- RECUSAR -->
+
+                <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modalRecusar">
+                    Recusar cadastro
+                </button>
+
+            </div>
+
+            {% elif profissional.status_aprovacao == "aprovado" %}
+
+            <span class="badge text-bg-success">
+                Aprovado
+            </span>
+
+            {% elif profissional.status_aprovacao == "recusado" %}
+
+            <span class="badge text-bg-danger">
+                Recusado
+            </span>
+
+            {% endif %}
 
         </div>
 
     </div>
 
-</div>
 
-{% endblock %}
+    <!-- MODAL DE RECUSA -->
+
+    <div class="modal fade" id="modalRecusar" tabindex="-1" aria-labelledby="modalRecusarLabel" aria-hidden="true">
+
+        <div class="modal-dialog">
+
+            <div class="modal-content">
+
+                <div class="modal-header">
+
+                    <h5 class="modal-title" id="modalRecusarLabel">
+                        Recusar cadastro
+                    </h5>
+
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+
+                </div>
+
+
+                <form method="POST" action="{{ url_for(
+                    'recusar_profissional',
+                    profissional_id=profissional.profissional_id
+                ) }}">
+
+                    <div class="modal-body">
+
+                        <p>
+                            Informe o motivo pelo qual este cadastro
+                            profissional não foi aprovado.
+                        </p>
+
+                        <textarea class="form-control" name="motivo_recusa" rows="5"
+                            placeholder="Digite o motivo da recusa..." required></textarea>
+
+                    </div>
+
+
+                    <div class="modal-footer">
+
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            Cancelar
+                        </button>
+
+                        <button type="submit" class="btn btn-danger">
+                            Confirmar recusa
+                        </button>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    {% endblock %}
