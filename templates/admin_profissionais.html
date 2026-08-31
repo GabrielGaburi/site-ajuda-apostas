@@ -6,78 +6,244 @@
 
 <div class="container my-5">
 
-    <div class="mb-4">
-        <h2>Gerenciar profissionais</h2>
 
-        <p class="text-muted">
-            Analise os cadastros de profissionais que aguardam aprovação.
-        </p>
+    <!-- CABEÇALHO -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2>Gerenciar Profissionais</h2>
+
+            <p class="text-muted mb-0">
+                Analise novos cadastros e gerencie os profissionais da plataforma.
+            </p>
+        </div>
+
+        <a href="{{ url_for('dashboard_admin') }}" class="btn btn-outline-secondary">
+
+            Voltar
+
+        </a>
+
     </div>
 
-    {% if profissionais %}
 
-    <div class="row g-4">
+    <!-- PROFISSIONAIS APROVADOS -->
 
-        {% for profissional in profissionais %}
+    <div class="card border-0 shadow-sm mt-4">
 
-        <div class="col-md-6 col-lg-4">
+        ```
+        <div class="card-body">
 
-            <div class="card h-100 shadow-sm border-0">
+            <h5 class="mb-1">
+                Profissionais aprovados
+            </h5>
 
-                <div class="card-body">
+            <p class="text-muted mb-4">
+                Profissionais que já foram aprovados e estão cadastrados na plataforma.
+            </p>
 
-                    <h5 class="card-title">
-                        {{ profissional.nome }}
-                        {{ profissional.sobrenome }}
-                    </h5>
+            {% if profissionais_aprovados %}
 
-                    <p class="mb-2">
-                        <strong>CRP:</strong>
-                        {{ profissional.crp }}/{{ profissional.uf_crp }}
-                    </p>
+            <div class="table-responsive">
 
-                    <p class="mb-2">
-                        <strong>Especialidade:</strong>
-                        {{ profissional.especialidade }}
-                    </p>
+                <table class="table align-middle">
 
-                    <p class="mb-2">
-                        <strong>E-mail:</strong>
-                        {{ profissional.email }}
-                    </p>
+                    <thead>
 
-                    <span class="badge text-bg-warning">
-                        Pendente
-                    </span>
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>CRP</th>
+                            <th>Especialidade</th>
+                            <th>Status</th>
+                            <th>Ação</th>
+                        </tr>
 
-                    <div class="mt-3">
+                    </thead>
 
-                        <a href="{{ url_for(
-                            'detalhes_profissional',
-                                profissional_id=profissional.profissional_id
-                                ) }}" class="btn btn-dark w-100">
-                            Ver cadastro
-                        </a>
+                    <tbody>
 
-                    </div>
+                        {% for profissional in profissionais_aprovados %}
 
-                </div>
+                        <tr>
+
+                            <td>
+                                {{ profissional.nome }}
+                                {{ profissional.sobrenome }}
+                            </td>
+
+                            <td>
+                                {{ profissional.email }}
+                            </td>
+
+                            <td>
+                                {{ profissional.crp }}
+                                /
+                                {{ profissional.uf_crp }}
+                            </td>
+
+                            <td>
+                                {{ profissional.especialidade }}
+                            </td>
+
+                            <td>
+
+                                {% if profissional.status == "ativo" %}
+
+                                <span class="badge text-bg-success">
+                                    Ativo
+                                </span>
+
+                                {% elif profissional.status == "banido" %}
+
+                                <span class="badge text-bg-danger">
+                                    Banido
+                                </span>
+
+                                {% else %}
+
+                                <span class="badge text-bg-secondary">
+                                    {{ profissional.status }}
+                                </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td>
+
+                                <a href="{{ url_for(
+                            'detalhes_profissional_aprovado',
+                            profissional_id=profissional.profissional_id
+                        ) }}" class="btn btn-sm btn-dark">
+
+                                    Ver perfil
+
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
 
             </div>
 
+            {% else %}
+
+            <div class="alert alert-info mb-0">
+
+                Nenhum profissional aprovado encontrado.
+
+            </div>
+
+            {% endif %}
+
         </div>
 
-        {% endfor %}
 
     </div>
 
-    {% else %}
 
-    <div class="alert alert-info">
-        Não há profissionais aguardando aprovação.
+    <!-- NOVOS CADASTROS -->
+
+    <div class="card border-0 shadow-sm">
+
+        <div class="card-body">
+
+            <h5 class="mb-1">
+                Novos cadastros
+            </h5>
+
+            <p class="text-muted mb-4">
+                Profissionais aguardando análise administrativa.
+            </p>
+
+            {% if profissionais %}
+
+            <div class="table-responsive">
+
+                <table class="table align-middle">
+
+                    <thead>
+
+                        <tr>
+                            <th>Nome</th>
+                            <th>E-mail</th>
+                            <th>CRP</th>
+                            <th>Especialidade</th>
+                            <th>Ação</th>
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for profissional in profissionais %}
+
+                        <tr>
+
+                            <td>
+                                {{ profissional.nome }}
+                                {{ profissional.sobrenome }}
+                            </td>
+
+                            <td>
+                                {{ profissional.email }}
+                            </td>
+
+                            <td>
+                                {{ profissional.crp }}
+                                /
+                                {{ profissional.uf_crp }}
+                            </td>
+
+                            <td>
+                                {{ profissional.especialidade }}
+                            </td>
+
+                            <td>
+
+                                <a href="{{ url_for(
+                                    'detalhes_profissional',
+                                    profissional_id=profissional.profissional_id
+                                ) }}" class="btn btn-sm btn-dark">
+
+                                    Analisar
+
+                                </a>
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {% else %}
+
+            <div class="alert alert-info mb-0">
+
+                Não existem novos cadastros aguardando análise.
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
     </div>
-
-    {% endif %}
+    ```
 
 </div>
 

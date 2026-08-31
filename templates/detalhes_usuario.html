@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Usuário{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+    ```
+    <!-- CABEÇALHO -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2>Detalhes do usuário</h2>
+
+            <p class="text-muted mb-0">
+                Visualização completa dos dados cadastrados.
+            </p>
+        </div>
+
+        <a href="{{ url_for('gerenciar_usuarios') }}" class="btn btn-outline-secondary">
+            Voltar
+        </a>
+
+    </div>
+
+
+    <!-- DADOS PESSOAIS -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Dados pessoais
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <strong>Nome:</strong><br>
+                    {{ usuario.nome }} {{ usuario.sobrenome }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>CPF:</strong><br>
+                    {{ usuario.cpf }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Data de nascimento:</strong><br>
+                    {{ usuario.data_nascimento.strftime('%d/%m/%Y') if usuario.data_nascimento else '' }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Sexo:</strong><br>
+                    {{ usuario.sexo }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>E-mail:</strong><br>
+                    {{ usuario.email }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Telefone:</strong><br>
+                    {{ usuario.telefone }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ENDEREÇO -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Endereço
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <strong>CEP:</strong><br>
+                    {{ usuario.cep }}
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Estado:</strong><br>
+                    {{ usuario.estado }}
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Cidade:</strong><br>
+                    {{ usuario.cidade }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Rua:</strong><br>
+                    {{ usuario.rua }}
+                </div>
+
+                <div class="col-md-2">
+                    <strong>Número:</strong><br>
+                    {{ usuario.numero }}
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Bairro:</strong><br>
+                    {{ usuario.bairro }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- SITUAÇÃO DA CONTA -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Situação da conta
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+
+                    <strong>Status:</strong><br>
+
+                    {% if usuario.status == "ativo" %}
+
+                    <span class="badge text-bg-success">
+                        Ativo
+                    </span>
+
+                    {% elif usuario.status == "banido" %}
+
+                    <span class="badge text-bg-danger">
+                        Banido
+                    </span>
+
+                    {% else %}
+
+                    <span class="badge text-bg-secondary">
+                        {{ usuario.status }}
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <strong>E-mail:</strong><br>
+
+                    {% if usuario.email_confirmado %}
+
+                    <span class="badge text-bg-success">
+                        Confirmado
+                    </span>
+
+                    {% else %}
+
+                    <span class="badge text-bg-warning">
+                        Não confirmado
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <strong>Termos:</strong><br>
+
+                    {% if usuario.termos_aceitos %}
+
+                    <span class="badge text-bg-success">
+                        Aceitos
+                    </span>
+
+                    {% else %}
+
+                    <span class="badge text-bg-danger">
+                        Não aceitos
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- AÇÕES -->
+
+    <!-- AÇÕES -->
+
+    <div class="card border-0 shadow-sm">
+
+        ```
+        <div class="card-body">
+
+            <h5 class="mb-3">
+                Ações administrativas
+            </h5>
+
+            <div class="d-flex gap-2">
+
+                <!-- EDITAR -->
+                <a href="{{ url_for('editar_usuario', usuario_id=usuario.id) }}" class="btn btn-primary">
+                    Editar informações
+                </a>
+
+
+                <!-- BANIR -->
+                {% if usuario.status == "ativo" %}
+
+                <form method="POST" action="{{ url_for('banir_usuario', usuario_id=usuario.id) }}"
+                    onsubmit="return confirm('Tem certeza que deseja banir este usuário?');">
+
+                    <button type="submit" class="btn btn-danger">
+                        Banir usuário
+                    </button>
+
+                </form>
+
+
+                <!-- REATIVAR -->
+                {% elif usuario.status == "banido" %}
+
+                <form method="POST" action="{{ url_for('reativar_usuario', usuario_id=usuario.id) }}"
+                    onsubmit="return confirm('Tem certeza que deseja reativar este usuário?');">
+
+                    <button type="submit" class="btn btn-success">
+                        Reativar usuário
+                    </button>
+
+                </form>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+        ```
+
+    </div>
+
+
+
+</div>
+
+{% endblock %}
