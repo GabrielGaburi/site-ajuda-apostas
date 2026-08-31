@@ -268,6 +268,1054 @@ def perfil():
         if conexao:
             conexao.close()
             
+@app.route("/admin/usuarios")
+def gerenciar_usuarios():
+
+    # =========================
+    # VERIFICA SE ESTÁ LOGADO
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA SE É ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para acessar esta página.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        # =========================
+        # CONECTA AO MYSQL
+        # =========================
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA USUÁRIOS COMUNS
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                nome,
+                sobrenome,
+                cpf,
+                data_nascimento,
+                sexo,
+                email,
+                telefone,
+                cep,
+                estado,
+                cidade,
+                rua,
+                numero,
+                bairro,
+                status,
+                email_confirmado,
+                termos_aceitos
+            FROM usuarios
+            WHERE tipo = 'usuario'
+            ORDER BY id DESC
+            """
+        )
+
+        usuarios = cursor.fetchall()
+
+        print("================================")
+        print("GERENCIANDO USUÁRIOS")
+        print("TOTAL DE USUÁRIOS:", len(usuarios))
+        print("================================")
+
+        return render_template(
+            "gerenciar_usuarios.html",
+            usuarios=usuarios
+        )
+
+    except Exception:
+
+        print("================================")
+        print("ERRO AO BUSCAR USUÁRIOS")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar os usuários.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("dashboard_admin")
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+@app.route("/admin/usuarios/<int:usuario_id>")
+def detalhes_usuario(usuario_id):
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para acessar esta página.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        # =========================
+        # CONECTA AO MYSQL
+        # =========================
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA O USUÁRIO
+        # =========================
+        # IMPORTANTE:
+        # Não filtramos pelo status.
+        # Assim, usuários ativos E banidos
+        # podem ser visualizados pelo administrador.
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                nome,
+                sobrenome,
+                cpf,
+                data_nascimento,
+                sexo,
+                email,
+                telefone,
+                cep,
+                estado,
+                cidade,
+                rua,
+                numero,
+                bairro,
+                status,
+                email_confirmado,
+                termos_aceitos
+            FROM usuarios
+            WHERE id = %s
+              AND tipo = 'usuario'
+            """,
+            (usuario_id,)
+        )
+
+        usuario = cursor.fetchone()
+
+        # =========================
+        # USUÁRIO NÃO ENCONTRADO
+        # =========================
+
+        if usuario is None:
+
+            print("================================")
+            print("USUÁRIO NÃO ENCONTRADO")
+            print("ID PROCURADO:", usuario_id)
+            print("================================")
+
+            flash(
+                "Usuário não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_usuarios")
+            )
+
+        # =========================
+        # DEBUG
+        # =========================
+
+        print("================================")
+        print("DETALHES DO USUÁRIO")
+        print("ID:", usuario["id"])
+        print("NOME:", usuario["nome"])
+        print("EMAIL:", usuario["email"])
+        print("STATUS:", usuario["status"])
+        print("TIPO: usuario")
+        print("================================")
+
+        # =========================
+        # ABRE O PERFIL
+        # =========================
+
+        return render_template(
+            "detalhes_usuario.html",
+            usuario=usuario
+        )
+
+    except Exception as erro:
+
+        print("================================")
+        print("ERRO AO CARREGAR DETALHES DO USUÁRIO")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar os dados do usuário.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("gerenciar_usuarios")
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+@app.route("/admin/usuarios/<int:usuario_id>/reativar", methods=["POST"])
+def reativar_usuario(usuario_id):
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        # =========================
+        # CONECTA AO MYSQL
+        # =========================
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA O USUÁRIO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                nome,
+                email,
+                tipo,
+                status
+            FROM usuarios
+            WHERE id = %s
+            """,
+            (usuario_id,)
+        )
+
+        usuario = cursor.fetchone()
+
+        # =========================
+        # USUÁRIO NÃO ENCONTRADO
+        # =========================
+
+        if not usuario:
+
+            flash(
+                "Usuário não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_usuarios")
+            )
+
+        # =========================
+        # NÃO PERMITIR ALTERAR ADMIN
+        # =========================
+
+        if usuario["tipo"] == "admin":
+
+            flash(
+                "Esta ação não pode ser realizada em uma conta administrativa.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_usuario",
+                    usuario_id=usuario_id
+                )
+            )
+
+        # =========================
+        # VERIFICA SE JÁ ESTÁ ATIVO
+        # =========================
+
+        if usuario["status"] == "ativo":
+
+            flash(
+                "Este usuário já está ativo.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_usuario",
+                    usuario_id=usuario_id
+                )
+            )
+
+        # =========================
+        # REATIVA O USUÁRIO
+        # =========================
+
+        cursor.execute(
+            """
+            UPDATE usuarios
+            SET status = 'ativo'
+            WHERE id = %s
+            """,
+            (usuario_id,)
+        )
+
+        conexao.commit()
+
+        # =========================
+        # DEBUG
+        # =========================
+
+        print("================================")
+        print("USUÁRIO REATIVADO")
+        print("ID:", usuario_id)
+        print("NOME:", usuario["nome"])
+        print("EMAIL:", usuario["email"])
+        print("STATUS: ativo")
+        print("================================")
+
+        flash(
+            f"O usuário {usuario['nome']} foi reativado com sucesso.",
+            "success"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_usuario",
+                usuario_id=usuario_id
+            )
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("================================")
+        print("ERRO AO REATIVAR USUÁRIO")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao reativar o usuário.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_usuario",
+                usuario_id=usuario_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+@app.route("/admin/usuarios/<int:usuario_id>/editar", methods=["GET", "POST"])
+def editar_usuario(usuario_id):
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA SE É ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA O USUÁRIO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM usuarios
+            WHERE id = %s
+            """,
+            (usuario_id,)
+        )
+
+        usuario = cursor.fetchone()
+
+        if not usuario:
+
+            flash(
+                "Usuário não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_usuarios")
+            )
+
+        # =========================
+        # POST
+        # =========================
+
+        if request.method == "POST":
+
+            nome = request.form.get("nome", "").strip()
+            sobrenome = request.form.get("sobrenome", "").strip()
+            cpf = request.form.get("cpf", "").strip()
+            data_nascimento = request.form.get(
+                "data_nascimento",
+                ""
+            ).strip()
+            sexo = request.form.get("sexo", "").strip()
+            email = request.form.get(
+                "email",
+                ""
+            ).strip().lower()
+            telefone = request.form.get(
+                "telefone",
+                ""
+            ).strip()
+            cep = request.form.get(
+                "cep",
+                ""
+            ).strip()
+            estado = request.form.get(
+                "estado",
+                ""
+            ).strip()
+            cidade = request.form.get(
+                "cidade",
+                ""
+            ).strip()
+            rua = request.form.get(
+                "rua",
+                ""
+            ).strip()
+            numero = request.form.get(
+                "numero",
+                ""
+            ).strip()
+            bairro = request.form.get(
+                "bairro",
+                ""
+            ).strip()
+
+            # =========================
+            # VALIDA CAMPOS
+            # =========================
+
+            if not nome or not sobrenome or not email:
+
+                flash(
+                    "Nome, sobrenome e email são obrigatórios.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+
+            # =========================
+            # VERIFICA EMAIL DUPLICADO
+            # =========================
+
+            cursor.execute(
+                """
+                SELECT id
+                FROM usuarios
+                WHERE email = %s
+                AND id != %s
+                """,
+                (email, usuario_id)
+            )
+
+            email_existente = cursor.fetchone()
+
+            if email_existente:
+
+                flash(
+                    "Este email já está sendo utilizado por outro usuário.",
+                    "warning"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+
+            # =========================
+            # ATUALIZA USUÁRIO
+            # =========================
+
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET
+                    nome = %s,
+                    sobrenome = %s,
+                    cpf = %s,
+                    data_nascimento = %s,
+                    sexo = %s,
+                    email = %s,
+                    telefone = %s,
+                    cep = %s,
+                    estado = %s,
+                    cidade = %s,
+                    rua = %s,
+                    numero = %s,
+                    bairro = %s
+                WHERE id = %s
+                """,
+                (
+                    nome,
+                    sobrenome,
+                    cpf,
+                    data_nascimento,
+                    sexo,
+                    email,
+                    telefone,
+                    cep,
+                    estado,
+                    cidade,
+                    rua,
+                    numero,
+                    bairro,
+                    usuario_id
+                )
+            )
+
+            conexao.commit()
+
+            print("================================")
+            print("USUÁRIO EDITADO PELO ADMIN")
+            print("ID:", usuario_id)
+            print("EMAIL:", email)
+            print("================================")
+
+            flash(
+                "Dados do usuário atualizados com sucesso.",
+                "success"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_usuario",
+                    usuario_id=usuario_id
+                )
+            )
+
+        # =========================
+        # GET
+        # =========================
+
+        return render_template(
+            "editar_usuario.html",
+            usuario=usuario
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("================================")
+        print("ERRO AO EDITAR USUÁRIO")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao editar o usuário.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_usuario",
+                usuario_id=usuario_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+            
+# =========================
+# BANIR USUÁRIO
+# =========================
+
+@app.route("/admin/usuarios/<int:usuario_id>/banir", methods=["POST"])
+def banir_usuario(usuario_id):
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    # =========================
+    # IMPede ADMIN DE BANIR A SI MESMO
+    # =========================
+
+    if usuario_id == session["usuario_id"]:
+        flash(
+            "Você não pode banir sua própria conta.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_usuario",
+                usuario_id=usuario_id
+            )
+        )
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA USUÁRIO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                nome,
+                sobrenome,
+                email,
+                tipo,
+                status
+            FROM usuarios
+            WHERE id = %s
+            """,
+            (usuario_id,)
+        )
+
+        usuario = cursor.fetchone()
+
+        if not usuario:
+
+            flash(
+                "Usuário não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_usuarios")
+            )
+
+        # =========================
+        # NÃO PERMITE BANIR OUTRO ADMIN
+        # =========================
+
+        if usuario["tipo"] == "admin":
+
+            flash(
+                "Contas administrativas não podem ser banidas por esta ação.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_usuario",
+                    usuario_id=usuario_id
+                )
+            )
+
+        # =========================
+        # VERIFICA SE JÁ ESTÁ BANIDO
+        # =========================
+
+        if usuario["status"] == "banido":
+
+            flash(
+                "Este usuário já está banido.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_usuario",
+                    usuario_id=usuario_id
+                )
+            )
+
+        # =========================
+        # BANIR
+        # =========================
+
+        cursor.execute(
+            """
+            UPDATE usuarios
+            SET status = 'banido'
+            WHERE id = %s
+            """,
+            (usuario_id,)
+        )
+
+        conexao.commit()
+
+        print("================================")
+        print("USUÁRIO BANIDO")
+        print("ID:", usuario["id"])
+        print("NOME:", usuario["nome"])
+        print("EMAIL:", usuario["email"])
+        print("================================")
+
+        flash(
+            f"O usuário {usuario['nome']} foi banido.",
+            "success"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_usuario",
+                usuario_id=usuario_id
+            )
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("================================")
+        print("ERRO AO BANIR USUÁRIO")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao banir o usuário.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_usuario",
+                usuario_id=usuario_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
+
+# =========================
+# DESBANIR USUÁRIO
+# =========================
+
+@app.route("/admin/usuarios/<int:usuario_id>/desbanir", methods=["POST"])
+def desbanir_usuario(usuario_id):
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA USUÁRIO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                id,
+                nome,
+                sobrenome,
+                email,
+                tipo,
+                status
+            FROM usuarios
+            WHERE id = %s
+            """,
+            (usuario_id,)
+        )
+
+        usuario = cursor.fetchone()
+
+        if not usuario:
+
+            flash(
+                "Usuário não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_usuarios")
+            )
+
+        # =========================
+        # NÃO ALTERA ADMIN
+        # =========================
+
+        if usuario["tipo"] == "admin":
+
+            flash(
+                "Contas administrativas não podem ser alteradas por esta ação.",
+                "danger"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_usuario",
+                    usuario_id=usuario_id
+                )
+            )
+
+        # =========================
+        # VERIFICA SE ESTÁ BANIDO
+        # =========================
+
+        if usuario["status"] != "banido":
+
+            flash(
+                "Este usuário não está banido.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_usuario",
+                    usuario_id=usuario_id
+                )
+            )
+
+        # =========================
+        # DESBANIR
+        # =========================
+
+        cursor.execute(
+            """
+            UPDATE usuarios
+            SET status = 'ativo'
+            WHERE id = %s
+            """,
+            (usuario_id,)
+        )
+
+        conexao.commit()
+
+        print("================================")
+        print("USUÁRIO DESBANIDO")
+        print("ID:", usuario["id"])
+        print("NOME:", usuario["nome"])
+        print("EMAIL:", usuario["email"])
+        print("================================")
+
+        flash(
+            f"O usuário {usuario['nome']} foi desbanido.",
+            "success"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_usuario",
+                usuario_id=usuario_id
+            )
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("================================")
+        print("ERRO AO DESBANIR USUÁRIO")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao desbanir o usuário.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_usuario",
+                usuario_id=usuario_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+
+            
 # Arquivo JSON para salvar o fórum
 FORUM_FILE = "forum.json"
 # =========================
@@ -1494,26 +2542,21 @@ def dashboard_admin():
 @app.route("/admin/profissionais")
 def gerenciar_profissionais():
 
+
     # =========================
-    # VERIFICA SE ESTÁ LOGADO
+    # VERIFICA LOGIN
     # =========================
 
     if "usuario_id" not in session:
-        flash(
-            "Você precisa estar logado.",
-            "warning"
-        )
+        flash("Você precisa estar logado.", "warning")
         return redirect(url_for("login"))
 
     # =========================
-    # VERIFICA SE É ADMIN
+    # VERIFICA ADMIN
     # =========================
 
     if session.get("tipo_usuario") != "admin":
-        flash(
-            "Você não tem permissão para acessar esta página.",
-            "danger"
-        )
+        flash("Você não tem permissão para acessar esta página.", "danger")
         return redirect(url_for("index"))
 
     conexao = None
@@ -1525,7 +2568,7 @@ def gerenciar_profissionais():
         cursor = conexao.cursor(dictionary=True)
 
         # =========================
-        # BUSCA PROFISSIONAIS PENDENTES
+        # PROFISSIONAIS PENDENTES
         # =========================
 
         cursor.execute(
@@ -1561,16 +2604,66 @@ def gerenciar_profissionais():
             """
         )
 
-        profissionais = cursor.fetchall()
+        profissionais_pendentes = cursor.fetchall()
+
+        # =========================
+        # PROFISSIONAIS APROVADOS
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id AS profissional_id,
+                p.usuario_id,
+                p.crp,
+                p.uf_crp,
+                p.especialidade,
+                p.faculdade,
+                p.pos,
+                p.experiencia,
+                p.foto,
+                p.status_aprovacao,
+
+                u.nome,
+                u.sobrenome,
+                u.email,
+                u.telefone,
+                u.cidade,
+                u.estado,
+                u.status,
+                u.email_confirmado
+
+            FROM profissionais p
+
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+
+            WHERE p.status_aprovacao = 'aprovado'
+
+            ORDER BY p.id DESC
+            """
+        )
+
+        profissionais_aprovados = cursor.fetchall()
+
+        print("================================")
+        print("GERENCIANDO PROFISSIONAIS")
+        print("PENDENTES:", len(profissionais_pendentes))
+        print("APROVADOS:", len(profissionais_aprovados))
+        print("================================")
 
         return render_template(
             "admin_profissionais.html",
-            profissionais=profissionais
+            profissionais=profissionais_pendentes,
+            profissionais_aprovados=profissionais_aprovados
         )
 
     except Exception:
 
-        print("ERRO AO BUSCAR PROFISSIONAIS:")
+        print("================================")
+        print("ERRO AO BUSCAR PROFISSIONAIS")
+        print("================================")
+
         traceback.print_exc()
 
         flash(
@@ -1589,6 +2682,10 @@ def gerenciar_profissionais():
 
         if conexao:
             conexao.close()
+
+
+
+
 
 
 @app.route("/dashboard_profissional")
@@ -1725,7 +2822,1014 @@ def detalhes_profissional(profissional_id):
 
         if conexao:
             conexao.close()
+            
+            
+@app.route("/admin/profissionais-aprovados")
+def gerenciar_profissionais_aprovados():
 
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para acessar esta página.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA PROFISSIONAIS APROVADOS
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id AS profissional_id,
+                p.usuario_id,
+
+                p.crp,
+                p.uf_crp,
+                p.especialidade,
+                p.faculdade,
+                p.pos,
+                p.experiencia,
+                p.foto,
+                p.status_aprovacao,
+                p.data_aprovacao,
+
+                u.nome,
+                u.sobrenome,
+                u.email,
+                u.telefone,
+                u.cidade,
+                u.estado,
+                u.status,
+                u.email_confirmado
+
+            FROM profissionais p
+
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+
+            WHERE p.status_aprovacao = 'aprovado'
+
+            ORDER BY p.id DESC
+            """
+        )
+
+        profissionais = cursor.fetchall()
+
+        print("================================")
+        print("GERENCIANDO PROFISSIONAIS APROVADOS")
+        print("TOTAL:", len(profissionais))
+        print("================================")
+
+        return render_template(
+            "gerenciar_profissionais_aprovados.html",
+            profissionais=profissionais
+        )
+
+    except Exception:
+
+        print("================================")
+        print("ERRO AO BUSCAR PROFISSIONAIS APROVADOS")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar os profissionais aprovados.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("dashboard_admin")
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+@app.route("/admin/profissionais-aprovados/<int:profissional_id>")
+def detalhes_profissional_aprovado(profissional_id):
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para acessar esta página.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT
+                p.id AS profissional_id,
+                p.usuario_id,
+
+                p.crp,
+                p.uf_crp,
+                p.experiencia,
+                p.especialidade,
+                p.faculdade,
+                p.pos,
+                p.biografia,
+                p.foto,
+                p.status_aprovacao,
+                p.data_aprovacao,
+
+                u.nome,
+                u.sobrenome,
+                u.cpf,
+                u.data_nascimento,
+                u.sexo,
+                u.email,
+                u.telefone,
+                u.cep,
+                u.estado,
+                u.cidade,
+                u.rua,
+                u.numero,
+                u.bairro,
+                u.email_confirmado,
+                u.status
+
+            FROM profissionais p
+
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+
+            WHERE p.id = %s
+              AND p.status_aprovacao = 'aprovado'
+            """,
+            (profissional_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+
+            flash(
+                "Profissional aprovado não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_profissionais_aprovados")
+            )
+
+        print("================================")
+        print("DETALHES PROFISSIONAL APROVADO")
+        print("ID:", profissional["profissional_id"])
+        print("NOME:", profissional["nome"])
+        print("EMAIL:", profissional["email"])
+        print("STATUS:", profissional["status"])
+        print("================================")
+
+        return render_template(
+            "detalhes_profissional_aprovado.html",
+            profissional=profissional
+        )
+
+    except Exception:
+
+        print("================================")
+        print("ERRO AO CARREGAR PROFISSIONAL APROVADO")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar os dados do profissional.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("gerenciar_profissionais_aprovados")
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+            
+@app.route("/admin/profissionais-aprovados/<int:profissional_id>/editar", methods=["GET", "POST"])
+def editar_profissional_aprovados(profissional_id):
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash("Você não tem permissão para realizar esta ação.", "danger")
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id AS profissional_id,
+                p.usuario_id,
+                p.crp,
+                p.uf_crp,
+                p.experiencia,
+                p.especialidade,
+                p.faculdade,
+                p.pos,
+                p.biografia,
+                p.foto,
+                p.status_aprovacao,
+
+                u.nome,
+                u.sobrenome,
+                u.cpf,
+                u.data_nascimento,
+                u.sexo,
+                u.email,
+                u.telefone,
+                u.cep,
+                u.estado,
+                u.cidade,
+                u.rua,
+                u.numero,
+                u.bairro,
+                u.status,
+                u.email_confirmado
+
+            FROM profissionais p
+
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+
+            WHERE p.id = %s
+              AND p.status_aprovacao = 'aprovado'
+            """,
+            (profissional_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+
+            flash(
+                "Profissional aprovado não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_profissionais_aprovados")
+            )
+
+        # =========================
+        # POST - SALVAR ALTERAÇÕES
+        # =========================
+
+        if request.method == "POST":
+
+            nome = request.form.get("nome", "").strip()
+            sobrenome = request.form.get("sobrenome", "").strip()
+            cpf = request.form.get("cpf", "").strip()
+            data_nascimento = request.form.get("data_nascimento", "").strip()
+            if not data_nascimento:
+                data_nascimento = profissional["data_nascimento"]
+            sexo = request.form.get("sexo", "").strip()
+            email = request.form.get("email", "").strip().lower()
+            telefone = request.form.get("telefone", "").strip()
+
+            cep = request.form.get("cep", "").strip()
+            estado = request.form.get("estado", "").strip()
+            cidade = request.form.get("cidade", "").strip()
+            rua = request.form.get("rua", "").strip()
+            numero = request.form.get("numero", "").strip()
+            bairro = request.form.get("bairro", "").strip()
+
+            crp = request.form.get("crp", "").strip()
+            uf_crp = request.form.get("uf_crp", "").strip()
+            experiencia = request.form.get("experiencia", "").strip()
+            especialidade = request.form.get("especialidade", "").strip()
+            faculdade = request.form.get("faculdade", "").strip()
+            pos = request.form.get("pos", "").strip()
+            biografia = request.form.get("biografia", "").strip()
+
+            # =========================
+            # ATUALIZA USUÁRIO
+            # =========================
+
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET
+                    nome = %s,
+                    sobrenome = %s,
+                    cpf = %s,
+                    data_nascimento = %s,
+                    sexo = %s,
+                    email = %s,
+                    telefone = %s,
+                    cep = %s,
+                    estado = %s,
+                    cidade = %s,
+                    rua = %s,
+                    numero = %s,
+                    bairro = %s
+                WHERE id = %s
+                """,
+                (
+                    nome,
+                    sobrenome,
+                    cpf,
+                    data_nascimento,
+                    sexo,
+                    email,
+                    telefone,
+                    cep,
+                    estado,
+                    cidade,
+                    rua,
+                    numero,
+                    bairro,
+                    profissional["usuario_id"]
+                )
+            )
+
+            # =========================
+            # ATUALIZA PROFISSIONAL
+            # =========================
+
+            cursor.execute(
+                """
+                UPDATE profissionais
+                SET
+                    crp = %s,
+                    uf_crp = %s,
+                    experiencia = %s,
+                    especialidade = %s,
+                    faculdade = %s,
+                    pos = %s,
+                    biografia = %s
+                WHERE id = %s
+                """,
+                (
+                    crp,
+                    uf_crp,
+                    experiencia,
+                    especialidade,
+                    faculdade,
+                    pos,
+                    biografia,
+                    profissional_id
+                )
+            )
+
+            conexao.commit()
+
+            flash(
+                "Informações do profissional atualizadas com sucesso.",
+                "success"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_profissional_aprovado",
+                    profissional_id=profissional_id
+                )
+            )
+
+        # =========================
+        # GET
+        # =========================
+
+        return render_template(
+            "editar_profissional.html",
+            profissional=profissional
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("================================")
+        print("ERRO AO EDITAR PROFISSIONAL")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao editar o profissional.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_profissional_aprovado",
+                profissional_id=profissional_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
+@app.route("/admin/profissionais-aprovados/<int:profissional_id>/banir", methods=["POST"])
+def banir_profissional(profissional_id):
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA SE É ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id AS profissional_id,
+                p.usuario_id,
+                u.nome,
+                u.email,
+                u.status,
+                p.status_aprovacao
+            FROM profissionais p
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+            WHERE p.id = %s
+            """,
+            (profissional_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+
+            flash(
+                "Profissional não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_profissionais_aprovados")
+            )
+
+        # =========================
+        # VERIFICA SE JÁ ESTÁ BANIDO
+        # =========================
+
+        if profissional["status"] == "banido":
+
+            flash(
+                "Este profissional já está banido.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_profissional_aprovado",
+                    profissional_id=profissional_id
+                )
+            )
+
+        # =========================
+        # BANIR PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            UPDATE usuarios
+            SET status = 'banido'
+            WHERE id = %s
+            """,
+            (profissional["usuario_id"],)
+        )
+
+        conexao.commit()
+
+        print("================================")
+        print("PROFISSIONAL BANIDO")
+        print("ID PROFISSIONAL:", profissional_id)
+        print("USUARIO_ID:", profissional["usuario_id"])
+        print("NOME:", profissional["nome"])
+        print("EMAIL:", profissional["email"])
+        print("================================")
+
+        flash(
+            f"O profissional {profissional['nome']} foi banido com sucesso.",
+            "success"
+        )
+
+        return redirect(
+            url_for("gerenciar_profissionais_aprovados")
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("================================")
+        print("ERRO AO BANIR PROFISSIONAL")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao banir o profissional.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_profissional_aprovado",
+                profissional_id=profissional_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+@app.route("/admin/profissionais-aprovados/<int:profissional_id>/reativar", methods=["POST"])
+def reativar_profissional(profissional_id):
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id AS profissional_id,
+                p.usuario_id,
+                u.nome,
+                u.email,
+                u.status
+            FROM profissionais p
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+            WHERE p.id = %s
+            """,
+            (profissional_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+
+            flash(
+                "Profissional não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_profissionais_aprovados")
+            )
+
+        # =========================
+        # VERIFICA SE JÁ ESTÁ ATIVO
+        # =========================
+
+        if profissional["status"] == "ativo":
+
+            flash(
+                "Este profissional já está ativo.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_profissional_aprovado",
+                    profissional_id=profissional_id
+                )
+            )
+
+        # =========================
+        # REATIVA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            UPDATE usuarios
+            SET status = 'ativo'
+            WHERE id = %s
+            """,
+            (profissional["usuario_id"],)
+        )
+
+        conexao.commit()
+
+        print("================================")
+        print("PROFISSIONAL REATIVADO")
+        print("ID PROFISSIONAL:", profissional_id)
+        print("USUARIO_ID:", profissional["usuario_id"])
+        print("NOME:", profissional["nome"])
+        print("EMAIL:", profissional["email"])
+        print("================================")
+
+        flash(
+            f"O profissional {profissional['nome']} foi reativado com sucesso.",
+            "success"
+        )
+
+        return redirect(
+            url_for("gerenciar_profissionais_aprovados")
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("================================")
+        print("ERRO AO REATIVAR PROFISSIONAL")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao reativar o profissional.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_profissional_aprovado",
+                profissional_id=profissional_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+            
+@app.route("/admin/profissionais/<int:profissional_id>/editar", methods=["GET", "POST"])
+def editar_profissional(profissional_id):
+
+    # =========================
+    # VERIFICA LOGIN
+    # =========================
+
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id AS profissional_id,
+                p.usuario_id,
+                p.crp,
+                p.uf_crp,
+                p.experiencia,
+                p.especialidade,
+                p.faculdade,
+                p.pos,
+                p.biografia,
+                p.foto,
+
+                u.nome,
+                u.sobrenome,
+                u.cpf,
+                u.data_nascimento,
+                u.sexo,
+                u.email,
+                u.telefone,
+                u.cep,
+                u.estado,
+                u.cidade,
+                u.rua,
+                u.numero,
+                u.bairro
+
+            FROM profissionais p
+
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+
+            WHERE p.id = %s
+            """,
+            (profissional_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+            flash(
+                "Profissional não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_profissionais_aprovados")
+            )
+
+        # =========================
+        # SALVA ALTERAÇÕES
+        # =========================
+
+        if request.method == "POST":
+
+            nome = request.form.get("nome", "").strip()
+            sobrenome = request.form.get("sobrenome", "").strip()
+            cpf = request.form.get("cpf", "").strip()
+            email = request.form.get("email", "").strip().lower()
+            telefone = request.form.get("telefone", "").strip()
+
+            cep = request.form.get("cep", "").strip()
+            estado = request.form.get("estado", "").strip()
+            cidade = request.form.get("cidade", "").strip()
+            rua = request.form.get("rua", "").strip()
+            numero = request.form.get("numero", "").strip()
+            bairro = request.form.get("bairro", "").strip()
+
+            crp = request.form.get("crp", "").strip()
+            uf_crp = request.form.get("uf_crp", "").strip()
+            experiencia = request.form.get("experiencia", "").strip()
+            especialidade = request.form.get("especialidade", "").strip()
+            faculdade = request.form.get("faculdade", "").strip()
+            pos = request.form.get("pos", "").strip()
+            biografia = request.form.get("biografia", "").strip()
+
+            # =========================
+            # ATUALIZA USUARIOS
+            # =========================
+
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET
+                    nome = %s,
+                    sobrenome = %s,
+                    cpf = %s,
+                    email = %s,
+                    telefone = %s,
+                    cep = %s,
+                    estado = %s,
+                    cidade = %s,
+                    rua = %s,
+                    numero = %s,
+                    bairro = %s
+                WHERE id = %s
+                """,
+                (
+                    nome,
+                    sobrenome,
+                    cpf,
+                    email,
+                    telefone,
+                    cep,
+                    estado,
+                    cidade,
+                    rua,
+                    numero,
+                    bairro,
+                    profissional["usuario_id"]
+                )
+            )
+
+            # =========================
+            # ATUALIZA PROFISSIONAIS
+            # =========================
+
+            cursor.execute(
+                """
+                UPDATE profissionais
+                SET
+                    crp = %s,
+                    uf_crp = %s,
+                    experiencia = %s,
+                    especialidade = %s,
+                    faculdade = %s,
+                    pos = %s,
+                    biografia = %s
+                WHERE id = %s
+                """,
+                (
+                    crp,
+                    uf_crp,
+                    experiencia,
+                    especialidade,
+                    faculdade,
+                    pos,
+                    biografia,
+                    profissional_id
+                )
+            )
+
+            conexao.commit()
+
+            print("================================")
+            print("PROFISSIONAL EDITADO")
+            print("PROFISSIONAL ID:", profissional_id)
+            print("USUÁRIO ID:", profissional["usuario_id"])
+            print("================================")
+
+            flash(
+                "Informações do profissional atualizadas com sucesso.",
+                "success"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_profissional_aprovado",
+                    profissional_id=profissional_id
+                )
+            )
+
+        # =========================
+        # ABRE FORMULÁRIO
+        # =========================
+
+        return render_template(
+            "editar_profissional.html",
+            profissional=profissional
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("================================")
+        print("ERRO AO EDITAR PROFISSIONAL")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao editar o profissional.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_profissional_aprovado",
+                profissional_id=profissional_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
 
 @app.route("/dashboard_usuario")
 def dashboard_usuario():

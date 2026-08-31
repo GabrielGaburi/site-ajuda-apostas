@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Usuário{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2>Editar usuário</h2>
+
+            <p class="text-muted mb-0">
+                Altere os dados cadastrados deste usuário.
+            </p>
+        </div>
+
+        <a href="{{ url_for(
+            'detalhes_usuario',
+            usuario_id=usuario.id
+        ) }}" class="btn btn-outline-secondary">
+
+            Voltar
+
+        </a>
+
+    </div>
+
+
+    <form method="POST">
+
+        <!-- DADOS PESSOAIS -->
+
+        <div class="card border-0 shadow-sm mb-4">
+
+            <div class="card-body">
+
+                <h5 class="mb-4">
+                    Dados pessoais
+                </h5>
+
+                <div class="row g-3">
+
+                    <div class="col-md-6">
+
+                        <label class="form-label">
+                            Nome
+                        </label>
+
+                        <input type="text" name="nome" class="form-control" value="{{ usuario.nome or '' }}" required>
+
+                    </div>
+
+
+                    <div class="col-md-6">
+
+                        <label class="form-label">
+                            Sobrenome
+                        </label>
+
+                        <input type="text" name="sobrenome" class="form-control" value="{{ usuario.sobrenome or '' }}"
+                            required>
+
+                    </div>
+
+
+                    <div class="col-md-6">
+
+                        <label class="form-label">
+                            CPF
+                        </label>
+
+                        <input type="text" name="cpf" class="form-control" value="{{ usuario.cpf or '' }}">
+
+                    </div>
+
+
+                    <div class="col-md-6">
+
+                        <label class="form-label">
+                            Data de nascimento
+                        </label>
+
+                        <input type="date" name="data_nascimento" class="form-control"
+                            value="{{ usuario.data_nascimento or '' }}">
+
+                    </div>
+
+
+                    <div class="col-md-6">
+
+
+                        <label class="form-label">
+                            Sexo
+                        </label>
+
+                        <select name="sexo" class="form-select">
+
+                            <option value="">Selecione</option>
+
+                            <option value="Masculino" {% if usuario.sexo=="Masculino" %}selected{% endif %}>
+                                Masculino
+                            </option>
+
+                            <option value="Feminino" {% if usuario.sexo=="Feminino" %}selected{% endif %}>
+                                Feminino
+                            </option>
+
+                            <option value="Outro" {% if usuario.sexo=="Outro" %}selected{% endif %}>
+                                Outro
+                            </option>
+
+                            <option value="Prefiro não informar" {% if usuario.sexo=="Prefiro não informar" %}selected{%
+                                endif %}>
+                                Prefiro não informar
+                            </option>
+
+                        </select>
+
+
+                    </div>
+
+
+
+                    <div class="col-md-6">
+
+                        <label class="form-label">
+                            E-mail
+                        </label>
+
+                        <input type="email" name="email" class="form-control" value="{{ usuario.email or '' }}"
+                            required>
+
+                    </div>
+
+
+                    <div class="col-md-6">
+
+                        <label class="form-label">
+                            Telefone
+                        </label>
+
+                        <input type="text" name="telefone" class="form-control" value="{{ usuario.telefone or '' }}">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ENDEREÇO -->
+
+        <div class="card border-0 shadow-sm mb-4">
+
+            <div class="card-body">
+
+                <h5 class="mb-4">
+                    Endereço
+                </h5>
+
+                <div class="row g-3">
+
+                    <div class="col-md-4">
+
+                        <label class="form-label">
+                            CEP
+                        </label>
+
+                        <input type="text" name="cep" class="form-control" value="{{ usuario.cep or '' }}">
+
+                    </div>
+
+
+                    <div class="col-md-4">
+
+                        <label class="form-label">
+                            Estado
+                        </label>
+
+                        <input type="text" name="estado" class="form-control" value="{{ usuario.estado or '' }}">
+
+                    </div>
+
+
+                    <div class="col-md-4">
+
+                        <label class="form-label">
+                            Cidade
+                        </label>
+
+                        <input type="text" name="cidade" class="form-control" value="{{ usuario.cidade or '' }}">
+
+                    </div>
+
+
+                    <div class="col-md-6">
+
+                        <label class="form-label">
+                            Rua
+                        </label>
+
+                        <input type="text" name="rua" class="form-control" value="{{ usuario.rua or '' }}">
+
+                    </div>
+
+
+                    <div class="col-md-2">
+
+                        <label class="form-label">
+                            Número
+                        </label>
+
+                        <input type="text" name="numero" class="form-control" value="{{ usuario.numero or '' }}">
+
+                    </div>
+
+
+                    <div class="col-md-4">
+
+                        <label class="form-label">
+                            Bairro
+                        </label>
+
+                        <input type="text" name="bairro" class="form-control" value="{{ usuario.bairro or '' }}">
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- BOTÕES -->
+
+        <div class="d-flex gap-2">
+
+            <button type="submit" class="btn btn-primary">
+
+                Salvar alterações
+
+            </button>
+
+
+            <a href="{{ url_for(
+                    'detalhes_usuario',
+                    usuario_id=usuario.id
+                ) }}" class="btn btn-outline-secondary">
+
+                Cancelar
+
+            </a>
+
+        </div>
+
+    </form>
+
+</div>
+
+{% endblock %}

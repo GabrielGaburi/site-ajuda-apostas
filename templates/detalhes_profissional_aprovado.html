@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+
+{% block title %}Detalhes do Profissional{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+
+    <!-- CABEÇALHO -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2>Detalhes do profissional</h2>
+
+            <p class="text-muted mb-0">
+                Visualização completa dos dados do profissional aprovado.
+            </p>
+        </div>
+
+        <a href="{{ url_for('gerenciar_profissionais_aprovados') }}" class="btn btn-outline-secondary">
+
+            Voltar
+
+        </a>
+
+    </div>
+
+
+    <!-- DADOS PESSOAIS -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Dados pessoais
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <strong>Nome:</strong><br>
+                    {{ profissional.nome }} {{ profissional.sobrenome }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>CPF:</strong><br>
+                    {{ profissional.cpf }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Data de nascimento:</strong><br>
+
+                    {{ profissional.data_nascimento.strftime('%d/%m/%Y')
+                    if profissional.data_nascimento else '' }}
+
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Sexo:</strong><br>
+                    {{ profissional.sexo }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>E-mail:</strong><br>
+                    {{ profissional.email }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Telefone:</strong><br>
+                    {{ profissional.telefone }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ENDEREÇO -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Endereço
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+                    <strong>CEP:</strong><br>
+                    {{ profissional.cep }}
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Estado:</strong><br>
+                    {{ profissional.estado }}
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Cidade:</strong><br>
+                    {{ profissional.cidade }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Rua:</strong><br>
+                    {{ profissional.rua }}
+                </div>
+
+                <div class="col-md-2">
+                    <strong>Número:</strong><br>
+                    {{ profissional.numero }}
+                </div>
+
+                <div class="col-md-4">
+                    <strong>Bairro:</strong><br>
+                    {{ profissional.bairro }}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- DADOS PROFISSIONAIS -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Dados profissionais
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+                    <strong>CRP:</strong><br>
+                    {{ profissional.crp }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>UF do CRP:</strong><br>
+                    {{ profissional.uf_crp }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Experiência:</strong><br>
+                    {{ profissional.experiencia }} anos
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Especialidade:</strong><br>
+                    {{ profissional.especialidade }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Instituição de ensino:</strong><br>
+                    {{ profissional.faculdade }}
+                </div>
+
+                <div class="col-md-6">
+                    <strong>Pós-graduação:</strong><br>
+                    {{ profissional.pos }}
+                </div>
+
+                <div class="col-12">
+
+                    <strong>Biografia:</strong>
+
+                    <p class="mt-2 mb-0">
+                        {{ profissional.biografia }}
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- FOTO -->
+
+    {% if profissional.foto %}
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-3">
+                Foto de perfil
+            </h5>
+
+            <img src="{{ url_for(
+            'uploaded_file',
+            filename=profissional.foto
+        ) }}" alt="Foto do profissional" class="img-fluid rounded" style="max-width: 250px;">
+
+        </div>
+
+    </div>
+
+    {% endif %}
+
+
+    <!-- SITUAÇÃO -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Situação da conta
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+
+                    <strong>Aprovação:</strong><br>
+
+                    <span class="badge text-bg-success">
+                        Aprovado
+                    </span>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <strong>Status da conta:</strong><br>
+
+                    {% if profissional.status == "ativo" %}
+
+                    <span class="badge text-bg-success">
+                        Ativo
+                    </span>
+
+                    {% elif profissional.status == "banido" %}
+
+                    <span class="badge text-bg-danger">
+                        Banido
+                    </span>
+
+                    {% else %}
+
+                    <span class="badge text-bg-secondary">
+                        {{ profissional.status }}
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <strong>E-mail:</strong><br>
+
+                    {% if profissional.email_confirmado %}
+
+                    <span class="badge text-bg-success">
+                        Confirmado
+                    </span>
+
+                    {% else %}
+
+                    <span class="badge text-bg-secondary">
+                        Não confirmado
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- AÇÕES ADMINISTRATIVAS -->
+
+    <div class="card border-0 shadow-sm">
+
+        <div class="card-body">
+
+            <h5 class="mb-3">
+                Ações administrativas
+            </h5>
+
+            <div class="d-flex gap-2 flex-wrap">
+
+                <!-- EDITAR -->
+
+                <a href="{{ url_for(
+                    'editar_profissional_aprovados',
+                    profissional_id=profissional.profissional_id
+                ) }}" class="btn btn-primary">
+                    Editar informações
+                </a>
+
+
+                <!-- BANIR -->
+
+                {% if profissional.status == "ativo" %}
+
+                <form method="POST" action="{{ url_for(
+                          'banir_profissional',
+                          profissional_id=profissional.profissional_id
+                      ) }}">
+
+                    <button type="submit" class="btn btn-danger"
+                        onclick="return confirm('Tem certeza que deseja banir este profissional?');">
+
+                        Banir profissional
+
+                    </button>
+
+                </form>
+
+
+                <!-- REATIVAR -->
+
+                {% elif profissional.status == "banido" %}
+
+                <form method="POST" action="{{ url_for(
+                          'reativar_profissional',
+                          profissional_id=profissional.profissional_id
+                      ) }}">
+
+                    <button type="submit" class="btn btn-success"
+                        onclick="return confirm('Deseja reativar este profissional?');">
+
+                        Reativar profissional
+
+                    </button>
+
+                </form>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+</div>
+
+{% endblock %}
