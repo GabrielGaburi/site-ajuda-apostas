@@ -2290,6 +2290,288 @@ def validar_cpf(cpf):
 
     return True
 
+
+
+PALAVRAS_PROIBIDAS = [
+    "porra",
+    "merda",
+    "caralho",
+    "foda-se",
+    "fodase",
+    "foder",
+    "fudeu",
+    "puta",
+    "puto",
+    "putaria",
+    "buceta",
+    "cacete",
+    "cu",
+    "cuzão",
+    "cusao",
+    "cuzona",
+    "viado",
+    "veado",
+    "bicha",
+    "baitola",
+    "retardado",
+    "imbecil",
+    "idiota",
+    "otário",
+    "otario",
+    "babaca",
+    "burro",
+    "estúpido",
+    "estupido",
+    "arrombado",
+    "desgraçado",
+    "desgracado",
+    "filho da puta",
+    "filhodaputa",
+    "piranha",
+    "vagabunda",
+    "vagabundo",
+    "safado",
+    "fdp",
+    "vtnc",
+    "bct",
+    "safada"
+]
+
+FRASES_APOSTAS_PROIBIDAS = [
+    "aposte agora",
+    "aposta agora",
+    "apostem agora",
+    "vai apostar",
+    "vá apostar",
+    "va apostar",
+    "vamos apostar",
+    "bora apostar",
+    "bora aposta",
+    "faça uma aposta",
+    "faca uma aposta",
+    "faz uma aposta",
+    "faça sua aposta",
+    "faca sua aposta",
+    "faz sua aposta",
+    "coloque uma aposta",
+    "coloca uma aposta",
+    "faça sua fezinha",
+    "faca sua fezinha",
+    "faz uma fezinha",
+    "tente a sorte",
+    "tenta a sorte",
+    "arrisque seu dinheiro",
+    "arrisca seu dinheiro",
+    "coloque seu dinheiro",
+    "coloca seu dinheiro",
+    "jogue seu dinheiro",
+    "joga seu dinheiro",
+    "aposte nesse jogo",
+    "aposta nesse jogo",
+    "aposte nesse time",
+    "aposta nesse time",
+    "aposte nesse campeonato",
+    "aposta nesse campeonato",
+    "entra nessa aposta",
+    "entre nessa aposta",
+    "aproveite e aposte",
+    "aproveita e aposta",
+    "não perca essa aposta",
+    "nao perca essa aposta",
+    "não deixe de apostar",
+    "nao deixe de apostar",
+    "vale a pena apostar",
+    "compensa apostar",
+    "melhor apostar",
+    "tem que apostar"
+]
+
+FRASES_PROMOCAO_APOSTAS = [
+    "ganhe dinheiro apostando",
+    "ganhar dinheiro apostando",
+    "ganhe dinheiro com apostas",
+    "ganhar dinheiro com apostas",
+    "fique rico apostando",
+    "ficar rico apostando",
+    "fique rico com apostas",
+    "dinheiro fácil com apostas",
+    "dinheiro facil com apostas",
+    "lucro garantido",
+    "ganho garantido",
+    "renda garantida",
+    "retorno garantido",
+    "lucro fácil",
+    "lucro facil",
+    "ganho fácil",
+    "ganho facil",
+    "dinheiro fácil",
+    "dinheiro facil",
+    "dinheiro rápido",
+    "dinheiro rapido",
+    "ganhe fácil",
+    "ganhe facil",
+    "ganhe rápido",
+    "ganhe rapido",
+    "ganhe muito apostando",
+    "ganhe muito com apostas",
+    "lucre apostando",
+    "lucrar apostando",
+    "lucre com apostas",
+    "lucrar com apostas",
+    "renda com apostas",
+    "renda através de apostas",
+    "renda atraves de apostas",
+    "viva de apostas",
+    "viver de apostas"
+]
+
+FRASES_RECUPERACAO_PERDAS = [
+    "recupere seu dinheiro apostando",
+    "recuperar seu dinheiro apostando",
+    "recupere o dinheiro perdido",
+    "recuperar o dinheiro perdido",
+    "recupere suas perdas",
+    "recuperar suas perdas",
+    "recupere o prejuízo",
+    "recuperar o prejuizo",
+    "recupere o prejuízo apostando",
+    "recuperar o prejuizo apostando",
+    "dobre sua banca",
+    "dobrar sua banca",
+    "duplique sua banca",
+    "duplicar sua banca",
+    "aumente sua banca",
+    "aumentar sua banca",
+    "recupere na próxima aposta",
+    "recuperar na próxima aposta",
+    "recuperar na proxima aposta",
+    "apostar mais para recuperar",
+    "aposte mais para recuperar",
+    "apostando mais você recupera",
+    "apostando mais voce recupera",
+    "não pare até recuperar",
+    "nao pare ate recuperar"
+]
+
+FRASES_DIVULGACAO_APOSTAS = [
+    "site de apostas",
+    "sites de apostas",
+    "casa de apostas",
+    "casas de apostas",
+    "plataforma de apostas",
+    "plataformas de apostas",
+    "aplicativo de apostas",
+    "aplicativo para apostas",
+    "app de apostas",
+    "link de aposta",
+    "link para apostar",
+    "link de apostas",
+    "código promocional",
+    "codigo promocional",
+    "cupom de aposta",
+    "cupom de apostas",
+    "bônus de aposta",
+    "bonus de aposta",
+    "bônus de apostas",
+    "bonus de apostas",
+    "bônus de cadastro",
+    "bonus de cadastro",
+    "bônus grátis",
+    "bonus gratis",
+    "indicação de aposta",
+    "indicacao de aposta",
+    "indicação de apostas",
+    "indicacao de apostas"
+]
+
+TERMOS_PROMOCAO_APOSTAS = [
+    "odd alta",
+    "odds altas",
+    "odd turbinada",
+    "odds turbinadas",
+    "aposta segura",
+    "aposta certa",
+    "aposta garantida",
+    "apostas seguras",
+    "apostas certas",
+    "apostas garantidas",
+    "palpite certeiro",
+    "palpite garantido",
+    "dica de aposta",
+    "dicas de aposta",
+    "dica para apostar",
+    "dicas para apostar",
+    "estratégia de aposta",
+    "estrategia de aposta",
+    "estratégia para apostar",
+    "estrategia para apostar",
+    "método para ganhar",
+    "metodo para ganhar",
+    "método para lucrar",
+    "metodo para lucrar",
+    "banca garantida",
+    "banca fácil",
+    "banca facil"
+]
+
+def normalizar_texto(texto):
+    texto = texto.lower().strip()
+
+    substituicoes = {
+        "á": "a",
+        "à": "a",
+        "ã": "a",
+        "â": "a",
+        "é": "e",
+        "ê": "e",
+        "í": "i",
+        "ó": "o",
+        "ô": "o",
+        "õ": "o",
+        "ú": "u",
+        "ç": "c"
+    }
+
+    for original, substituto in substituicoes.items():
+        texto = texto.replace(original, substituto)
+
+    texto = re.sub(r"\s+", " ", texto)
+
+    return texto
+
+
+def verificar_conteudo_proibido(texto):
+    texto_normalizado = normalizar_texto(texto)
+
+    for palavra in PALAVRAS_PROIBIDAS:
+        palavra_normalizada = normalizar_texto(palavra)
+
+        if re.search(
+            r"\b" + re.escape(palavra_normalizada) + r"\b",
+            texto_normalizado
+        ):
+            return "A mensagem contém linguagem ofensiva não permitida."
+
+    grupos_de_frases = [
+        FRASES_APOSTAS_PROIBIDAS,
+        FRASES_PROMOCAO_APOSTAS,
+        FRASES_RECUPERACAO_PERDAS,
+        FRASES_DIVULGACAO_APOSTAS,
+        TERMOS_PROMOCAO_APOSTAS
+    ]
+
+    for grupo in grupos_de_frases:
+        for frase in grupo:
+            frase_normalizada = normalizar_texto(frase)
+
+            if frase_normalizada in texto_normalizado:
+                return (
+                    "Esta mensagem contém conteúdo que incentiva, "
+                    "promove ou estimula apostas."
+                )
+
+    return None
+
 # Página principal do fórum
 @app.route("/forum")
 def forum_home():
@@ -2329,6 +2611,13 @@ def forum_novo():
                 campo_erro="titulo",
                 mensagem_erro="Informe um título."
             )
+        if len(titulo) > 150:
+            return render_template(
+                "novo_topico.html",
+                usuario_nome=usuario_nome,
+                campo_erro="titulo",
+                mensagem_erro="O título deve ter no máximo 150 caracteres."
+            )
 
         # Validação da mensagem
         if not mensagem:
@@ -2337,6 +2626,27 @@ def forum_novo():
                 usuario_nome=usuario_nome,
                 campo_erro="mensagem",
                 mensagem_erro="Digite uma mensagem."
+            )
+            
+        if len(mensagem) > 3000:
+            return render_template(
+                "novo_topico.html",
+                usuario_nome=usuario_nome,
+                campo_erro="mensagem",
+                mensagem_erro="A mensagem deve ter no máximo 3000 caracteres."
+            )
+            
+        conteudo_proibido = verificar_conteudo_proibido(
+            titulo + " " + mensagem
+        )
+        
+
+        if conteudo_proibido:
+            return render_template(
+                "novo_topico.html",
+                usuario_nome=usuario_nome,
+                campo_erro="mensagem",
+                mensagem_erro=conteudo_proibido
             )
 
         # Cria o tópico
@@ -2401,6 +2711,26 @@ def forum_topico(topico_id):
 
         if mensagem:
 
+            if len(mensagem) > 3000:
+                flash(
+                    "A mensagem deve ter no máximo 3000 caracteres.",
+                    "warning"
+                )
+                return redirect(
+                    url_for("forum_topico", topico_id=topico_id)
+                )
+                          
+            conteudo_proibido = verificar_conteudo_proibido(mensagem)
+
+            if conteudo_proibido:
+                return render_template(
+                    "topico.html",
+                    topico=topico,
+                    usuario_nome=usuario_nome,
+                    campo_erro="mensagem",
+                    mensagem_erro=conteudo_proibido
+                )
+
             topico["mensagens"].append({
                 "usuario_id": usuario_id,
                 "autor": usuario_nome,
@@ -2414,6 +2744,7 @@ def forum_topico(topico_id):
             return redirect(
                 url_for("forum_topico", topico_id=topico_id)
             )
+
 
     return render_template(
         "topico.html",
@@ -2524,7 +2855,19 @@ def excluir_mensagem(topico_id, msg_index):
 
     return redirect(
         url_for("forum_topico", topico_id=topico_id)
+        
     )
+    
+@app.route("/admin/forum")
+def gerenciar_forum():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("tipo_usuario") != "admin":
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("dashboard_usuario"))
+
+    return render_template("admin_forum.html", forum=forum)
 
 
 @app.route("/dashboard_admin")

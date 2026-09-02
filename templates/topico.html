@@ -6,7 +6,7 @@
 
 <div class="container my-5">
 
-    <h2>{{ topico.titulo }}</h2>
+    <h2 style="overflow-wrap: anywhere;">{{ topico.titulo }}</h2>
 
     {% if topico.mensagens %}
     <p class="text-muted">
@@ -17,6 +17,21 @@
     <hr>
 
     <h4 class="mb-4">Mensagens</h4>
+
+    {% if session.get("tipo_usuario") == "admin" %}
+
+    <div class="mb-4">
+        <form method="POST" action="{{ url_for('excluir_topico', topico_id=topico.id) }}"
+            onsubmit="return confirm('Tem certeza que deseja excluir este tópico inteiro?');">
+
+            <button type="submit" class="btn btn-danger">
+                Excluir tópico
+            </button>
+
+        </form>
+    </div>
+
+    {% endif %}
 
     {% for msg in topico.mensagens %}
 
@@ -37,7 +52,7 @@
             {{ msg.data }}
         </small>
 
-        <p class="mt-2 mb-0">
+        <p class="mt-2 mb-0" style="white-space: pre-wrap; overflow-wrap: anywhere;">
             {{ msg.mensagem }}
         </p>
 
@@ -81,6 +96,11 @@
 
             <textarea name="mensagem" class="form-control" rows="4" placeholder="Escreva sua mensagem..."
                 required></textarea>
+            {% if campo_erro == "mensagem" %}
+            <div class="text-danger mt-1">
+                {{ mensagem_erro }}
+            </div>
+            {% endif %}
 
         </div>
 
