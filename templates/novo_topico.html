@@ -27,14 +27,25 @@
                             <label for="titulo" class="form-label fw-semibold">Título do tópico</label>
                             <input type="text" class="form-control" id="titulo" name="titulo"
                                 placeholder="Ex: Preciso de ajuda para parar de apostar" required>
+
+                            {% if campo_erro == "titulo" %}
+                            <div class="text-danger mt-1">
+                                {{ mensagem_erro }}
+                            </div>
+                            {% endif %}
                         </div>
 
                         <div class="mb-4">
                             <label for="mensagem" class="form-label fw-semibold">Mensagem inicial</label>
                             <textarea class="form-control" id="mensagem" name="mensagem" rows="5"
                                 placeholder="Conte sua experiência ou dúvida" required></textarea>
-                        </div>
 
+                            {% if campo_erro == "mensagem" %}
+                            <div class="text-danger mt-1">
+                                {{ mensagem_erro }}
+                            </div>
+                            {% endif %}
+                        </div>
                         <div class="d-flex justify-content-between align-items-center">
                             <a href="{{ url_for('forum_home') }}" class="btn btn-outline-secondary">
                                 Cancelar

@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block title %}Gerenciar Profissionais{% endblock %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2>Gerenciar Fórum</h2>
+        <p class="text-muted mb-0">
+            Gerencie os tópicos e mensagens do fórum.
+        </p>
+    </div>
+
+    <a href="{{ url_for('dashboard_admin') }}" class="btn btn-secondary">
+        Voltar
+    </a>
+</div>
+
+{% if forum %}
+
+<div class="row">
+
+    {% for topico in forum %}
+
+    <div class="col-md-6 mb-4">
+
+        <div class="card shadow-sm h-100">
+
+            <div class="card-body">
+
+                <h5 class="card-title">
+                    {{ topico.titulo }}
+                </h5>
+
+                {% if topico.mensagens %}
+
+                <p class="text-muted mb-2">
+                    Criado por:
+                    {{ topico.mensagens[0].autor }}
+                </p>
+
+                <p class="text-muted mb-3">
+                    {{ topico.mensagens|length }} mensagem(ns)
+                </p>
+
+                {% endif %}
+
+                <div class="d-flex gap-2">
+
+                    <a href="{{ url_for('forum_topico', topico_id=topico.id) }}" class="btn btn-primary">
+                        Visualizar
+                    </a>
+
+                    <form method="POST" action="{{ url_for('excluir_topico', topico_id=topico.id) }}"
+                        onsubmit="return confirm('Tem certeza que deseja excluir este tópico?');">
+
+                        <button type="submit" class="btn btn-danger">
+                            Excluir tópico
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    {% endfor %}
+
+</div>
+
+{% else %}
+
+<div class="alert alert-info">
+    Não existem tópicos no fórum.
+</div>
+
+{% endif %}
+
+{% endblock %}
