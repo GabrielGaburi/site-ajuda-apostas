@@ -80,6 +80,8 @@
 
             <form method="POST" action="{{ url_for('teste') }}" id="formTeste">
 
+                {{ csrf_token() }}
+
 
                 <!-- PERGUNTA 1 -->
                 <div class="pergunta" id="pergunta1">

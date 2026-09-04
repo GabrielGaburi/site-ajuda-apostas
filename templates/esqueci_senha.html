@@ -14,12 +14,13 @@
 
         <form method="POST">
 
+            {{ csrf_token() }}
+
             <div class="mb-3">
                 <label class="form-label">Email</label>
                 <div class="input-group">
                     <span class="input-group-text">📧</span>
-                    <input type="email" name="email" class="form-control"
-                        value="{{ email or '' }}"
+                    <input type="email" name="email" class="form-control" value="{{ email or '' }}"
                         placeholder="seu@email.com" required>
                 </div>
             </div>

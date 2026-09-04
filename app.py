@@ -6,9 +6,15 @@ from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.utils import secure_filename
 from flask import send_from_directory
+from flask_wtf.csrf import CSRFProtect
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(16)
+app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+
+csrf = CSRFProtect(app)
 # =========================
 # CONEXÃO COM MYSQL
 # =========================
@@ -113,21 +119,246 @@ noticias = [
     }
 ]
 
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    
+    print("########## ROTA PERFIL FOI REGISTRADA ##########")
+
+    if request.method == "POST":
+
+        # =========================
+        # DADOS DIGITADOS
+        # =========================
+
+        email = request.form.get("email", "").strip().lower()
+        senha = request.form.get("senha", "")
+
+        conexao = None
+        cursor = None
+
+        try:
+
+            # =========================
+            # CONECTA AO MYSQL
+            # =========================
+
+            conexao = get_db_connection()
+            cursor = conexao.cursor(dictionary=True)
+
+            # =========================
+            # PROCURA O EMAIL
+            # =========================
+
+            cursor.execute(
+                """
+                SELECT 
+                    u.id,
+                    u.nome,
+                    u.sobrenome,
+                    u.email,
+                    u.senha_hash,
+                    u.tipo,
+                    u.status,
+                    u.email_confirmado,
+                    p.status_aprovacao
+                FROM usuarios u
+                LEFT JOIN profissionais p
+                    ON p.usuario_id = u.id
+                WHERE u.email = %s
+                """,
+                (email,)
+            )
+
+            usuario = cursor.fetchone()
+
+            # =========================
+            # EMAIL NÃO ENCONTRADO
+            # =========================
+
+            if usuario is None:
+
+                flash(
+                    "Email não encontrado.",
+                    "danger"
+                )
+
+                return render_template(
+                    "login.html",
+                    email=email
+                )
+
+            # =========================
+            # VERIFICA STATUS DA CONTA
+            # =========================
+
+            if usuario["status"] == "banido":
+
+                flash(
+                    "Esta conta está bloqueada.",
+                    "danger"
+                )
+
+                return render_template(
+                    "login.html",
+                    email=email
+                )
+
+            #Somente usuários comuns precisam confirmar o email.
+            # Profissionais entram após aprovação do administrador.
+            if usuario["tipo"] == "usuario" and not usuario["email_confirmado"]:
+
+                flash(
+                    "Confirme seu email antes de fazer login.",
+                    "warning"
+                )
+
+                return render_template(
+                    "login.html",
+                    email=email
+                )
+            # =========================
+            # VERIFICA APROVAÇÃO
+            # SOMENTE PARA PROFISSIONAL
+            # =========================
+
+            if usuario["tipo"] == "profissional":
+
+                if usuario["status_aprovacao"] == "pendente":
+
+                    flash(
+                        "Seu cadastro profissional ainda está aguardando aprovação do administrador.",
+                        "warning"
+                    )
+
+                    return render_template(
+                        "login.html",
+                        email=email
+                    )
+
+                if usuario["status_aprovacao"] == "recusado":
+
+                    flash(
+                        "Seu cadastro profissional não foi aprovado pelo administrador.",
+                        "danger"
+                    )
+
+                    return render_template(
+                        "login.html",
+                        email=email
+                    )
+
+            # =========================
+            # VERIFICA SENHA
+            # =========================
+
+            if not check_password_hash(
+                usuario["senha_hash"],
+                senha
+            ):
+
+                flash(
+                    "Senha incorreta.",
+                    "danger"
+                )
+
+                return render_template(
+                    "login.html",
+                    email=email
+                )
+
+            # =========================
+            # LOGIN REALIZADO
+            # =========================
+
+            session["usuario_id"] = usuario["id"]
+            session["usuario_nome"] = usuario["nome"]
+            session["tipo_usuario"] = usuario["tipo"]
+
+            print("================================")
+            print("LOGIN REALIZADO")
+            print("ID:", usuario["id"])
+            print("NOME:", usuario["nome"])
+            print("EMAIL:", usuario["email"])
+            print("TIPO:", usuario["tipo"])
+            print("================================")
+
+            flash(
+                f"Bem-vindo(a), {usuario['nome']}!",
+                "success"
+            )
+
+            # =========================
+            # REDIRECIONAMENTO
+            # =========================
+
+            if usuario["tipo"] == "admin":
+
+                return redirect(
+                    url_for("dashboard_admin")
+                )
+
+            elif usuario["tipo"] == "profissional":
+
+                return redirect(
+                    url_for("dashboard_profissional")
+                )
+
+            else:
+
+                return redirect(
+                    url_for("dashboard_usuario")
+                )
+
+        except Exception:
+
+            if conexao:
+                conexao.rollback()
+
+            print("ERRO AO REALIZAR LOGIN NO MYSQL:")
+            traceback.print_exc()
+
+            flash(
+                "Ocorreu um erro ao realizar o login. Tente novamente.",
+                "danger"
+            )
+
+            return render_template(
+                "login.html",
+                email=email
+            )
+
+        finally:
+
+            if cursor:
+                cursor.close()
+
+            if conexao:
+                conexao.close()
+
+   
+
+    return render_template("login.html")
+
 # =========================
 # LOGOUT
 # =========================
-@app.route("/logout")
+@app.route("/logout", methods=["POST"])
 def logout():
-    session.clear()  # remove todos os dados da sessão
-    flash("Você saiu da sua conta com sucesso.", "success")
-    return redirect(url_for("login"))
 
+    session.clear()
+
+    flash("Você saiu da sua conta com sucesso.", "success")
+
+    return redirect(url_for("login"))
 
 # =========================
 # PERFIL
 # =========================
 @app.route("/perfil")
 def perfil():
+    
+    print("########## ENTREI NA FUNÇÃO PERFIL ##########")
 
     # =========================
     # VERIFICA LOGIN
@@ -1314,6 +1545,391 @@ def desbanir_usuario(usuario_id):
         if conexao:
             conexao.close()
             
+            
+@app.route("/dashboard_usuario")
+def dashboard_usuario():
+
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("tipo_usuario") != "usuario":
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("login"))
+
+    return render_template("dashboard_usuario.html")
+
+
+
+@app.route(
+    "/admin/profissionais/<int:profissional_id>/aprovar",
+    methods=["POST"]
+)
+def aprovar_profissional(profissional_id):
+
+    # =========================
+    # VERIFICA SE ESTÁ LOGADO
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA SE É ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id,
+                p.usuario_id,
+                p.status_aprovacao,
+                u.nome,
+                u.email
+            FROM profissionais p
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+            WHERE p.id = %s
+            """,
+            (profissional_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+
+            flash(
+                "Profissional não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_profissionais")
+            )
+
+        # =========================
+        # VERIFICA SE JÁ FOI DECIDIDO
+        # =========================
+
+        if profissional["status_aprovacao"] != "pendente":
+
+            flash(
+                "Este cadastro já foi analisado.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_profissional",
+                    profissional_id=profissional_id
+                )
+            )
+
+        # =========================
+        # APROVA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            UPDATE profissionais
+            SET
+                status_aprovacao = 'aprovado',
+                data_aprovacao = NOW()
+            WHERE id = %s
+            """,
+            (profissional_id,)
+        )
+
+        conexao.commit()
+
+        # =========================
+        # ENVIA EMAIL DE APROVAÇÃO
+        # =========================
+
+        email_enviado = enviar_email_aprovacao(
+            profissional["email"],
+            profissional["nome"]
+        )
+
+        # =========================
+        # DEBUG
+        # =========================
+
+        print("================================")
+        print("PROFISSIONAL APROVADO")
+        print("ID PROFISSIONAL:", profissional_id)
+        print("USUARIO_ID:", profissional["usuario_id"])
+        print("EMAIL:", profissional["email"])
+        print("EMAIL ENVIADO:", email_enviado)
+        print("================================")
+
+        # =========================
+        # MENSAGEM PARA O ADMIN
+        # =========================
+
+        if email_enviado:
+
+            flash(
+                f"O cadastro de {profissional['nome']} foi aprovado e o profissional foi notificado por email.",
+                "success"
+            )
+
+        else:
+
+            flash(
+                f"O cadastro de {profissional['nome']} foi aprovado, mas não foi possível enviar o email.",
+                "warning"
+            )
+
+        return redirect(
+            url_for("gerenciar_profissionais")
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO APROVAR PROFISSIONAL:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao aprovar o cadastro.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_profissional",
+                profissional_id=profissional_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+@app.route(
+    "/admin/profissionais/<int:profissional_id>/recusar",
+    methods=["POST"]
+)
+def recusar_profissional(profissional_id):
+
+    # =========================
+    # VERIFICA SE ESTÁ LOGADO
+    # =========================
+
+    if "usuario_id" not in session:
+        flash(
+            "Você precisa estar logado.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    # =========================
+    # VERIFICA SE É ADMIN
+    # =========================
+
+    if session.get("tipo_usuario") != "admin":
+        flash(
+            "Você não tem permissão para realizar esta ação.",
+            "danger"
+        )
+        return redirect(url_for("index"))
+
+    motivo = request.form.get("motivo_recusa", "").strip()
+
+    # =========================
+    # VALIDA O MOTIVO
+    # =========================
+
+    if not motivo:
+
+        flash(
+            "Informe o motivo da recusa.",
+            "warning"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_profissional",
+                profissional_id=profissional_id
+            )
+        )
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT
+                p.id,
+                p.usuario_id,
+                p.status_aprovacao,
+                u.nome,
+                u.email
+            FROM profissionais p
+            INNER JOIN usuarios u
+                ON u.id = p.usuario_id
+            WHERE p.id = %s
+            """,
+            (profissional_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+
+            flash(
+                "Profissional não encontrado.",
+                "danger"
+            )
+
+            return redirect(
+                url_for("gerenciar_profissionais")
+            )
+
+        # =========================
+        # VERIFICA SE JÁ FOI ANALISADO
+        # =========================
+
+        if profissional["status_aprovacao"] != "pendente":
+
+            flash(
+                "Este cadastro já foi analisado.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_profissional",
+                    profissional_id=profissional_id
+                )
+            )
+
+        # =========================
+        # RECUSA O PROFISSIONAL
+        # =========================
+
+        cursor.execute(
+            """
+            UPDATE profissionais
+            SET
+                status_aprovacao = 'recusado',
+                motivo_recusa = %s,
+                data_aprovacao = NOW()
+            WHERE id = %s
+            """,
+            (
+                motivo,
+                profissional_id
+            )
+        )
+
+        conexao.commit()
+
+        print("================================")
+        print("PROFISSIONAL RECUSADO")
+        print("ID PROFISSIONAL:", profissional_id)
+        print("USUARIO_ID:", profissional["usuario_id"])
+        print("EMAIL:", profissional["email"])
+        print("MOTIVO:", motivo)
+        print("================================")
+
+
+        # =========================
+        # ENVIA EMAIL DE RECUSA
+        # =========================
+
+        email_enviado = enviar_email_recusa(
+            profissional["email"],
+            profissional["nome"],
+            motivo
+        )
+
+
+        if email_enviado:
+
+            flash(
+                f"O cadastro de {profissional['nome']} foi recusado e o profissional foi notificado por email.",
+                "success"
+            )
+
+        else:
+
+            flash(
+                f"O cadastro de {profissional['nome']} foi recusado, mas não foi possível enviar o email.",
+                "warning"
+            )
+
+
+        return redirect(
+            url_for("gerenciar_profissionais")
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO RECUSAR PROFISSIONAL:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao recusar o cadastro.",
+            "danger"
+        )
+
+        return redirect(
+            url_for(
+                "detalhes_profissional",
+                profissional_id=profissional_id
+            )
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
 
             
 # Arquivo JSON para salvar o fórum
@@ -1819,6 +2435,303 @@ def senha_valida(senha):
 
 # Carregar tópicos existentes
 forum = carregar_forum()
+
+@app.route("/forum")
+def forum_home():
+    
+    print("================================")
+    print("USUARIO_ID:", session.get("usuario_id"))
+    print("USUARIO_NOME:", session.get("usuario_nome"))
+    print("TIPO:", session.get("tipo_usuario"))
+    print("================================")
+    return render_template("forum.html", forum=forum)
+
+# Criar novo tópico
+@app.route("/forum/novo", methods=["GET", "POST"])
+def forum_novo():
+
+    usuario_id = session.get("usuario_id")
+    usuario_nome = session.get("usuario_nome")
+
+    # Precisa estar logado para criar tópico
+    if not usuario_id:
+        flash(
+            "Você precisa estar logado para criar um tópico.",
+            "warning"
+        )
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+
+        titulo = request.form.get("titulo", "").strip()
+        mensagem = request.form.get("mensagem", "").strip()
+
+        # Validação do título
+        if not titulo:
+            return render_template(
+                "novo_topico.html",
+                usuario_nome=usuario_nome,
+                campo_erro="titulo",
+                mensagem_erro="Informe um título."
+            )
+        if len(titulo) > 150:
+            return render_template(
+                "novo_topico.html",
+                usuario_nome=usuario_nome,
+                campo_erro="titulo",
+                mensagem_erro="O título deve ter no máximo 150 caracteres."
+            )
+
+        # Validação da mensagem
+        if not mensagem:
+            return render_template(
+                "novo_topico.html",
+                usuario_nome=usuario_nome,
+                campo_erro="mensagem",
+                mensagem_erro="Digite uma mensagem."
+            )
+            
+        if len(mensagem) > 3000:
+            return render_template(
+                "novo_topico.html",
+                usuario_nome=usuario_nome,
+                campo_erro="mensagem",
+                mensagem_erro="A mensagem deve ter no máximo 3000 caracteres."
+            )
+            
+        conteudo_proibido = verificar_conteudo_proibido(
+            titulo + " " + mensagem
+        )
+        
+
+        if conteudo_proibido:
+            return render_template(
+                "novo_topico.html",
+                usuario_nome=usuario_nome,
+                campo_erro="mensagem",
+                mensagem_erro=conteudo_proibido
+            )
+
+        # Cria o tópico
+        novo_topico = {
+            "id": max((t["id"] for t in forum), default=0) + 1,
+            "titulo": titulo,
+
+            "mensagens": [
+                {
+                    "usuario_id": usuario_id,
+                    "autor": usuario_nome,
+                    "tipo_usuario": session.get("tipo_usuario"),
+                    "mensagem": mensagem,
+                    "data": datetime.now().strftime("%d/%m/%Y %H:%M")
+                }
+            ]
+        }
+
+        forum.append(novo_topico)
+
+        salvar_forum(forum)
+        
+        print("NOVO TÓPICO CRIADO:")
+        print(novo_topico)
+        print("ID DO NOVO TÓPICO:", novo_topico["id"])
+        print("TOTAL DE TÓPICOS:", len(forum))
+
+        return redirect(
+            url_for(
+                "forum_topico",
+                topico_id=novo_topico["id"]
+            )
+        )
+
+    return render_template(
+        "novo_topico.html",
+        usuario_nome=usuario_nome
+    )
+
+@app.route("/forum/<int:topico_id>", methods=["GET", "POST"])
+def forum_topico(topico_id):
+
+    # Verifica se está logado
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado para participar do fórum.", "warning")
+        return redirect(url_for("login"))
+
+    topico = next(
+        (t for t in forum if t["id"] == topico_id),
+        None
+    )
+
+    if not topico:
+        abort(404)
+
+    usuario_id = session["usuario_id"]
+    usuario_nome = session["usuario_nome"]
+
+    if request.method == "POST":
+
+        mensagem = request.form.get("mensagem", "").strip()
+
+        if mensagem:
+
+            if len(mensagem) > 3000:
+                flash(
+                    "A mensagem deve ter no máximo 3000 caracteres.",
+                    "warning"
+                )
+                return redirect(
+                    url_for("forum_topico", topico_id=topico_id)
+                )
+                          
+            conteudo_proibido = verificar_conteudo_proibido(mensagem)
+
+            if conteudo_proibido:
+                return render_template(
+                    "topico.html",
+                    topico=topico,
+                    usuario_nome=usuario_nome,
+                    campo_erro="mensagem",
+                    mensagem_erro=conteudo_proibido
+                )
+
+            topico["mensagens"].append({
+                "usuario_id": usuario_id,
+                "autor": usuario_nome,
+                "tipo_usuario": session.get("tipo_usuario"),
+                "mensagem": mensagem,
+                "data": datetime.now().strftime("%d/%m/%Y %H:%M")
+            })
+
+            salvar_forum(forum)
+
+            return redirect(
+                url_for("forum_topico", topico_id=topico_id)
+            )
+
+
+    return render_template(
+        "topico.html",
+        topico=topico,
+        usuario_nome=usuario_nome
+    )
+    
+@app.route("/forum/<int:topico_id>/excluir", methods=["POST"])
+def excluir_topico(topico_id):
+
+    # Precisa estar logado
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
+    usuario_id = session["usuario_id"]
+    tipo_usuario = session.get("tipo_usuario")
+
+    # Procura o tópico
+    topico = next(
+        (t for t in forum if t["id"] == topico_id),
+        None
+    )
+
+    if not topico:
+        abort(404)
+
+    # ID do criador está na primeira mensagem
+    mensagem_inicial = topico["mensagens"][0]
+
+    dono_topico = mensagem_inicial.get("usuario_id")
+
+    # Somente o dono ou administrador pode excluir
+    if dono_topico != usuario_id and tipo_usuario != "admin":
+        flash(
+            "Você não tem permissão para excluir este tópico.",
+            "danger"
+        )
+        return redirect(
+            url_for("forum_topico", topico_id=topico_id)
+        )
+
+    # Remove o tópico
+    forum.remove(topico)
+
+    salvar_forum(forum)
+
+    flash("Tópico excluído com sucesso.", "success")
+
+    return redirect(url_for("forum_home"))
+
+
+@app.route("/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir", methods=["POST"])
+def excluir_mensagem(topico_id, msg_index):
+
+    # Precisa estar logado
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
+    usuario_id = session["usuario_id"]
+    tipo_usuario = session.get("tipo_usuario")
+
+    # Procura o tópico
+    topico = next(
+        (t for t in forum if t["id"] == topico_id),
+        None
+    )
+
+    if not topico:
+        abort(404)
+
+    # Verifica se a mensagem existe
+    if msg_index < 0 or msg_index >= len(topico["mensagens"]):
+        abort(404)
+
+    mensagem = topico["mensagens"][msg_index]
+
+    # A primeira mensagem é a criação do tópico
+    if msg_index == 0:
+        flash(
+            "A mensagem inicial do tópico não pode ser excluída.",
+            "warning"
+        )
+        return redirect(
+            url_for("forum_topico", topico_id=topico_id)
+        )
+
+    # Só o autor da mensagem ou administrador pode excluir
+    if (
+        mensagem.get("usuario_id") != usuario_id
+        and tipo_usuario != "admin"
+    ):
+        flash(
+            "Você não tem permissão para excluir esta mensagem.",
+            "danger"
+        )
+        return redirect(
+            url_for("forum_topico", topico_id=topico_id)
+        )
+
+    # Exclui a resposta
+    topico["mensagens"].pop(msg_index)
+
+    salvar_forum(forum)
+
+    flash("Mensagem excluída.", "success")
+
+    return redirect(
+        url_for("forum_topico", topico_id=topico_id)
+        
+    )
+    
+@app.route("/admin/forum")
+def gerenciar_forum():
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("tipo_usuario") != "admin":
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("dashboard_usuario"))
+
+    return render_template("admin_forum.html", forum=forum)
+
 
 
 
@@ -2573,301 +3486,6 @@ def verificar_conteudo_proibido(texto):
     return None
 
 # Página principal do fórum
-@app.route("/forum")
-def forum_home():
-    
-    print("================================")
-    print("USUARIO_ID:", session.get("usuario_id"))
-    print("USUARIO_NOME:", session.get("usuario_nome"))
-    print("TIPO:", session.get("tipo_usuario"))
-    print("================================")
-    return render_template("forum.html", forum=forum)
-
-# Criar novo tópico
-@app.route("/forum/novo", methods=["GET", "POST"])
-def forum_novo():
-
-    usuario_id = session.get("usuario_id")
-    usuario_nome = session.get("usuario_nome")
-
-    # Precisa estar logado para criar tópico
-    if not usuario_id:
-        flash(
-            "Você precisa estar logado para criar um tópico.",
-            "warning"
-        )
-        return redirect(url_for("login"))
-
-    if request.method == "POST":
-
-        titulo = request.form.get("titulo", "").strip()
-        mensagem = request.form.get("mensagem", "").strip()
-
-        # Validação do título
-        if not titulo:
-            return render_template(
-                "novo_topico.html",
-                usuario_nome=usuario_nome,
-                campo_erro="titulo",
-                mensagem_erro="Informe um título."
-            )
-        if len(titulo) > 150:
-            return render_template(
-                "novo_topico.html",
-                usuario_nome=usuario_nome,
-                campo_erro="titulo",
-                mensagem_erro="O título deve ter no máximo 150 caracteres."
-            )
-
-        # Validação da mensagem
-        if not mensagem:
-            return render_template(
-                "novo_topico.html",
-                usuario_nome=usuario_nome,
-                campo_erro="mensagem",
-                mensagem_erro="Digite uma mensagem."
-            )
-            
-        if len(mensagem) > 3000:
-            return render_template(
-                "novo_topico.html",
-                usuario_nome=usuario_nome,
-                campo_erro="mensagem",
-                mensagem_erro="A mensagem deve ter no máximo 3000 caracteres."
-            )
-            
-        conteudo_proibido = verificar_conteudo_proibido(
-            titulo + " " + mensagem
-        )
-        
-
-        if conteudo_proibido:
-            return render_template(
-                "novo_topico.html",
-                usuario_nome=usuario_nome,
-                campo_erro="mensagem",
-                mensagem_erro=conteudo_proibido
-            )
-
-        # Cria o tópico
-        novo_topico = {
-            "id": max((t["id"] for t in forum), default=0) + 1,
-            "titulo": titulo,
-
-            "mensagens": [
-                {
-                    "usuario_id": usuario_id,
-                    "autor": usuario_nome,
-                    "tipo_usuario": session.get("tipo_usuario"),
-                    "mensagem": mensagem,
-                    "data": datetime.now().strftime("%d/%m/%Y %H:%M")
-                }
-            ]
-        }
-
-        forum.append(novo_topico)
-
-        salvar_forum(forum)
-        
-        print("NOVO TÓPICO CRIADO:")
-        print(novo_topico)
-        print("ID DO NOVO TÓPICO:", novo_topico["id"])
-        print("TOTAL DE TÓPICOS:", len(forum))
-
-        return redirect(
-            url_for(
-                "forum_topico",
-                topico_id=novo_topico["id"]
-            )
-        )
-
-    return render_template(
-        "novo_topico.html",
-        usuario_nome=usuario_nome
-    )
-
-@app.route("/forum/<int:topico_id>", methods=["GET", "POST"])
-def forum_topico(topico_id):
-
-    # Verifica se está logado
-    if "usuario_id" not in session:
-        flash("Você precisa estar logado para participar do fórum.", "warning")
-        return redirect(url_for("login"))
-
-    topico = next(
-        (t for t in forum if t["id"] == topico_id),
-        None
-    )
-
-    if not topico:
-        abort(404)
-
-    usuario_id = session["usuario_id"]
-    usuario_nome = session["usuario_nome"]
-
-    if request.method == "POST":
-
-        mensagem = request.form.get("mensagem", "").strip()
-
-        if mensagem:
-
-            if len(mensagem) > 3000:
-                flash(
-                    "A mensagem deve ter no máximo 3000 caracteres.",
-                    "warning"
-                )
-                return redirect(
-                    url_for("forum_topico", topico_id=topico_id)
-                )
-                          
-            conteudo_proibido = verificar_conteudo_proibido(mensagem)
-
-            if conteudo_proibido:
-                return render_template(
-                    "topico.html",
-                    topico=topico,
-                    usuario_nome=usuario_nome,
-                    campo_erro="mensagem",
-                    mensagem_erro=conteudo_proibido
-                )
-
-            topico["mensagens"].append({
-                "usuario_id": usuario_id,
-                "autor": usuario_nome,
-                "tipo_usuario": session.get("tipo_usuario"),
-                "mensagem": mensagem,
-                "data": datetime.now().strftime("%d/%m/%Y %H:%M")
-            })
-
-            salvar_forum(forum)
-
-            return redirect(
-                url_for("forum_topico", topico_id=topico_id)
-            )
-
-
-    return render_template(
-        "topico.html",
-        topico=topico,
-        usuario_nome=usuario_nome
-    )
-    
-@app.route("/forum/<int:topico_id>/excluir", methods=["POST"])
-def excluir_topico(topico_id):
-
-    # Precisa estar logado
-    if "usuario_id" not in session:
-        flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
-
-    usuario_id = session["usuario_id"]
-    tipo_usuario = session.get("tipo_usuario")
-
-    # Procura o tópico
-    topico = next(
-        (t for t in forum if t["id"] == topico_id),
-        None
-    )
-
-    if not topico:
-        abort(404)
-
-    # ID do criador está na primeira mensagem
-    mensagem_inicial = topico["mensagens"][0]
-
-    dono_topico = mensagem_inicial.get("usuario_id")
-
-    # Somente o dono ou administrador pode excluir
-    if dono_topico != usuario_id and tipo_usuario != "admin":
-        flash(
-            "Você não tem permissão para excluir este tópico.",
-            "danger"
-        )
-        return redirect(
-            url_for("forum_topico", topico_id=topico_id)
-        )
-
-    # Remove o tópico
-    forum.remove(topico)
-
-    salvar_forum(forum)
-
-    flash("Tópico excluído com sucesso.", "success")
-
-    return redirect(url_for("forum_home"))
-
-
-@app.route("/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir", methods=["POST"])
-def excluir_mensagem(topico_id, msg_index):
-
-    # Precisa estar logado
-    if "usuario_id" not in session:
-        flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
-
-    usuario_id = session["usuario_id"]
-    tipo_usuario = session.get("tipo_usuario")
-
-    # Procura o tópico
-    topico = next(
-        (t for t in forum if t["id"] == topico_id),
-        None
-    )
-
-    if not topico:
-        abort(404)
-
-    # Verifica se a mensagem existe
-    if msg_index < 0 or msg_index >= len(topico["mensagens"]):
-        abort(404)
-
-    mensagem = topico["mensagens"][msg_index]
-
-    # A primeira mensagem é a criação do tópico
-    if msg_index == 0:
-        flash(
-            "A mensagem inicial do tópico não pode ser excluída.",
-            "warning"
-        )
-        return redirect(
-            url_for("forum_topico", topico_id=topico_id)
-        )
-
-    # Só o autor da mensagem ou administrador pode excluir
-    if (
-        mensagem.get("usuario_id") != usuario_id
-        and tipo_usuario != "admin"
-    ):
-        flash(
-            "Você não tem permissão para excluir esta mensagem.",
-            "danger"
-        )
-        return redirect(
-            url_for("forum_topico", topico_id=topico_id)
-        )
-
-    # Exclui a resposta
-    topico["mensagens"].pop(msg_index)
-
-    salvar_forum(forum)
-
-    flash("Mensagem excluída.", "success")
-
-    return redirect(
-        url_for("forum_topico", topico_id=topico_id)
-        
-    )
-    
-@app.route("/admin/forum")
-def gerenciar_forum():
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))
-
-    if session.get("tipo_usuario") != "admin":
-        flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("dashboard_usuario"))
-
-    return render_template("admin_forum.html", forum=forum)
 
 
 @app.route("/dashboard_admin")
@@ -4174,653 +4792,8 @@ def editar_profissional(profissional_id):
         if conexao:
             conexao.close()
 
-@app.route("/dashboard_usuario")
-def dashboard_usuario():
 
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))
 
-    if session.get("tipo_usuario") != "usuario":
-        flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("login"))
-
-    return render_template("dashboard_usuario.html")
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-
-    if request.method == "POST":
-
-        # =========================
-        # DADOS DIGITADOS
-        # =========================
-
-        email = request.form.get("email", "").strip().lower()
-        senha = request.form.get("senha", "")
-
-        conexao = None
-        cursor = None
-
-        try:
-
-            # =========================
-            # CONECTA AO MYSQL
-            # =========================
-
-            conexao = get_db_connection()
-            cursor = conexao.cursor(dictionary=True)
-
-            # =========================
-            # PROCURA O EMAIL
-            # =========================
-
-            cursor.execute(
-                """
-                SELECT 
-                    u.id,
-                    u.nome,
-                    u.sobrenome,
-                    u.email,
-                    u.senha_hash,
-                    u.tipo,
-                    u.status,
-                    u.email_confirmado,
-                    p.status_aprovacao
-                FROM usuarios u
-                LEFT JOIN profissionais p
-                    ON p.usuario_id = u.id
-                WHERE u.email = %s
-                """,
-                (email,)
-            )
-
-            usuario = cursor.fetchone()
-
-            # =========================
-            # EMAIL NÃO ENCONTRADO
-            # =========================
-
-            if usuario is None:
-
-                flash(
-                    "Email não encontrado.",
-                    "danger"
-                )
-
-                return render_template(
-                    "login.html",
-                    email=email
-                )
-
-            # =========================
-            # VERIFICA STATUS DA CONTA
-            # =========================
-
-            if usuario["status"] == "banido":
-
-                flash(
-                    "Esta conta está bloqueada.",
-                    "danger"
-                )
-
-                return render_template(
-                    "login.html",
-                    email=email
-                )
-
-            #Somente usuários comuns precisam confirmar o email.
-            # Profissionais entram após aprovação do administrador.
-            if usuario["tipo"] == "usuario" and not usuario["email_confirmado"]:
-
-                flash(
-                    "Confirme seu email antes de fazer login.",
-                    "warning"
-                )
-
-                return render_template(
-                    "login.html",
-                    email=email
-                )
-            # =========================
-            # VERIFICA APROVAÇÃO
-            # SOMENTE PARA PROFISSIONAL
-            # =========================
-
-            if usuario["tipo"] == "profissional":
-
-                if usuario["status_aprovacao"] == "pendente":
-
-                    flash(
-                        "Seu cadastro profissional ainda está aguardando aprovação do administrador.",
-                        "warning"
-                    )
-
-                    return render_template(
-                        "login.html",
-                        email=email
-                    )
-
-                if usuario["status_aprovacao"] == "recusado":
-
-                    flash(
-                        "Seu cadastro profissional não foi aprovado pelo administrador.",
-                        "danger"
-                    )
-
-                    return render_template(
-                        "login.html",
-                        email=email
-                    )
-
-            # =========================
-            # VERIFICA SENHA
-            # =========================
-
-            if not check_password_hash(
-                usuario["senha_hash"],
-                senha
-            ):
-
-                flash(
-                    "Senha incorreta.",
-                    "danger"
-                )
-
-                return render_template(
-                    "login.html",
-                    email=email
-                )
-
-            # =========================
-            # LOGIN REALIZADO
-            # =========================
-
-            session["usuario_id"] = usuario["id"]
-            session["usuario_nome"] = usuario["nome"]
-            session["tipo_usuario"] = usuario["tipo"]
-
-            print("================================")
-            print("LOGIN REALIZADO")
-            print("ID:", usuario["id"])
-            print("NOME:", usuario["nome"])
-            print("EMAIL:", usuario["email"])
-            print("TIPO:", usuario["tipo"])
-            print("================================")
-
-            flash(
-                f"Bem-vindo(a), {usuario['nome']}!",
-                "success"
-            )
-
-            # =========================
-            # REDIRECIONAMENTO
-            # =========================
-
-            if usuario["tipo"] == "admin":
-
-                return redirect(
-                    url_for("dashboard_admin")
-                )
-
-            elif usuario["tipo"] == "profissional":
-
-                return redirect(
-                    url_for("dashboard_profissional")
-                )
-
-            else:
-
-                return redirect(
-                    url_for("dashboard_usuario")
-                )
-
-        except Exception:
-
-            if conexao:
-                conexao.rollback()
-
-            print("ERRO AO REALIZAR LOGIN NO MYSQL:")
-            traceback.print_exc()
-
-            flash(
-                "Ocorreu um erro ao realizar o login. Tente novamente.",
-                "danger"
-            )
-
-            return render_template(
-                "login.html",
-                email=email
-            )
-
-        finally:
-
-            if cursor:
-                cursor.close()
-
-            if conexao:
-                conexao.close()
-
-    # =========================
-    # GET
-    # =========================
-
-    return render_template("login.html")
-
-@app.route(
-    "/admin/profissionais/<int:profissional_id>/aprovar",
-    methods=["POST"]
-)
-def aprovar_profissional(profissional_id):
-
-    # =========================
-    # VERIFICA SE ESTÁ LOGADO
-    # =========================
-
-    if "usuario_id" not in session:
-        flash(
-            "Você precisa estar logado.",
-            "warning"
-        )
-        return redirect(url_for("login"))
-
-    # =========================
-    # VERIFICA SE É ADMIN
-    # =========================
-
-    if session.get("tipo_usuario") != "admin":
-        flash(
-            "Você não tem permissão para realizar esta ação.",
-            "danger"
-        )
-        return redirect(url_for("index"))
-
-    conexao = None
-    cursor = None
-
-    try:
-
-        conexao = get_db_connection()
-        cursor = conexao.cursor(dictionary=True)
-
-        # =========================
-        # BUSCA O PROFISSIONAL
-        # =========================
-
-        cursor.execute(
-            """
-            SELECT
-                p.id,
-                p.usuario_id,
-                p.status_aprovacao,
-                u.nome,
-                u.email
-            FROM profissionais p
-            INNER JOIN usuarios u
-                ON u.id = p.usuario_id
-            WHERE p.id = %s
-            """,
-            (profissional_id,)
-        )
-
-        profissional = cursor.fetchone()
-
-        if not profissional:
-
-            flash(
-                "Profissional não encontrado.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("gerenciar_profissionais")
-            )
-
-        # =========================
-        # VERIFICA SE JÁ FOI DECIDIDO
-        # =========================
-
-        if profissional["status_aprovacao"] != "pendente":
-
-            flash(
-                "Este cadastro já foi analisado.",
-                "warning"
-            )
-
-            return redirect(
-                url_for(
-                    "detalhes_profissional",
-                    profissional_id=profissional_id
-                )
-            )
-
-        # =========================
-        # APROVA O PROFISSIONAL
-        # =========================
-
-        cursor.execute(
-            """
-            UPDATE profissionais
-            SET
-                status_aprovacao = 'aprovado',
-                data_aprovacao = NOW()
-            WHERE id = %s
-            """,
-            (profissional_id,)
-        )
-
-        conexao.commit()
-
-        # =========================
-        # ENVIA EMAIL DE APROVAÇÃO
-        # =========================
-
-        email_enviado = enviar_email_aprovacao(
-            profissional["email"],
-            profissional["nome"]
-        )
-
-        # =========================
-        # DEBUG
-        # =========================
-
-        print("================================")
-        print("PROFISSIONAL APROVADO")
-        print("ID PROFISSIONAL:", profissional_id)
-        print("USUARIO_ID:", profissional["usuario_id"])
-        print("EMAIL:", profissional["email"])
-        print("EMAIL ENVIADO:", email_enviado)
-        print("================================")
-
-        # =========================
-        # MENSAGEM PARA O ADMIN
-        # =========================
-
-        if email_enviado:
-
-            flash(
-                f"O cadastro de {profissional['nome']} foi aprovado e o profissional foi notificado por email.",
-                "success"
-            )
-
-        else:
-
-            flash(
-                f"O cadastro de {profissional['nome']} foi aprovado, mas não foi possível enviar o email.",
-                "warning"
-            )
-
-        return redirect(
-            url_for("gerenciar_profissionais")
-        )
-
-    except Exception:
-
-        if conexao:
-            conexao.rollback()
-
-        print("ERRO AO APROVAR PROFISSIONAL:")
-        traceback.print_exc()
-
-        flash(
-            "Ocorreu um erro ao aprovar o cadastro.",
-            "danger"
-        )
-
-        return redirect(
-            url_for(
-                "detalhes_profissional",
-                profissional_id=profissional_id
-            )
-        )
-
-    finally:
-
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-            
-@app.route(
-    "/admin/profissionais/<int:profissional_id>/recusar",
-    methods=["POST"]
-)
-def recusar_profissional(profissional_id):
-
-    # =========================
-    # VERIFICA SE ESTÁ LOGADO
-    # =========================
-
-    if "usuario_id" not in session:
-        flash(
-            "Você precisa estar logado.",
-            "warning"
-        )
-        return redirect(url_for("login"))
-
-    # =========================
-    # VERIFICA SE É ADMIN
-    # =========================
-
-    if session.get("tipo_usuario") != "admin":
-        flash(
-            "Você não tem permissão para realizar esta ação.",
-            "danger"
-        )
-        return redirect(url_for("index"))
-
-    motivo = request.form.get("motivo_recusa", "").strip()
-
-    # =========================
-    # VALIDA O MOTIVO
-    # =========================
-
-    if not motivo:
-
-        flash(
-            "Informe o motivo da recusa.",
-            "warning"
-        )
-
-        return redirect(
-            url_for(
-                "detalhes_profissional",
-                profissional_id=profissional_id
-            )
-        )
-
-    conexao = None
-    cursor = None
-
-    try:
-
-        conexao = get_db_connection()
-        cursor = conexao.cursor(dictionary=True)
-
-        # =========================
-        # BUSCA O PROFISSIONAL
-        # =========================
-
-        cursor.execute(
-            """
-            SELECT
-                p.id,
-                p.usuario_id,
-                p.status_aprovacao,
-                u.nome,
-                u.email
-            FROM profissionais p
-            INNER JOIN usuarios u
-                ON u.id = p.usuario_id
-            WHERE p.id = %s
-            """,
-            (profissional_id,)
-        )
-
-        profissional = cursor.fetchone()
-
-        if not profissional:
-
-            flash(
-                "Profissional não encontrado.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("gerenciar_profissionais")
-            )
-
-        # =========================
-        # VERIFICA SE JÁ FOI ANALISADO
-        # =========================
-
-        if profissional["status_aprovacao"] != "pendente":
-
-            flash(
-                "Este cadastro já foi analisado.",
-                "warning"
-            )
-
-            return redirect(
-                url_for(
-                    "detalhes_profissional",
-                    profissional_id=profissional_id
-                )
-            )
-
-        # =========================
-        # RECUSA O PROFISSIONAL
-        # =========================
-
-        cursor.execute(
-            """
-            UPDATE profissionais
-            SET
-                status_aprovacao = 'recusado',
-                motivo_recusa = %s,
-                data_aprovacao = NOW()
-            WHERE id = %s
-            """,
-            (
-                motivo,
-                profissional_id
-            )
-        )
-
-        conexao.commit()
-
-        print("================================")
-        print("PROFISSIONAL RECUSADO")
-        print("ID PROFISSIONAL:", profissional_id)
-        print("USUARIO_ID:", profissional["usuario_id"])
-        print("EMAIL:", profissional["email"])
-        print("MOTIVO:", motivo)
-        print("================================")
-
-
-        # =========================
-        # ENVIA EMAIL DE RECUSA
-        # =========================
-
-        email_enviado = enviar_email_recusa(
-            profissional["email"],
-            profissional["nome"],
-            motivo
-        )
-
-
-        if email_enviado:
-
-            flash(
-                f"O cadastro de {profissional['nome']} foi recusado e o profissional foi notificado por email.",
-                "success"
-            )
-
-        else:
-
-            flash(
-                f"O cadastro de {profissional['nome']} foi recusado, mas não foi possível enviar o email.",
-                "warning"
-            )
-
-
-        return redirect(
-            url_for("gerenciar_profissionais")
-        )
-
-    except Exception:
-
-        if conexao:
-            conexao.rollback()
-
-        print("ERRO AO RECUSAR PROFISSIONAL:")
-        traceback.print_exc()
-
-        flash(
-            "Ocorreu um erro ao recusar o cadastro.",
-            "danger"
-        )
-
-        return redirect(
-            url_for(
-                "detalhes_profissional",
-                profissional_id=profissional_id
-            )
-        )
-
-    finally:
-
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-            
-@app.route("/criar_admin")
-def criar_admin():
-
-    senha = "Behemoth666**"
-    senha_hash = generate_password_hash(senha)
-
-    conexao = None
-    cursor = None
-
-    try:
-        conexao = get_db_connection()
-        cursor = conexao.cursor()
-
-        cursor.execute(
-            """
-            UPDATE usuarios
-            SET senha_hash = %s
-            WHERE email = %s
-            AND tipo = 'admin'
-            """,
-            (
-                senha_hash,
-                "capetagago@gmail.com"
-            )
-        )
-
-        conexao.commit()
-
-        return "Senha do administrador atualizada com sucesso!"
-
-    except Exception:
-        if conexao:
-            conexao.rollback()
-
-        print("ERRO AO ATUALIZAR SENHA DO ADMIN:")
-        traceback.print_exc()
-
-        return "Erro ao atualizar senha."
-
-    finally:
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
             
 @app.route('/escolher_cadastro')
 def escolher_cadastro():
@@ -6111,5 +6084,4 @@ if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
     
     
-
 

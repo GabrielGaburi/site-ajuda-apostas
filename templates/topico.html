@@ -24,6 +24,9 @@
         <form method="POST" action="{{ url_for('excluir_topico', topico_id=topico.id) }}"
             onsubmit="return confirm('Tem certeza que deseja excluir este tópico inteiro?');">
 
+            {{ csrf_token() }}
+
+
             <button type="submit" class="btn btn-danger">
                 Excluir tópico
             </button>
@@ -64,6 +67,9 @@
                          topico_id=topico.id,
                          msg_index=loop.index0) }}" class="position-absolute top-0 end-0 m-2">
 
+            {{ csrf_token() }}
+
+
             <button type="submit" class="btn btn-sm btn-danger">
                 Excluir
             </button>
@@ -79,6 +85,9 @@
     <hr>
 
     <form method="POST">
+
+        {{ csrf_token() }}
+
 
         <div class="mb-3">
 

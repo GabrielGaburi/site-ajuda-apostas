@@ -260,53 +260,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
 
-    // ==========================
-    // BUSCA POR CIDADE
-    // ==========================
-
-    const buscaCidade =
-        document.getElementById("buscaCidade");
-
-
-    if (buscaCidade) {
-
-        buscaCidade.addEventListener(
-            "input",
-            function () {
-
-                const busca =
-                    normalizarTexto(
-                        this.value
-                    );
-
-
-                const cards =
-                    document.querySelectorAll(
-                        ".card-local"
-                    );
-
-
-                cards.forEach(card => {
-
-                    const cidade =
-                        normalizarTexto(
-                            card.dataset.cidade || ""
-                        );
-
-
-                    card.style.display =
-                        cidade.includes(busca)
-                            ? ""
-                            : "none";
-
-                });
-
-            }
-        );
-
-    }
-
-
+    
     // ==========================
     // BOTÕES VER NO MAPA
     // ==========================

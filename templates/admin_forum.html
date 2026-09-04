@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Gerenciar Profissionais{% endblock %}
+{% block title %}Gerenciar Fórum{% endblock %}
 
 {% block content %}
 
@@ -54,6 +54,8 @@
 
                     <form method="POST" action="{{ url_for('excluir_topico', topico_id=topico.id) }}"
                         onsubmit="return confirm('Tem certeza que deseja excluir este tópico?');">
+
+                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                         <button type="submit" class="btn btn-danger">
                             Excluir tópico

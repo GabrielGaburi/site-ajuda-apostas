@@ -230,6 +230,8 @@
                     profissional_id=profissional.profissional_id
                 ) }}">
 
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                     <button type="submit" class="btn btn-success">
                         Aprovar cadastro
                     </button>
@@ -287,6 +289,8 @@
                     'recusar_profissional',
                     profissional_id=profissional.profissional_id
                 ) }}">
+
+                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <div class="modal-body">
 

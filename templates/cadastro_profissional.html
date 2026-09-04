@@ -33,8 +33,11 @@
 
 
                     <form id="formCadastroProfissional" method="POST" enctype="multipart/form-data"
-                        action="{{ url_for('cadastro_profissional') }}">
-                        <h5 class="mb-3 text-primary" novalidate>
+                        action="{{ url_for('cadastro_profissional') }}" novalidate>
+
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                        <h5 class="mb-3 text-primary">
                             Informações Pessoais
                         </h5>
 
@@ -817,7 +820,7 @@
                                 Solicitar Cadastro
                             </button>
 
-                    </form>
+                                        </form>
 
                     <div class="text-center mt-4">
 
@@ -827,13 +830,27 @@
                             <a href="{{ url_for('login') }}">
                                 Fazer login
                             </a>
-
                         </small>
 
                     </div>
 
-                    {% endblock %}
+                </div>
+                <!-- fecha card-body -->
 
-                    {% block scripts %}
-                    <script src="{{ url_for('static', filename='js/cadastro_profissional.js') }}"></script>
-                    {% endblock %}
+            </div>
+            <!-- fecha card -->
+
+        </div>
+        <!-- fecha col-lg-8 -->
+
+    </div>
+    <!-- fecha row -->
+
+</div>
+<!-- fecha container-fluid -->
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/cadastro_profissional.js') }}"></script>
+{% endblock %}

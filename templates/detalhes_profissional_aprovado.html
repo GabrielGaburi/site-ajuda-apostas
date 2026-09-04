@@ -320,6 +320,8 @@
                           profissional_id=profissional.profissional_id
                       ) }}">
 
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                     <button type="submit" class="btn btn-danger"
                         onclick="return confirm('Tem certeza que deseja banir este profissional?');">
 
@@ -338,6 +340,8 @@
                           'reativar_profissional',
                           profissional_id=profissional.profissional_id
                       ) }}">
+
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <button type="submit" class="btn btn-success"
                         onclick="return confirm('Deseja reativar este profissional?');">
