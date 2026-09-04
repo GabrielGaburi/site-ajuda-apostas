@@ -2191,7 +2191,7 @@ def cadastro_usuario():
 
             print("USUÁRIO INSERIDO NO MYSQL:", dados["email"])
 
-        except Exception as erro:
+        except Exception:
 
             if conexao:
                 conexao.rollback()
@@ -2274,9 +2274,9 @@ def confirmar_email(token):
         # Procura o email no MySQL
         cursor.execute(
             """
-            SELECT id, email, email_confirmado, tipo
+            SELECT id, email, email_confirmado
             FROM usuarios
-            WHERE email = %s
+            WHERE email = %s AND tipo = 'usuario'
             """,
             (email.lower(),)
         )
@@ -2301,7 +2301,7 @@ def confirmar_email(token):
             """
             UPDATE usuarios
             SET email_confirmado = TRUE
-            WHERE id = %s
+            WHERE id = %s AND tipo = 'usuario'
             """,
             (usuario["id"],)
         )
@@ -2314,21 +2314,9 @@ def confirmar_email(token):
         print("EMAIL:", usuario["email"])
         print("TIPO:", usuario["tipo"])
         print("================================")
+    
+        flash("E-mail confirmado com sucesso! Agora você pode fazer login.", "success")
         
-        if usuario["tipo"] == "profissional":
-
-            flash(
-                "E-mail confirmado com sucesso! Seu cadastro está aguardando aprovação do administrador.",
-                "success"
-            )
-
-        else:
-
-            flash(
-                "E-mail confirmado com sucesso! Agora você pode fazer login.",
-                "success"
-            )
-
         return redirect(url_for("login"))
 
     except Exception:
