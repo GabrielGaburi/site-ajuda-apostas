@@ -217,7 +217,7 @@
 
     <div class="card border-0 shadow-sm">
 
-        ```
+        
         <div class="card-body">
 
             <h5 class="mb-3">
@@ -238,7 +238,7 @@
                 <form method="POST" action="{{ url_for('banir_usuario', usuario_id=usuario.id) }}"
                     onsubmit="return confirm('Tem certeza que deseja banir este usuário?');">
 
-                    {{ csrf_token() }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
 
                     <button type="submit" class="btn btn-danger">
@@ -254,7 +254,7 @@
                 <form method="POST" action="{{ url_for('reativar_usuario', usuario_id=usuario.id) }}"
                     onsubmit="return confirm('Tem certeza que deseja reativar este usuário?');">
 
-                    {{ csrf_token() }}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
 
                     <button type="submit" class="btn btn-success">
@@ -268,7 +268,7 @@
             </div>
 
         </div>
-        ```
+        
 
     </div>
 

@@ -24,7 +24,7 @@
         <form method="POST" action="{{ url_for('excluir_topico', topico_id=topico.id) }}"
             onsubmit="return confirm('Tem certeza que deseja excluir este tópico inteiro?');">
 
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
 
             <button type="submit" class="btn btn-danger">
@@ -60,14 +60,14 @@
         </p>
 
         {% if loop.index0 > 0 and
-        (msg.usuario_id == session["usuario_id"]
+        (msg.usuario_id == session.get("usuario_id")
         or session.get("tipo_usuario") == "admin") %}
 
         <form method="POST" action="{{ url_for('excluir_mensagem',
                          topico_id=topico.id,
                          msg_index=loop.index0) }}" class="position-absolute top-0 end-0 m-2">
 
-            {{ csrf_token() }}
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
 
             <button type="submit" class="btn btn-sm btn-danger">
@@ -86,7 +86,7 @@
 
     <form method="POST">
 
-        {{ csrf_token() }}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
 
         <div class="mb-3">
