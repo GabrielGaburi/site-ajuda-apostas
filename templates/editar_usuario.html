@@ -30,7 +30,7 @@
 
     <form method="POST">
 
-        {{ csrf_token() }}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
         <!-- DADOS PESSOAIS -->
 
@@ -85,7 +85,7 @@
                         </label>
 
                         <input type="date" name="data_nascimento" class="form-control"
-                            value="{{ usuario.data_nascimento or '' }}">
+                            value="{{ usuario.data_nascimento.strftime('%Y-%m-%d') if usuario.data_nascimento else '' }}">
 
                     </div>
 
