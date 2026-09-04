@@ -19,16 +19,15 @@ csrf = CSRFProtect(app)
 # CONEXÃO COM MYSQL
 # =========================
 
-db_config = {
-    "host": "localhost",
-    "user": "root",
-    "port": 3305,
-    "password": "Behemoth666**",
-    "database": "plataforma_apostas"
-}
 
 def get_db_connection():
-    return mysql.connector.connect(**db_config)
+    return mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        port=int(os.getenv("DB_PORT", 3306)),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME")
+    )
 
 def testar_banco():
     try:
@@ -123,7 +122,6 @@ noticias = [
 @app.route("/login", methods=["GET", "POST"])
 def login():
     
-    print("########## ROTA PERFIL FOI REGISTRADA ##########")
 
     if request.method == "POST":
 
@@ -179,8 +177,7 @@ def login():
             if usuario is None:
 
                 flash(
-                    "Email não encontrado.",
-                    "danger"
+                    "E-mail ou senha incorretos.", "danger"
                 )
 
                 return render_template(
@@ -223,7 +220,19 @@ def login():
             # =========================
 
             if usuario["tipo"] == "profissional":
-
+                
+                if usuario["status_aprovacao"] is None:
+                    
+                    flash (
+                        "Cadastro não encontrado"
+                        )
+                    
+                    return render_template(
+                        "login.html",
+                        email=email
+                    )
+                    
+                    
                 if usuario["status_aprovacao"] == "pendente":
 
                     flash(
@@ -258,7 +267,7 @@ def login():
             ):
 
                 flash(
-                    "Senha incorreta.",
+                    "E-mail ou senha incorretos.",
                     "danger"
                 )
 
@@ -270,7 +279,9 @@ def login():
             # =========================
             # LOGIN REALIZADO
             # =========================
-
+            
+            session.clear()
+          
             session["usuario_id"] = usuario["id"]
             session["usuario_nome"] = usuario["nome"]
             session["tipo_usuario"] = usuario["tipo"]
@@ -1959,13 +1970,6 @@ def cadastro_usuario():
     }
 
     if request.method == 'POST':
-        
-        print("================================")
-        print("ENTROU NO POST DO CADASTRO")
-        print("EMAIL RECEBIDO:", request.form.get("email"))
-        print("SENHA RECEBIDA:", bool(request.form.get("senha")))
-        print("================================")
-        
         
 
         # captura TODOS os campos
