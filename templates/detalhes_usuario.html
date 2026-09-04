@@ -6,7 +6,7 @@
 
 <div class="container my-5">
 
-    ```
+
     <!-- CABEÇALHO -->
 
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -211,7 +211,7 @@
     </div>
 
 
-    <!-- AÇÕES -->
+
 
     <!-- AÇÕES -->
 
@@ -238,6 +238,9 @@
                 <form method="POST" action="{{ url_for('banir_usuario', usuario_id=usuario.id) }}"
                     onsubmit="return confirm('Tem certeza que deseja banir este usuário?');">
 
+                    {{ csrf_token() }}
+
+
                     <button type="submit" class="btn btn-danger">
                         Banir usuário
                     </button>
@@ -250,6 +253,9 @@
 
                 <form method="POST" action="{{ url_for('reativar_usuario', usuario_id=usuario.id) }}"
                     onsubmit="return confirm('Tem certeza que deseja reativar este usuário?');">
+
+                    {{ csrf_token() }}
+
 
                     <button type="submit" class="btn btn-success">
                         Reativar usuário
