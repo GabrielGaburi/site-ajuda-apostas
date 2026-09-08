@@ -1,4 +1,4 @@
-import secrets, re, json, os, traceback, uuid, mysql.connector
+import secrets, re,  os, traceback, uuid, mysql.connector
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1943,8 +1943,6 @@ def recusar_profissional(profissional_id):
             
 
             
-# Arquivo JSON para salvar o fórum
-FORUM_FILE = "forum.json"
 # =========================
 # CADASTRO_USUÁRIO 
 # =========================
@@ -2402,17 +2400,6 @@ def perfil_profissional():
         if conexao:
             conexao.close()
 
-# Funções auxiliares
-def carregar_forum():
-    try:
-        with open(FORUM_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return []
-
-def salvar_forum(forum):
-    with open(FORUM_FILE, "w", encoding="utf-8") as f:
-        json.dump(forum, f, ensure_ascii=False, indent=4)
         
 def senha_valida(senha):
     if len(senha) < 8 or len(senha) > 16:
@@ -2429,8 +2416,6 @@ def senha_valida(senha):
 
     return True
 
-# Carregar tópicos existentes
-forum = carregar_forum()
 
 @app.route("/forum")
 def forum_home():
@@ -2843,6 +2828,10 @@ def excluir_topico(topico_id):
         conexao.commit()
 
         flash("Tópico excluído com sucesso.", "success")
+        referer = request.referrer or ""
+
+        if "/admin/forum" in referer:
+            return redirect(url_for("gerenciar_forum"))
 
         return redirect(url_for("forum_home"))
 
