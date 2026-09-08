@@ -2345,9 +2345,13 @@ def confirmar_email(token):
             
 @app.route("/perfil_profissional")
 def perfil_profissional():
-
+    
     if "usuario_id" not in session:
         flash("Faça login para acessar seu perfil.", "warning")
+        return redirect(url_for("login"))
+
+    if session.get("tipo_usuario") != "profissional":
+        flash("Acesso não autorizado.", "danger")
         return redirect(url_for("login"))
 
     conexao = None
@@ -2371,7 +2375,7 @@ def perfil_profissional():
 
         if not profissional:
             flash("Profissional não encontrado.", "danger")
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("login"))
 
         return render_template(
             "dashboard_profissional.html",
@@ -2388,7 +2392,7 @@ def perfil_profissional():
             "danger"
         )
 
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("login"))
 
     finally:
 
@@ -2430,28 +2434,63 @@ forum = carregar_forum()
 
 @app.route("/forum")
 def forum_home():
-    
-    print("================================")
-    print("USUARIO_ID:", session.get("usuario_id"))
-    print("USUARIO_NOME:", session.get("usuario_nome"))
-    print("TIPO:", session.get("tipo_usuario"))
-    print("================================")
-    return render_template("forum.html", forum=forum)
 
-# Criar novo tópico
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT
+                t.id,
+                t.titulo,
+                t.usuario_id,
+                CONCAT(u.nome, ' ', u.sobrenome) AS autor,
+                t.data_criacao
+            FROM forum_topicos t
+            INNER JOIN usuarios u
+                ON u.id = t.usuario_id
+            ORDER BY t.data_criacao DESC
+        """)
+
+        forum = cursor.fetchall()
+
+        return render_template(
+            "forum.html",
+            forum=forum
+        )
+
+    except Exception:
+        print("ERRO AO CARREGAR FÓRUM:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar o fórum.",
+            "danger"
+        )
+
+        return redirect(url_for("index"))
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+            
 @app.route("/forum/novo", methods=["GET", "POST"])
 def forum_novo():
 
-    usuario_id = session.get("usuario_id")
-    usuario_nome = session.get("usuario_nome")
-
-    # Precisa estar logado para criar tópico
-    if not usuario_id:
-        flash(
-            "Você precisa estar logado para criar um tópico.",
-            "warning"
-        )
+    # Precisa estar logado
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado para criar um tópico.", "warning")
         return redirect(url_for("login"))
+
+    usuario_id = session["usuario_id"]
+    usuario_nome = session["usuario_nome"]
 
     if request.method == "POST":
 
@@ -2464,8 +2503,9 @@ def forum_novo():
                 "novo_topico.html",
                 usuario_nome=usuario_nome,
                 campo_erro="titulo",
-                mensagem_erro="Informe um título."
+                mensagem_erro="O título é obrigatório."
             )
+
         if len(titulo) > 150:
             return render_template(
                 "novo_topico.html",
@@ -2480,9 +2520,9 @@ def forum_novo():
                 "novo_topico.html",
                 usuario_nome=usuario_nome,
                 campo_erro="mensagem",
-                mensagem_erro="Digite uma mensagem."
+                mensagem_erro="A mensagem é obrigatória."
             )
-            
+
         if len(mensagem) > 3000:
             return render_template(
                 "novo_topico.html",
@@ -2490,11 +2530,9 @@ def forum_novo():
                 campo_erro="mensagem",
                 mensagem_erro="A mensagem deve ter no máximo 3000 caracteres."
             )
-            
-        conteudo_proibido = verificar_conteudo_proibido(
-            titulo + " " + mensagem
-        )
-        
+
+        # Verifica conteúdo proibido
+        conteudo_proibido = verificar_conteudo_proibido(mensagem)
 
         if conteudo_proibido:
             return render_template(
@@ -2504,37 +2542,77 @@ def forum_novo():
                 mensagem_erro=conteudo_proibido
             )
 
-        # Cria o tópico
-        novo_topico = {
-            "id": max((t["id"] for t in forum), default=0) + 1,
-            "titulo": titulo,
+        conexao = None
+        cursor = None
 
-            "mensagens": [
-                {
-                    "usuario_id": usuario_id,
-                    "autor": usuario_nome,
-                    "tipo_usuario": session.get("tipo_usuario"),
-                    "mensagem": mensagem,
-                    "data": datetime.now().strftime("%d/%m/%Y %H:%M")
-                }
-            ]
-        }
+        try:
+            conexao = get_db_connection()
+            cursor = conexao.cursor()
 
-        forum.append(novo_topico)
+            # Inicia a transação
+            conexao.start_transaction()
 
-        salvar_forum(forum)
-        
-        print("NOVO TÓPICO CRIADO:")
-        print(novo_topico)
-        print("ID DO NOVO TÓPICO:", novo_topico["id"])
-        print("TOTAL DE TÓPICOS:", len(forum))
-
-        return redirect(
-            url_for(
-                "forum_topico",
-                topico_id=novo_topico["id"]
+            # Cria o tópico
+            cursor.execute(
+                """
+                INSERT INTO forum_topicos
+                    (usuario_id, titulo)
+                VALUES
+                    (%s, %s)
+                """,
+                (usuario_id, titulo)
             )
-        )
+
+            # Obtém o ID gerado pelo MySQL
+            topico_id = cursor.lastrowid
+
+            # Cria a primeira mensagem do tópico
+            cursor.execute(
+                """
+                INSERT INTO forum_mensagens
+                    (topico_id, usuario_id, mensagem)
+                VALUES
+                    (%s, %s, %s)
+                """,
+                (topico_id, usuario_id, mensagem)
+            )
+
+            # Confirma as duas operações
+            conexao.commit()
+
+            flash("Tópico criado com sucesso.", "success")
+
+            return redirect(
+                url_for("forum_topico", topico_id=topico_id)
+            )
+
+        except Exception:
+
+            if conexao:
+                conexao.rollback()
+
+            print("ERRO AO CRIAR TÓPICO:")
+            traceback.print_exc()
+
+            flash(
+                "Ocorreu um erro ao criar o tópico.",
+                "danger"
+            )
+
+            return render_template(
+                "novo_topico.html",
+                usuario_nome=usuario_nome,
+                campo_erro=None,
+                mensagem_erro=None
+            )
+
+        finally:
+
+            if cursor:
+                cursor.close()
+
+            if conexao:
+                conexao.close()
 
     return render_template(
         "novo_topico.html",
@@ -2544,37 +2622,100 @@ def forum_novo():
 @app.route("/forum/<int:topico_id>", methods=["GET", "POST"])
 def forum_topico(topico_id):
 
-    # Verifica se está logado
+    # Precisa estar logado
     if "usuario_id" not in session:
-        flash("Você precisa estar logado para participar do fórum.", "warning")
+        flash(
+            "Você precisa estar logado para participar do fórum.",
+            "warning"
+        )
         return redirect(url_for("login"))
-
-    topico = next(
-        (t for t in forum if t["id"] == topico_id),
-        None
-    )
-
-    if not topico:
-        abort(404)
 
     usuario_id = session["usuario_id"]
     usuario_nome = session["usuario_nome"]
 
-    if request.method == "POST":
+    conexao = None
+    cursor = None
 
-        mensagem = request.form.get("mensagem", "").strip()
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
 
-        if mensagem:
+        # Busca o tópico
+        cursor.execute(
+            """
+            SELECT
+                t.id,
+                t.titulo,
+                t.usuario_id,
+                CONCAT(u.nome, ' ', u.sobrenome) AS autor,
+                t.data_criacao
+            FROM forum_topicos t
+            INNER JOIN usuarios u
+                ON u.id = t.usuario_id
+            WHERE t.id = %s
+            """,
+            (topico_id,)
+        )
 
+        topico = cursor.fetchone()
+
+        if not topico:
+            abort(404)
+
+        # Busca as mensagens do tópico
+        cursor.execute(
+            """
+            SELECT
+                m.id,
+                m.topico_id,
+                m.usuario_id,
+                m.mensagem,
+                m.data_criacao,
+                CONCAT(u.nome, ' ', u.sobrenome) AS autor,
+                u.tipo AS tipo_usuario
+            FROM forum_mensagens m
+            INNER JOIN usuarios u
+                ON u.id = m.usuario_id
+            WHERE m.topico_id = %s
+            ORDER BY m.data_criacao ASC
+            """,
+            (topico_id,)
+        )
+
+        mensagens = cursor.fetchall()
+
+        # Adiciona as mensagens ao objeto do tópico
+        topico["mensagens"] = mensagens
+
+        # Se estiver enviando uma nova mensagem
+        if request.method == "POST":
+
+            mensagem = request.form.get("mensagem", "").strip()
+
+            # Mensagem vazia
+            if not mensagem:
+                return render_template(
+                    "topico.html",
+                    topico=topico,
+                    usuario_nome=usuario_nome,
+                    campo_erro="mensagem",
+                    mensagem_erro="A mensagem é obrigatória."
+                )
+
+            # Limite de caracteres
             if len(mensagem) > 3000:
                 flash(
                     "A mensagem deve ter no máximo 3000 caracteres.",
                     "warning"
                 )
                 return redirect(
-                    url_for("forum_topico", topico_id=topico_id)
+                    url_for(
+                        "forum_topico",
+                        topico_id=topico_id
+                    )
                 )
-                          
+
+            # Verifica conteúdo proibido
             conteudo_proibido = verificar_conteudo_proibido(mensagem)
 
             if conteudo_proibido:
@@ -2586,26 +2727,56 @@ def forum_topico(topico_id):
                     mensagem_erro=conteudo_proibido
                 )
 
-            topico["mensagens"].append({
-                "usuario_id": usuario_id,
-                "autor": usuario_nome,
-                "tipo_usuario": session.get("tipo_usuario"),
-                "mensagem": mensagem,
-                "data": datetime.now().strftime("%d/%m/%Y %H:%M")
-            })
-
-            salvar_forum(forum)
-
-            return redirect(
-                url_for("forum_topico", topico_id=topico_id)
+            # Salva a nova mensagem no MySQL
+            cursor.execute(
+                """
+                INSERT INTO forum_mensagens
+                    (topico_id, usuario_id, mensagem)
+                VALUES
+                    (%s, %s, %s)
+                """,
+                (topico_id, usuario_id, mensagem)
             )
 
+            conexao.commit()
 
-    return render_template(
-        "topico.html",
-        topico=topico,
-        usuario_nome=usuario_nome
-    )
+            flash("Mensagem enviada com sucesso.", "success")
+
+            return redirect(
+                url_for(
+                    "forum_topico",
+                    topico_id=topico_id
+                )
+            )
+
+        return render_template(
+            "topico.html",
+            topico=topico,
+            usuario_nome=usuario_nome
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO CARREGAR/ENVIAR MENSAGEM DO FÓRUM:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar o tópico.",
+            "danger"
+        )
+
+        return redirect(url_for("forum_home"))
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
     
 @app.route("/forum/<int:topico_id>/excluir", methods=["POST"])
 def excluir_topico(topico_id):
@@ -2618,42 +2789,94 @@ def excluir_topico(topico_id):
     usuario_id = session["usuario_id"]
     tipo_usuario = session.get("tipo_usuario")
 
-    # Procura o tópico
-    topico = next(
-        (t for t in forum if t["id"] == topico_id),
-        None
-    )
+    conexao = None
+    cursor = None
 
-    if not topico:
-        abort(404)
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
 
-    # ID do criador está na primeira mensagem
-    mensagem_inicial = topico["mensagens"][0]
+        # Busca o tópico e identifica o proprietário
+        cursor.execute(
+            """
+            SELECT
+                id,
+                usuario_id,
+                titulo
+            FROM forum_topicos
+            WHERE id = %s
+            """,
+            (topico_id,)
+        )
 
-    dono_topico = mensagem_inicial.get("usuario_id")
+        topico = cursor.fetchone()
 
-    # Somente o dono ou administrador pode excluir
-    if dono_topico != usuario_id and tipo_usuario != "admin":
+        if not topico:
+            abort(404)
+
+        dono_topico = topico["usuario_id"]
+
+        # Somente o dono ou administrador pode excluir
+        if dono_topico != usuario_id and tipo_usuario != "admin":
+            flash(
+                "Você não tem permissão para excluir este tópico.",
+                "danger"
+            )
+            return redirect(
+                url_for(
+                    "forum_topico",
+                    topico_id=topico_id
+                )
+            )
+
+        # Exclui o tópico
+        # As mensagens são excluídas automaticamente
+        # por causa do ON DELETE CASCADE
+        cursor.execute(
+            """
+            DELETE FROM forum_topicos
+            WHERE id = %s
+            """,
+            (topico_id,)
+        )
+
+        conexao.commit()
+
+        flash("Tópico excluído com sucesso.", "success")
+
+        return redirect(url_for("forum_home"))
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO EXCLUIR TÓPICO:")
+        traceback.print_exc()
+
         flash(
-            "Você não tem permissão para excluir este tópico.",
+            "Ocorreu um erro ao excluir o tópico.",
             "danger"
         )
+
         return redirect(
-            url_for("forum_topico", topico_id=topico_id)
+            url_for(
+                "forum_topico",
+                topico_id=topico_id
+            )
         )
 
-    # Remove o tópico
-    forum.remove(topico)
+    finally:
 
-    salvar_forum(forum)
+        if cursor:
+            cursor.close()
 
-    flash("Tópico excluído com sucesso.", "success")
+        if conexao:
+            conexao.close()
 
-    return redirect(url_for("forum_home"))
 
-
-@app.route("/forum/<int:topico_id>/mensagem/<int:msg_index>/excluir", methods=["POST"])
-def excluir_mensagem(topico_id, msg_index):
+@app.route("/forum/<int:topico_id>/mensagem/<int:mensagem_id>/excluir", methods=["POST"])
+def excluir_mensagem(topico_id, mensagem_id):
 
     # Precisa estar logado
     if "usuario_id" not in session:
@@ -2663,58 +2886,126 @@ def excluir_mensagem(topico_id, msg_index):
     usuario_id = session["usuario_id"]
     tipo_usuario = session.get("tipo_usuario")
 
-    # Procura o tópico
-    topico = next(
-        (t for t in forum if t["id"] == topico_id),
-        None
-    )
+    conexao = None
+    cursor = None
 
-    if not topico:
-        abort(404)
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
 
-    # Verifica se a mensagem existe
-    if msg_index < 0 or msg_index >= len(topico["mensagens"]):
-        abort(404)
-
-    mensagem = topico["mensagens"][msg_index]
-
-    # A primeira mensagem é a criação do tópico
-    if msg_index == 0:
-        flash(
-            "A mensagem inicial do tópico não pode ser excluída.",
-            "warning"
+        # Busca a mensagem e verifica a qual tópico ela pertence
+        cursor.execute(
+            """
+            SELECT
+                m.id,
+                m.topico_id,
+                m.usuario_id,
+                m.mensagem
+            FROM forum_mensagens m
+            WHERE m.id = %s
+            AND m.topico_id = %s
+            """,
+            (mensagem_id, topico_id)
         )
+
+        mensagem = cursor.fetchone()
+
+        if not mensagem:
+            abort(404)
+
+        # Verifica se é a mensagem inicial do tópico
+        cursor.execute(
+            """
+            SELECT
+                MIN(id) AS mensagem_inicial_id
+            FROM forum_mensagens
+            WHERE topico_id = %s
+            """,
+            (topico_id,)
+        )
+
+        resultado = cursor.fetchone()
+
+        if resultado and mensagem_id == resultado["mensagem_inicial_id"]:
+            flash(
+                "A mensagem inicial do tópico não pode ser excluída.",
+                "warning"
+            )
+            return redirect(
+                url_for(
+                    "forum_topico",
+                    topico_id=topico_id
+                )
+            )
+
+        # Só o autor da mensagem ou administrador pode excluir
+        if (
+            mensagem["usuario_id"] != usuario_id
+            and tipo_usuario != "admin"
+        ):
+            flash(
+                "Você não tem permissão para excluir esta mensagem.",
+                "danger"
+            )
+            return redirect(
+                url_for(
+                    "forum_topico",
+                    topico_id=topico_id
+                )
+            )
+
+        # Exclui a mensagem
+        cursor.execute(
+            """
+            DELETE FROM forum_mensagens
+            WHERE id = %s
+            AND topico_id = %s
+            """,
+            (mensagem_id, topico_id)
+        )
+
+        conexao.commit()
+
+        flash("Mensagem excluída.", "success")
+
         return redirect(
-            url_for("forum_topico", topico_id=topico_id)
+            url_for(
+                "forum_topico",
+                topico_id=topico_id
+            )
         )
 
-    # Só o autor da mensagem ou administrador pode excluir
-    if (
-        mensagem.get("usuario_id") != usuario_id
-        and tipo_usuario != "admin"
-    ):
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO EXCLUIR MENSAGEM:")
+        traceback.print_exc()
+
         flash(
-            "Você não tem permissão para excluir esta mensagem.",
+            "Ocorreu um erro ao excluir a mensagem.",
             "danger"
         )
+
         return redirect(
-            url_for("forum_topico", topico_id=topico_id)
+            url_for(
+                "forum_topico",
+                topico_id=topico_id
+            )
         )
 
-    # Exclui a resposta
-    topico["mensagens"].pop(msg_index)
+    finally:
 
-    salvar_forum(forum)
+        if cursor:
+            cursor.close()
 
-    flash("Mensagem excluída.", "success")
-
-    return redirect(
-        url_for("forum_topico", topico_id=topico_id)
-        
-    )
+        if conexao:
+            conexao.close()
     
 @app.route("/admin/forum")
 def gerenciar_forum():
+
     if "usuario_id" not in session:
         return redirect(url_for("login"))
 
@@ -2722,8 +3013,70 @@ def gerenciar_forum():
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("dashboard_usuario"))
 
-    return render_template("admin_forum.html", forum=forum)
+    conexao = None
+    cursor = None
 
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # Buscar todos os tópicos
+        cursor.execute("""
+            SELECT
+                t.id,
+                t.titulo,
+                t.usuario_id,
+                t.data_criacao
+            FROM forum_topicos t
+            ORDER BY t.data_criacao DESC
+        """)
+
+        forum = cursor.fetchall()
+
+        # Buscar as mensagens de cada tópico
+        for topico in forum:
+
+            cursor.execute("""
+                SELECT
+                    m.id,
+                    m.topico_id,
+                    m.usuario_id,
+                    m.mensagem,
+                    m.data_criacao,
+                    CONCAT(u.nome, ' ', u.sobrenome) AS autor
+                FROM forum_mensagens m
+                INNER JOIN usuarios u
+                    ON u.id = m.usuario_id
+                WHERE m.topico_id = %s
+                ORDER BY m.data_criacao ASC
+            """, (topico["id"],))
+
+            topico["mensagens"] = cursor.fetchall()
+
+        return render_template(
+            "admin_forum.html",
+            forum=forum
+        )
+
+    except Exception:
+
+        print("ERRO AO CARREGAR GERENCIAMENTO DO FÓRUM:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao carregar o gerenciamento do fórum.",
+            "danger"
+        )
+
+        return redirect(url_for("dashboard_admin"))
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
 
 
 
