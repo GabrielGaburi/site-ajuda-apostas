@@ -6,31 +6,20 @@
 
 <div class="container my-5">
 
-    <h2 style="overflow-wrap: anywhere;">
-        {{ topico.titulo }}
-    </h2>
+    <!-- TÍTULO DO TÓPICO + EXCLUIR TÓPICO -->
 
-    {% if topico.mensagens %}
-    <p class="text-muted">
-        Criado por {{ topico.mensagens[0].autor }}
-    </p>
-    {% endif %}
+    <div class="d-flex justify-content-between align-items-center gap-3">
 
-    <hr>
+        <h2 class="mb-0" style="overflow-wrap: anywhere;">
+            {{ topico.titulo }}
+        </h2>
 
-    <h4 class="mb-4">Mensagens</h4>
-
-
-    <!-- EXCLUIR TÓPICO -->
-
-    {% if topico.usuario_id == session.get("usuario_id")
-    or session.get("tipo_usuario") == "admin" %}
-
-    <div class="mb-4">
+        {% if topico.usuario_id == session.get("usuario_id")
+        or session.get("tipo_usuario") == "admin" %}
 
         <form method="POST"
               action="{{ url_for('excluir_topico', topico_id=topico.id) }}"
-              onsubmit="return confirm('Tem certeza que deseja excluir este tópico inteiro?');">
+              class="flex-shrink-0">
 
             <input type="hidden"
                    name="csrf_token"
@@ -42,16 +31,37 @@
 
         </form>
 
+        {% endif %}
+
     </div>
+
+
+    <!-- AUTOR -->
+
+    {% if topico.mensagens %}
+
+    <p class="text-muted mt-2">
+        Criado por {{ topico.mensagens[0].autor }}
+    </p>
 
     {% endif %}
 
 
+    <hr>
+
+
     <!-- MENSAGENS -->
+
+    <h4 class="mb-4">
+        Mensagens
+    </h4>
+
 
     {% for msg in topico.mensagens %}
 
     <div class="mb-3 p-3 border rounded position-relative">
+
+        <!-- AUTOR + DATA -->
 
         <strong>
 
@@ -73,42 +83,54 @@
 
         </strong>
 
-
         <small class="text-muted ms-2">
             {{ msg.data_criacao }}
         </small>
 
 
-        <div class="d-flex align-items-start justify-content-between gap-3">
+        <!-- MENSAGEM + EXCLUIR -->
 
-            <p class="mt-2 mb-0 flex-grow-1"
-               style="white-space: pre-wrap; overflow-wrap: anywhere;">
-                {{ msg.mensagem }}
-            </p>
+        <div class="row align-items-center mt-2">
+
+            <div class="col">
+
+                <p class="mb-0"
+                   style="white-space: pre-wrap; overflow-wrap: anywhere;">
+                    {{ msg.mensagem }}
+                </p>
+
+            </div>
 
 
             <!-- EXCLUIR MENSAGEM -->
 
-            {% if loop.index0 > 0 and
-            (msg.usuario_id == session.get("usuario_id")
-            or session.get("tipo_usuario") == "admin") %}
+            {% if loop.index0 > 0
+            and (
+                msg.usuario_id == session.get("usuario_id")
+                or session.get("tipo_usuario") == "admin"
+            ) %}
 
-            <form method="POST"
-                  action="{{ url_for('excluir_mensagem',
-                                     topico_id=topico.id,
-                                     mensagem_id=msg.id) }}"
-                  class="flex-shrink-0">
+            <div class="col-auto">
 
-                <input type="hidden"
-                       name="csrf_token"
-                       value="{{ csrf_token() }}">
+                <form method="POST"
+                      action="{{ url_for(
+                          'excluir_mensagem',
+                          topico_id=topico.id,
+                          mensagem_id=msg.id
+                      ) }}">
 
-                <button type="submit"
-                        class="btn btn-sm btn-danger">
-                    Excluir
-                </button>
+                    <input type="hidden"
+                           name="csrf_token"
+                           value="{{ csrf_token() }}">
 
-            </form>
+                    <button type="submit"
+                            class="btn btn-sm btn-danger">
+                        Excluir
+                    </button>
+
+                </form>
+
+            </div>
 
             {% endif %}
 
@@ -145,7 +167,6 @@
             <label class="form-label">
                 Mensagem
             </label>
-
 
             <textarea
                 name="mensagem"
