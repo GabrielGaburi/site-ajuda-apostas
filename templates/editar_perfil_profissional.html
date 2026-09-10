@@ -1,0 +1,536 @@
+{% extends "base.html" %}
+
+{% block title %}Editar Meu Perfil{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+    <!-- CABEÇALHO -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="fw-bold">
+                Editar meu perfil
+            </h2>
+
+            <p class="text-muted mb-0">
+                Atualize suas informações profissionais e de contato.
+            </p>
+        </div>
+
+        <a href="{{ url_for('perfil_profissional') }}"
+           class="btn btn-outline-secondary">
+
+            Voltar
+
+        </a>
+
+    </div>
+
+
+    <form id="formCadastroProfissional"
+      method="POST"
+      enctype="multipart/form-data">
+
+        <!-- CSRF -->
+
+        <input type="hidden"
+               name="csrf_token"
+               value="{{ csrf_token() }}">
+
+
+        <!-- ====================================== -->
+        <!-- DADOS DE CONTATO -->
+        <!-- ====================================== -->
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+            <div class="card-body p-4">
+
+                <h4 class="fw-bold mb-4">
+                    Dados de contato
+                </h4>
+
+                <div class="row g-3">
+
+                    <div class="col-md-6">
+
+                        <label for="telefone"
+                            class="form-label fw-bold">
+                            Telefone
+                        </label>
+
+                        <input type="text"
+                            id="telefone"
+                            name="telefone"
+                            class="form-control"
+                            value="{{ profissional.telefone or '' }}"
+                            maxlength="15"
+                            placeholder="(00) 00000-0000">
+
+                        <div id="erroTelefone" class="text-danger mt-1"></div>
+
+                        {% if campo_erro == "telefone" %}
+                        <div class="text-danger mt-1">
+                            {{ mensagem_erro }}
+                        </div>
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================== -->
+        <!-- ENDEREÇO -->
+        <!-- ====================================== -->
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+            <div class="card-body p-4">
+
+                <h4 class="fw-bold mb-4">
+                    Endereço
+                </h4>
+
+                <div class="row g-3">
+
+                    <!-- CEP -->
+
+                    <div class="col-md-5">
+
+                        <label for="cep"
+                               class="form-label fw-bold">
+
+                            CEP
+
+                        </label>
+
+                        <div class="input-group">
+
+                            <input type="text"
+                                   id="cep"
+                                   name="cep"
+                                   class="form-control"
+                                   value="{{ profissional.cep or '' }}"
+                                   maxlength="9"
+                                   placeholder="00000-000"
+                                   required>
+
+                            <button type="button"
+                                    id="btnBuscarCep"
+                                    class="btn btn-outline-primary">
+
+                                Buscar CEP
+
+                            </button>
+
+                        </div>
+
+                        <div id="erroCep"
+                             class="text-danger mt-1">
+                        </div>
+
+                        {% if campo_erro == "cep" %}
+
+                        <div class="text-danger mt-1">
+                            {{ mensagem_erro }}
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- ESTADO -->
+
+                    <div class="col-md-3">
+
+                        <label for="estado"
+                               class="form-label fw-bold">
+
+                            Estado
+
+                        </label>
+
+                        <input type="text"
+                               id="estado"
+                               name="estado"
+                               class="form-control"
+                               value="{{ profissional.estado or '' }}"
+                               readonly>
+
+                    </div>
+
+
+                    <!-- CIDADE -->
+
+                    <div class="col-md-4">
+
+                        <label for="cidade"
+                               class="form-label fw-bold">
+
+                            Cidade
+
+                        </label>
+
+                        <input type="text"
+                               id="cidade"
+                               name="cidade"
+                               class="form-control"
+                               value="{{ profissional.cidade or '' }}"
+                               readonly>
+
+                    </div>
+
+
+                    <!-- RUA -->
+
+                    <div class="col-md-6">
+
+                        <label for="rua"
+                               class="form-label fw-bold">
+
+                            Rua
+
+                        </label>
+
+                        <input type="text"
+                               id="rua"
+                               name="rua"
+                               class="form-control"
+                               value="{{ profissional.rua or '' }}"
+                               readonly>
+
+                    </div>
+
+
+                    <!-- NÚMERO -->
+
+                    <div class="col-md-2">
+
+                        <label for="numero"
+                               class="form-label fw-bold">
+
+                            Número
+
+                        </label>
+
+                        <input type="text"
+                               id="numero"
+                               name="numero"
+                               class="form-control"
+                               value="{{ profissional.numero or '' }}"
+                               required>
+
+                        {% if campo_erro == "numero" %}
+
+                        <div class="text-danger mt-1">
+                            {{ mensagem_erro }}
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- BAIRRO -->
+
+                    <div class="col-md-4">
+
+                        <label for="bairro"
+                               class="form-label fw-bold">
+
+                            Bairro
+
+                        </label>
+
+                        <input type="text"
+                               id="bairro"
+                               name="bairro"
+                               class="form-control"
+                               value="{{ profissional.bairro or '' }}"
+                               readonly>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================== -->
+        <!-- DADOS PROFISSIONAIS -->
+        <!-- ====================================== -->
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+            <div class="card-body p-4">
+
+                <h4 class="fw-bold mb-4">
+                    Dados profissionais
+                </h4>
+
+                <div class="row g-3">
+
+                    <!-- EXPERIÊNCIA -->
+
+                    <div class="col-md-4">
+
+                        <label for="experiencia"
+                               class="form-label fw-bold">
+
+                            Experiência
+
+                        </label>
+
+                        <input type="number"
+                               id="experiencia"
+                               name="experiencia"
+                               class="form-control"
+                               min="0"
+                               max="70"
+                               value="{{ profissional.experiencia }}"
+                               required>
+
+                        {% if campo_erro == "experiencia" %}
+
+                        <div class="text-danger mt-1">
+                            {{ mensagem_erro }}
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- ESPECIALIDADE -->
+
+                    <div class="col-md-8">
+
+                        <label for="especialidade"
+                               class="form-label fw-bold">
+
+                            Especialidade
+
+                        </label>
+
+                        <input type="text"
+                               id="especialidade"
+                               name="especialidade"
+                               class="form-control"
+                               value="{{ profissional.especialidade or '' }}"
+                               required>
+
+                        {% if campo_erro == "especialidade" %}
+
+                        <div class="text-danger mt-1">
+                            {{ mensagem_erro }}
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- FACULDADE -->
+
+                    <div class="col-md-6">
+
+                        <label for="faculdade"
+                               class="form-label fw-bold">
+
+                            Instituição de ensino
+
+                        </label>
+
+                        <input type="text"
+                               id="faculdade"
+                               name="faculdade"
+                               class="form-control"
+                               value="{{ profissional.faculdade or '' }}"
+                               required>
+
+                        {% if campo_erro == "faculdade" %}
+
+                        <div class="text-danger mt-1">
+                            {{ mensagem_erro }}
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- PÓS-GRADUAÇÃO -->
+
+                    <div class="col-md-6">
+
+                        <label for="pos"
+                               class="form-label fw-bold">
+
+                            Pós-graduação
+
+                        </label>
+
+                        <input type="text"
+                               id="pos"
+                               name="pos"
+                               class="form-control"
+                               value="{{ profissional.pos or '' }}"
+                               required>
+
+                        {% if campo_erro == "pos" %}
+
+                        <div class="text-danger mt-1">
+                            {{ mensagem_erro }}
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+
+                    <!-- BIOGRAFIA -->
+
+                    <div class="col-12">
+
+                        <label for="biografia"
+                               class="form-label fw-bold">
+
+                            Biografia
+
+                        </label>
+
+                        <textarea id="biografia"
+                                  name="biografia"
+                                  class="form-control"
+                                  rows="6"
+                                  required>{{ profissional.biografia or '' }}</textarea>
+
+                        {% if campo_erro == "biografia" %}
+
+                        <div class="text-danger mt-1">
+                            {{ mensagem_erro }}
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================== -->
+        <!-- FOTO -->
+        <!-- ====================================== -->
+
+        <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+            <div class="card-body p-4">
+
+                <h4 class="fw-bold mb-3">
+                    Foto de perfil
+                </h4>
+
+
+                {% if profissional.foto %}
+
+                <div class="mb-3">
+
+                    <img src="{{ url_for(
+                        'uploaded_file',
+                        filename=profissional.foto
+                    ) }}"
+                    alt="Foto atual"
+                    class="rounded-circle"
+                    style="width: 140px;
+                           height: 140px;
+                           object-fit: cover;">
+
+                </div>
+
+                {% endif %}
+
+
+                <label for="foto"
+                       class="form-label fw-bold">
+
+                    Escolher nova foto
+
+                </label>
+
+                <input type="file"
+                       id="foto"
+                       name="foto"
+                       class="form-control"
+                       accept="image/png, image/jpeg">
+
+                <div class="form-text">
+
+                    Formatos permitidos: JPG, JPEG ou PNG.
+                    Deixe vazio para manter a foto atual.
+
+                </div>
+
+
+                {% if campo_erro == "foto" %}
+
+                <div class="text-danger mt-1">
+                    {{ mensagem_erro }}
+                </div>
+
+                {% endif %}
+
+            </div>
+
+        </div>
+
+
+        <!-- ====================================== -->
+        <!-- BOTÕES -->
+        <!-- ====================================== -->
+
+        <div class="d-flex gap-2">
+
+            <button type="submit"
+                    class="btn btn-success">
+
+                Salvar alterações
+
+            </button>
+
+            <a href="{{ url_for('perfil_profissional') }}"
+               class="btn btn-secondary">
+
+                Cancelar
+
+            </a>
+
+        </div>
+
+    </form>
+
+</div>
+
+
+<!-- JAVASCRIPT -->
+
+<script src="{{ url_for(
+    'static',
+    filename='js/cadastro_profissional.js'
+) }}"></script>
+
+{% endblock %}
