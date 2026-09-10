@@ -1,4 +1,4 @@
-import secrets, re,  os, traceback, uuid, mysql.connector
+import secrets, re,  os, traceback, uuid, mysql.connector, requests
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -2343,7 +2343,7 @@ def confirmar_email(token):
             
 @app.route("/perfil_profissional")
 def perfil_profissional():
-    
+
     if "usuario_id" not in session:
         flash("Faça login para acessar seu perfil.", "warning")
         return redirect(url_for("login"))
@@ -2361,10 +2361,43 @@ def perfil_profissional():
 
         cursor.execute(
             """
-            SELECT *
-            FROM usuarios
-            WHERE id = %s
-            AND tipo = 'profissional'
+            SELECT
+                u.id,
+                u.nome,
+                u.sobrenome,
+                u.cpf,
+                u.data_nascimento,
+                u.sexo,
+                u.email,
+                u.telefone,
+                u.cep,
+                u.estado,
+                u.cidade,
+                u.rua,
+                u.numero,
+                u.bairro,
+                u.tipo,
+                u.status,
+
+                p.id AS profissional_id,
+                p.crp,
+                p.uf_crp,
+                p.experiencia,
+                p.especialidade,
+                p.faculdade,
+                p.pos,
+                p.biografia,
+                p.foto,
+                p.status_aprovacao,
+                p.data_aprovacao
+
+            FROM usuarios u
+
+            INNER JOIN profissionais p
+                ON p.usuario_id = u.id
+
+            WHERE u.id = %s
+            AND u.tipo = 'profissional'
             """,
             (session["usuario_id"],)
         )
@@ -2376,7 +2409,7 @@ def perfil_profissional():
             return redirect(url_for("login"))
 
         return render_template(
-            "dashboard_profissional.html",
+            "perfil_profissional.html",
             profissional=profissional
         )
 
@@ -2391,6 +2424,337 @@ def perfil_profissional():
         )
 
         return redirect(url_for("login"))
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+@app.route("/perfil_profissional/editar", methods=["GET", "POST"])
+def editar_perfil_profissional():
+
+    if "usuario_id" not in session:
+        flash("Faça login para acessar seu perfil.", "warning")
+        return redirect(url_for("login"))
+
+    if session.get("tipo_usuario") != "profissional":
+        flash("Acesso não autorizado.", "danger")
+        return redirect(url_for("login"))
+
+    usuario_id = session["usuario_id"]
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT
+                u.id,
+                u.nome,
+                u.sobrenome,
+                u.cpf,
+                u.data_nascimento,
+                u.sexo,
+                u.email,
+                u.telefone,
+                u.cep,
+                u.estado,
+                u.cidade,
+                u.rua,
+                u.numero,
+                u.bairro,
+                p.id AS profissional_id,
+                p.crp,
+                p.uf_crp,
+                p.experiencia,
+                p.especialidade,
+                p.faculdade,
+                p.pos,
+                p.biografia,
+                p.foto
+            FROM usuarios u
+            INNER JOIN profissionais p
+                ON p.usuario_id = u.id
+            WHERE u.id = %s
+            AND u.tipo = 'profissional'
+            """,
+            (usuario_id,)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+            flash("Profissional não encontrado.", "danger")
+            return redirect(url_for("dashboard_profissional"))
+
+        if request.method == "POST":
+
+            telefone = request.form.get("telefone", "").strip()
+            cep = request.form.get("cep", "").strip()
+            estado = request.form.get("estado", "").strip()
+            cidade = request.form.get("cidade", "").strip()
+            rua = request.form.get("rua", "").strip()
+            numero = request.form.get("numero", "").strip()
+            bairro = request.form.get("bairro", "").strip()
+
+            experiencia = request.form.get("experiencia", "").strip()
+            especialidade = request.form.get("especialidade", "").strip()
+            faculdade = request.form.get("faculdade", "").strip()
+            pos = request.form.get("pos", "").strip()
+            biografia = request.form.get("biografia", "").strip()
+
+            # =========================
+            # VALIDAÇÕES
+            # =========================
+
+            if not telefone:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="telefone",
+                    mensagem_erro="O telefone é obrigatório."
+                )
+
+            if not cep:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="cep",
+                    mensagem_erro="O CEP é obrigatório."
+                )
+            cep_numeros = re.sub(r"\D", "", cep)
+
+            if len(cep_numeros) != 8:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="cep",
+                    mensagem_erro="Digite um CEP válido."
+                )
+
+            try:
+                resposta_cep = requests.get(
+                    f"https://viacep.com.br/ws/{cep_numeros}/json/",
+                    timeout=5
+                )
+
+                dados_cep = resposta_cep.json()
+
+                if dados_cep.get("erro"):
+                    return render_template(
+                        "editar_perfil_profissional.html",
+                        profissional=profissional,
+                        campo_erro="cep",
+                        mensagem_erro="CEP não encontrado."
+                    )
+
+            except requests.RequestException:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="cep",
+                    mensagem_erro="Não foi possível validar o CEP. Tente novamente."
+                )
+
+            if not numero:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="numero",
+                    mensagem_erro="O número é obrigatório."
+                )
+
+            if not experiencia:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="experiencia",
+                    mensagem_erro="A experiência é obrigatória."
+                )
+
+            try:
+                experiencia = int(experiencia)
+            except ValueError:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="experiencia",
+                    mensagem_erro="Informe um número válido de anos."
+                )
+
+            if experiencia < 0 or experiencia > 70:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="experiencia",
+                    mensagem_erro="Informe uma experiência entre 0 e 70 anos."
+                )
+
+            if not especialidade:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="especialidade",
+                    mensagem_erro="A especialidade é obrigatória."
+                )
+
+            if not faculdade:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="faculdade",
+                    mensagem_erro="A instituição de ensino é obrigatória."
+                )
+
+            if not pos:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="pos",
+                    mensagem_erro="A pós-graduação é obrigatória."
+                )
+
+            if not biografia:
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="biografia",
+                    mensagem_erro="A biografia é obrigatória."
+                )
+
+            # =========================
+            # FOTO
+            # =========================
+
+            foto = request.files.get("foto")
+            nome_foto = profissional["foto"]
+
+            if foto and foto.filename:
+
+                nome_original = secure_filename(foto.filename)
+
+                extensao = os.path.splitext(
+                    nome_original
+                )[1].lower()
+
+                extensoes_validas = {
+                    ".jpg",
+                    ".jpeg",
+                    ".png"
+                }
+
+                if extensao not in extensoes_validas:
+                    return render_template(
+                        "editar_perfil_profissional.html",
+                        profissional=profissional,
+                        campo_erro="foto",
+                        mensagem_erro="Formato de imagem inválido. Use JPG ou PNG."
+                    )
+
+                nome_foto = f"{uuid.uuid4().hex}{extensao}"
+
+                caminho_foto = os.path.join(
+                    app.config["UPLOAD_FOLDER"],
+                    nome_foto
+                )
+
+                foto.save(caminho_foto)
+
+            # =========================
+            # ATUALIZAR USUÁRIO
+            # =========================
+
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET
+                    telefone = %s,
+                    cep = %s,
+                    estado = %s,
+                    cidade = %s,
+                    rua = %s,
+                    numero = %s,
+                    bairro = %s
+                WHERE id = %s
+                """,
+                (
+                    telefone,
+                    cep,
+                    estado,
+                    cidade,
+                    rua,
+                    numero,
+                    bairro,
+                    usuario_id
+                )
+            )
+
+            # =========================
+            # ATUALIZAR PROFISSIONAL
+            # =========================
+
+            cursor.execute(
+                """
+                UPDATE profissionais
+                SET
+                    experiencia = %s,
+                    especialidade = %s,
+                    faculdade = %s,
+                    pos = %s,
+                    biografia = %s,
+                    foto = %s
+                WHERE usuario_id = %s
+                """,
+                (
+                    experiencia,
+                    especialidade,
+                    faculdade,
+                    pos,
+                    biografia,
+                    nome_foto,
+                    usuario_id
+                )
+            )
+
+            conexao.commit()
+
+            flash(
+                "Seu perfil foi atualizado com sucesso.",
+                "success"
+            )
+
+            return redirect(
+                url_for("perfil_profissional")
+            )
+
+        return render_template(
+            "editar_perfil_profissional.html",
+            profissional=profissional
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO EDITAR PERFIL PROFISSIONAL:")
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao atualizar seu perfil.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("perfil_profissional")
+        )
 
     finally:
 
@@ -3073,6 +3437,7 @@ def gerenciar_forum():
 @app.route('/cadastro_profissional', methods=['GET', 'POST'])
 def cadastro_profissional():
 
+
     dados = {
         "tipo": "profissional",
         "nome": "",
@@ -3125,9 +3490,39 @@ def cadastro_profissional():
         }
 
         foto = request.files.get("foto")
+        foto_temporaria = session.get("foto_temporaria_profissional")
+
         senha = request.form.get("senha", "").strip()
         confirmar_senha = request.form.get("confirmar_senha", "").strip()
         termos = request.form.get("termos")
+        
+         # =========================
+         # SALVA FOTO TEMPORÁRIA
+         # =========================
+
+        if foto and foto.filename:
+
+            nome_original = secure_filename(foto.filename)
+            extensao = os.path.splitext(nome_original)[1].lower()
+
+            extensoes_validas = {".jpg", ".jpeg", ".png"}
+
+            if extensao not in extensoes_validas:
+                return render_template(
+                    "cadastro_profissional.html",
+                    dados=dados,
+                    campo_erro="foto",
+                    mensagem_erro="Formato de imagem inválido. Use JPG ou PNG."
+                )
+
+            nome_temporario = f"temp_{uuid.uuid4().hex}{extensao}"
+
+            caminho_temporario = os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                nome_temporario
+            )
+
+            foto.save(caminho_temporario)
 
         # Validação em ordem de cima para baixo conforme o formulário
         campos_validacao = [
@@ -3203,26 +3598,7 @@ def cadastro_profissional():
                 mensagem_erro="Digite um e-mail válido."
             )
 
-        # Valida foto
-        if not foto or foto.filename == "":
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="foto",
-                mensagem_erro="Selecione uma foto de perfil."
-            )
 
-        nome_original = secure_filename(foto.filename)
-        extensao = os.path.splitext(nome_original)[1].lower()
-        extensoes_validas = {".jpg", ".jpeg", ".png"}
-
-        if extensao not in extensoes_validas:
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="foto",
-                mensagem_erro="Formato de imagem inválido. Use JPG ou PNG."
-            )
 
         # Valida senha
         if not senha or not confirmar_senha:
@@ -3257,8 +3633,20 @@ def cadastro_profissional():
                 campo_erro="termos",
                 mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
             )
+            
+        # =========================
+        # VERIFICA FOTO
+        # =========================
 
-                # =========================
+        if not foto_temporaria:
+            return render_template(
+                "cadastro_profissional.html",
+                dados=dados,
+                campo_erro="foto",
+                mensagem_erro="Selecione uma foto de perfil."
+            )
+
+        # =========================
         # VERIFICA SE O EMAIL JÁ EXISTE NO MYSQL
         # =========================
 
@@ -3297,20 +3685,26 @@ def cadastro_profissional():
             senha_hash = generate_password_hash(senha)
 
             # =========================
-            # SALVA A FOTO
+            # SALVA A FOTO DEFINITIVA
             # =========================
 
-            nome_original = secure_filename(foto.filename)
-            extensao = os.path.splitext(nome_original)[1].lower()
+            extensao = os.path.splitext(foto_temporaria)[1].lower()
 
             nome_foto = f"{uuid.uuid4().hex}{extensao}"
+
+            caminho_temporario = os.path.join(
+                app.config["UPLOAD_FOLDER"],
+                foto_temporaria
+            )
 
             caminho_foto = os.path.join(
                 app.config["UPLOAD_FOLDER"],
                 nome_foto
             )
 
-            foto.save(caminho_foto)
+            os.rename(caminho_temporario, caminho_foto)
+
+            session.pop("foto_temporaria_profissional", None)
 
             # =========================
             # INSERE O USUÁRIO
@@ -3453,18 +3847,11 @@ def cadastro_profissional():
         if enviar_email_confirmacao(dados["email"]):
 
             flash(
-                "Cadastro realizado! Confirme seu email.",
+                "Cadastro realizado! Aguarde a aprovação do administrador.",
                 "success"
             )
 
-        else:
-
-            flash(
-                "Cadastro criado, mas houve erro no envio do email.",
-                "warning"
-            )
-
-        return redirect(url_for("login"))
+            return redirect(url_for("login"))
 
     return render_template(
         "cadastro_profissional.html",
@@ -4449,6 +4836,45 @@ def editar_profissional_aprovados(profissional_id):
         # =========================
 
         if request.method == "POST":
+            
+            foto = request.files.get("foto")
+            
+            foto_nova = None
+
+            # =========================
+            # PROCESSA NOVA FOTO
+            # =========================
+
+            if foto and foto.filename:
+
+                nome_original = secure_filename(foto.filename)
+                extensao = os.path.splitext(nome_original)[1].lower()
+
+                extensoes_validas = {".jpg", ".jpeg", ".png"}
+
+                if extensao not in extensoes_validas:
+                    flash(
+                        "Formato de imagem inválido. Use JPG ou PNG.",
+                        "danger"
+                    )
+
+                    return render_template(
+                        "editar_profissional.html",
+                        profissional=profissional
+                    )
+
+                nome_novo = f"profissional_{uuid.uuid4().hex}{extensao}"
+
+                caminho_novo = os.path.join(
+                    app.config["UPLOAD_FOLDER"],
+                    nome_novo
+                )
+
+                foto.save(caminho_novo)
+
+                foto_nova = nome_novo
+
+            nome = request.form.get("nome", "").strip()
 
             nome = request.form.get("nome", "").strip()
             sobrenome = request.form.get("sobrenome", "").strip()
@@ -4516,42 +4942,88 @@ def editar_profissional_aprovados(profissional_id):
                 )
             )
 
+            
             # =========================
             # ATUALIZA PROFISSIONAL
             # =========================
 
-            cursor.execute(
-                """
-                UPDATE profissionais
-                SET
-                    crp = %s,
-                    uf_crp = %s,
-                    experiencia = %s,
-                    especialidade = %s,
-                    faculdade = %s,
-                    pos = %s,
-                    biografia = %s
-                WHERE id = %s
-                """,
-                (
-                    crp,
-                    uf_crp,
-                    experiencia,
-                    especialidade,
-                    faculdade,
-                    pos,
-                    biografia,
-                    profissional_id
-                )
-            )
+            if foto_nova:
 
-            conexao.commit()
+                cursor.execute(
+                    """
+                    UPDATE profissionais
+                    SET
+                        crp = %s,
+                        uf_crp = %s,
+                        experiencia = %s,
+                        especialidade = %s,
+                        faculdade = %s,
+                        pos = %s,
+                        biografia = %s,
+                        foto = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        crp,
+                        uf_crp,
+                        experiencia,
+                        especialidade,
+                        faculdade,
+                        pos,
+                        biografia,
+                        foto_nova,
+                        profissional_id
+                    )
+                )
+
+            else:
+
+                cursor.execute(
+                    """
+                    UPDATE profissionais
+                    SET
+                        crp = %s,
+                        uf_crp = %s,
+                        experiencia = %s,
+                        especialidade = %s,
+                        faculdade = %s,
+                        pos = %s,
+                        biografia = %s
+                    WHERE id = %s
+                    """,
+                    (
+                        crp,
+                        uf_crp,
+                        experiencia,
+                        especialidade,
+                        faculdade,
+                        pos,
+                        biografia,
+                        profissional_id
+                    )
+                )
+
+            conexao.commit()                
+
+            # =========================
+            # REMOVE FOTO ANTIGA
+            # =========================
+
+            if foto_nova and profissional["foto"]:
+
+                caminho_antigo = os.path.join(
+                    app.config["UPLOAD_FOLDER"],
+                    profissional["foto"]
+                )
+
+                if os.path.exists(caminho_antigo):
+                    os.remove(caminho_antigo)
 
             flash(
                 "Informações do profissional atualizadas com sucesso.",
                 "success"
             )
-
+            
             return redirect(
                 url_for(
                     "detalhes_profissional_aprovado",

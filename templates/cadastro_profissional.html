@@ -555,6 +555,13 @@
 
                                 <input type="file" class="form-control" name="foto" accept="image/png, image/jpeg">
 
+                                {% if session.get("foto_temporaria_profissional") %}
+                                    <div class="mt-2 text-success">
+                                        <i class="bi bi-check-circle"></i>
+                                        Foto selecionada anteriormente e mantida.
+                                    </div>
+                                {% endif %}
+
                                 <small class="text-muted">
                                     Formatos aceitos: JPG ou PNG.
                                 </small>

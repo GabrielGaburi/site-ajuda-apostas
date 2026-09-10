@@ -1,0 +1,418 @@
+{% extends "base.html" %}
+
+{% block title %}Meu Perfil Profissional{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+    <!-- CABEÇALHO -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+
+        <div>
+            <h2 class="fw-bold">
+                Meu Perfil Profissional 🩺
+            </h2>
+
+            <p class="text-muted mb-0">
+                Visualize suas informações pessoais e profissionais.
+            </p>
+        </div>
+
+        <a href="{{ url_for('dashboard_profissional') }}"
+           class="btn btn-outline-secondary">
+
+            Voltar
+
+        </a>
+
+    </div>
+
+
+    <!-- PERFIL -->
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+        <div class="card-body p-4">
+
+            <div class="row align-items-center">
+
+                <!-- FOTO -->
+
+                <div class="col-md-3 text-center mb-4 mb-md-0">
+
+                    {% if profissional.foto %}
+
+                    <img src="{{ url_for('uploaded_file', filename=profissional.foto) }}"
+                         alt="Foto profissional"
+                         class="rounded-circle img-fluid"
+                         style="width: 160px; height: 160px; object-fit: cover;">
+
+                    {% else %}
+
+                    <div class="rounded-circle bg-light d-flex align-items-center justify-content-center mx-auto"
+                         style="width: 160px; height: 160px;">
+
+                        <span style="font-size: 70px;">
+                            👤
+                        </span>
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+
+                <!-- NOME E STATUS -->
+
+                <div class="col-md-9">
+
+                    <h3 class="fw-bold">
+                        {{ profissional.nome }}
+                        {{ profissional.sobrenome }}
+                    </h3>
+
+                    <p class="text-muted mb-2">
+                        {{ profissional.especialidade }}
+                    </p>
+
+                    <p class="mb-0">
+
+                        <strong>CRP:</strong>
+                        {{ profissional.crp }}/{{ profissional.uf_crp }}
+
+                    </p>
+
+
+                    {% if profissional.status_aprovacao == "aprovado" %}
+
+                    <span class="badge text-bg-success mt-3">
+                        Profissional aprovado
+                    </span>
+
+                    {% elif profissional.status_aprovacao == "pendente" %}
+
+                    <span class="badge text-bg-warning mt-3">
+                        Aprovação pendente
+                    </span>
+
+                    {% elif profissional.status_aprovacao == "recusado" %}
+
+                    <span class="badge text-bg-danger mt-3">
+                        Cadastro recusado
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- DADOS PESSOAIS -->
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+        <div class="card-body p-4">
+
+            <h4 class="fw-bold mb-4">
+                Dados pessoais
+            </h4>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+
+                    <label class="form-label fw-bold">
+                        Nome completo
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.nome }}
+                        {{ profissional.sobrenome }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label fw-bold">
+                        E-mail
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.email }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        CPF
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.cpf }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        Data de nascimento
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.data_nascimento }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        Sexo
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.sexo }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        Telefone
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.telefone }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        CEP
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.cep }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        Estado
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.estado }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label fw-bold">
+                        Cidade
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.cidade }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label fw-bold">
+                        Bairro
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.bairro }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-8">
+
+                    <label class="form-label fw-bold">
+                        Rua
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.rua }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        Número
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.numero }}
+                    </p>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- DADOS PROFISSIONAIS -->
+
+    <div class="card border-0 shadow-sm rounded-4 mb-4">
+
+        <div class="card-body p-4">
+
+            <h4 class="fw-bold mb-4">
+                Dados profissionais
+            </h4>
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        CRP
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.crp }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-2">
+
+                    <label class="form-label fw-bold">
+                        UF
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.uf_crp }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label fw-bold">
+                        Especialidade
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.especialidade }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label fw-bold">
+                        Experiência
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.experiencia }} anos
+                    </p>
+
+                </div>
+
+
+                <div class="col-md-8">
+
+                    <label class="form-label fw-bold">
+                        Faculdade
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.faculdade }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-12">
+
+                    <label class="form-label fw-bold">
+                        Pós-graduação
+                    </label>
+
+                    <p class="form-control bg-light">
+                        {{ profissional.pos }}
+                    </p>
+
+                </div>
+
+
+                <div class="col-12">
+
+                    <label class="form-label fw-bold">
+                        Biografia
+                    </label>
+
+                    <div class="bg-light border rounded p-3"
+                        style="min-height: 120px; white-space: pre-wrap;">{{ profissional.biografia or "Nenhuma biografia cadastrada." }}</div>
+
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- AÇÕES -->
+
+    <div class="d-flex gap-2">
+
+        <a href="{{ url_for('editar_perfil_profissional') }}"
+        class="btn btn-primary">
+            ✏️ Editar perfil
+        </a>
+
+        <a href="{{ url_for('dashboard_profissional') }}"
+        class="btn btn-secondary">
+            Voltar ao painel
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

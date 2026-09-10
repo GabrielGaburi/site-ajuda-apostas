@@ -210,17 +210,100 @@ function normalizarTexto(texto) {
     const dataNascimento = document.getElementById("dataNascimento");
     const telefone = document.getElementById("telefone");
 
+    // ==========================================
+    // TELEFONE
+    // ==========================================
+
     if (telefone) {
+
         telefone.addEventListener("input", function () {
+
             let valor = this.value.replace(/\D/g, "");
-            valor = valor.replace(/^(\d{2})(\d)/, "($1) $2");
-            valor = valor.replace(/(\d{5})(\d)/, "$1-$2");
-            this.value = valor;
+
+            // Máximo de 11 números
+            valor = valor.substring(0, 11);
+
+            if (valor.length <= 2) {
+
+                this.value = valor;
+
+            } else if (valor.length <= 7) {
+
+                this.value =
+                    "(" + valor.substring(0, 2) + ") " +
+                    valor.substring(2);
+
+            } else if (valor.length <= 11) {
+
+                this.value =
+                    "(" + valor.substring(0, 2) + ") " +
+                    valor.substring(2, 7) + "-" +
+                    valor.substring(7);
+
+            }
+
         });
+
     }
+
+    if (formulario && telefone) {
+
+        formulario.addEventListener("submit", function (event) {
+
+            const numeros = telefone.value.replace(/\D/g, "");
+            const erroTelefone = document.getElementById("erroTelefone");
+
+            telefone.classList.remove("is-valid", "is-invalid");
+
+            if (/^(\d)\1+$/.test(numeros)) {
+
+    event.preventDefault();
+
+    telefone.classList.add("is-invalid");
+
+            if (erroTelefone) {
+                    erroTelefone.textContent =
+                        "Digite um número de telefone válido.";
+                }
+
+                telefone.focus();
+
+                return;
+            }
+
+            if (numeros.length !== 11) {
+
+                event.preventDefault();
+
+                telefone.classList.add("is-invalid");
+
+                if (erroTelefone) {
+                    erroTelefone.textContent =
+                        "Digite um telefone válido com DDD e 11 dígitos.";
+                }
+
+                telefone.focus();
+
+                return;
+            }
+
+            telefone.classList.add("is-valid");
+
+            if (erroTelefone) {
+                erroTelefone.textContent = "";
+            }
+
+        });
+
+    }
+
+    // ==========================================
+    // CPF
+    // ==========================================
 
     const cpf = document.getElementById("cpf");
     const erroCpf = document.getElementById("erroCpf");
+
     if (cpf) {
         cpf.addEventListener("input", function () {
             let valor = this.value.replace(/\D/g, "");
@@ -339,11 +422,6 @@ function normalizarTexto(texto) {
         });
     }
 
-    if (formulario) {
-        formulario.noValidate = true;
-        // A validação será feita no backend em ordem de cima para baixo
-        // O JavaScript apenas faz validações de formato para feedback visual
-    }
 
     if (dataNascimento) {
         dataNascimento.addEventListener("input", function () {
