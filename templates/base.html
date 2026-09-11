@@ -10,6 +10,8 @@
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
 
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/chatbot.css') }}">
+
 
     <!-- Bootstrap Icons (ícone de usuário/seta) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -140,7 +142,86 @@
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
+    <!-- Chatbot JS -->
+    <script src="{{ url_for('static', filename='js/chatbot.js') }}"></script>
+
     {% block scripts %}{% endblock %}
+
+        <!-- CHATBOT -->
+    <div id="chatbot-container">
+
+        <!-- Botão flutuante -->
+        <button id="chatbot-toggle" type="button">
+            <img
+                src="{{ url_for('static', filename='img/caozinho.jpg') }}"
+                alt="Apoio Virtual"
+            >
+            <span>Apoio Virtual</span>
+        </button>
+
+        <!-- Janela do chatbot -->
+        <div id="chatbot-window">
+
+            <div id="chatbot-header">
+                <div class="chatbot-header-info">
+                    <img
+                        src="{{ url_for('static', filename='img/caozinho.jpg') }}"
+                        alt="Cãozinho"
+                    >
+
+                    <div>
+                        <strong>Apoio Virtual</strong>
+                        <small>Estou aqui para ouvir você</small>
+                    </div>
+                </div>
+
+                <button id="chatbot-close" type="button" aria-label="Fechar">
+                    ×
+                </button>
+            </div>
+
+            <div id="chatbot-messages">
+
+                <div class="chatbot-message chatbot-bot-message">
+                    Oi! Eu sou o Apoio Virtual. Estou aqui para conversar e ouvir você. 💙
+                </div>
+
+            </div>
+
+            <div id="chatbot-quick-replies">
+
+                <button type="button" class="chatbot-quick-reply">
+                    Estou preocupado com minhas apostas
+                </button>
+
+                <button type="button" class="chatbot-quick-reply">
+                    Estou preocupado com alguém
+                </button>
+
+                <button type="button" class="chatbot-quick-reply">
+                    Quero conversar com um profissional
+                </button>
+
+            </div>
+
+            <div id="chatbot-input-area">
+
+                <input
+                    type="text"
+                    id="chatbot-input"
+                    placeholder="Digite sua mensagem..."
+                    autocomplete="off"
+                >
+
+                <button id="chatbot-send" type="button">
+                    ➤
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
 
 </body>
 

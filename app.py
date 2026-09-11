@@ -1,4 +1,4 @@
-import secrets, re,  os, traceback, uuid, mysql.connector, requests
+import re, os, traceback, uuid, mysql.connector, requests
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -8,11 +8,20 @@ from werkzeug.utils import secure_filename
 from flask import send_from_directory
 from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+print("OPENAI_API_KEY carregada:", bool(OPENAI_API_KEY))
+
+csrf = CSRFProtect(app)
 
 csrf = CSRFProtect(app)
 # =========================
@@ -70,13 +79,14 @@ app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USE_SSL'] = False
 
 # CONTA GMAIL REMETENTE
-app.config['MAIL_USERNAME'] = 'gabrielgaburi6@gmail.com'
+app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+
 
 # SENHA DE APP DO GMAIL (via terminal)
-app.config['MAIL_PASSWORD'] = "dans hivz zvpt xswd"
+app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
 
 # REMETENTE PRECISA SER O MESMO GMAIL
-app.config['MAIL_DEFAULT_SENDER'] = 'gabrielgaburi6@gmail.com'
+app.config['MAIL_DEFAULT_SENDER'] = os.getenv('MAIL_USERNAME')
 
 app.config['MAIL_SUPPRESS_SEND'] = False
 
