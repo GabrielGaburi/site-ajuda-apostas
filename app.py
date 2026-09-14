@@ -1,4 +1,4 @@
-import re, os, traceback, uuid, mysql.connector, requests
+import re, os, traceback, uuid, mysql.connector, requests, unicodedata
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -20,8 +20,6 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 print("OPENAI_API_KEY carregada:", bool(OPENAI_API_KEY))
-
-csrf = CSRFProtect(app)
 
 csrf = CSRFProtect(app)
 # =========================
@@ -127,6 +125,988 @@ noticias = [
         "imagem": "https://www.rbsdirect.com.br/filestore/9/2/3/9/0/6/5_f411465a2662a86/5609329_74835350f8ddcb8.jpg?format=webp&w=700"
     }
 ]
+
+SYSTEM_PROMPT = (
+    "Você é o Apoio Virtual do projeto Apoio & Consciência. "
+    "Você é como um amigo próximo, empático e confiável. "
+    "Sua função é conversar e oferecer apoio emocional para pessoas afetadas por problemas relacionados a apostas, "
+    "tanto quem enfrenta esse problema diretamente quanto familiares ou amigos de alguém nessa situação.\n\n"
+
+    "TOM E ESTILO:\n"
+    "- Fale com calor humano, acolhimento e zero julgamentos.\n"
+    "- Use frases curtas e simples, transmitindo presença e proximidade.\n"
+    "- Mostre escuta ativa e empatia genuína.\n"
+    "- Não pareça um robô ou um atendimento automático.\n"
+    "- Seja natural, como uma conversa entre pessoas.\n\n"
+
+    "ESCOPO DA CONVERSA:\n"
+    "- Mantenha a conversa relacionada ao objetivo do Apoio & Consciência.\n"
+    "- Você pode conversar sobre apostas, jogos de azar, dificuldades para parar ou reduzir apostas, consequências das apostas, sentimentos relacionados a esse problema e situações envolvendo familiares ou amigos.\n"
+    "- Você também pode conversar sobre sentimentos e situações pessoais quando estiverem relacionados às apostas.\n"
+    "- Não transforme a conversa em um assistente de assuntos gerais.\n"
+    "- Não responda perguntas aleatórias sobre programação, matemática, política, notícias, celebridades, entretenimento, receitas, esportes ou outros assuntos sem relação com apostas.\n"
+    "- Se o usuário mudar para um assunto sem relação com apostas, responda de forma educada e curta que você foi criado para conversar sobre questões relacionadas às apostas e convide a pessoa a voltar ao assunto.\n"
+    "- Não responda primeiro ao assunto aleatório para depois voltar ao tema.\n"
+    "- Se uma pergunta tiver relação indireta com apostas, priorize essa relação.\n\n"
+
+    "REGRAS IMPORTANTES:\n"
+    "- Nunca incentive, ensine, normalize ou minimize os riscos das apostas ou jogos de azar.\n"
+    "- Nunca recomende links, serviços, profissionais ou tratamentos específicos.\n"
+    "- Não use jargões técnicos.\n"
+    "- Não faça diagnósticos médicos ou psicológicos.\n"
+    "- Não diga que a pessoa possui um transtorno ou vício como se isso fosse um diagnóstico.\n"
+    "- Não prometa curas ou garantias.\n"
+    "- Não julgue, culpe ou constranja a pessoa.\n"
+    "- Não forneça estratégias para recuperar dinheiro perdido através de apostas.\n"
+    "- Não ensine maneiras de apostar, aumentar chances de ganhar, burlar limites ou evitar bloqueios.\n\n"
+
+    "O QUE FAZER:\n"
+    "- Valide os sentimentos da pessoa.\n"
+    "- Demonstre presença e disponibilidade para ouvir.\n"
+    "- Reforce que a pessoa não está sozinha.\n"
+    "- Faça perguntas suaves para manter a conversa.\n"
+    "- Quando perceber sofrimento intenso ou risco imediato, incentive a pessoa a procurar ajuda imediata de alguém de confiança ou de um serviço de emergência.\n\n"
+
+    "QUANDO O USUÁRIO FUGIR DO ASSUNTO:\n"
+    "- Seja breve e amigável.\n"
+    "- Não repreenda o usuário.\n"
+    "- Não explique suas regras internas.\n"
+    "- Não responda ao assunto aleatório.\n"
+    "- Diga que você foi criado para conversar sobre questões relacionadas às apostas e convide a pessoa a voltar ao assunto.\n\n"
+
+    "OBJETIVO:\n"
+    "Fazer a pessoa sentir-se compreendida, acolhida e menos sozinha, mantendo a conversa dentro do propósito do Apoio & Consciência."
+)
+
+# ============================ DETECÇÃO DE CRITICIDADE ============================ #
+def _normalize_base(s: str) -> str:
+    s = s or ""
+    s = s.lower()
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")  # remove acentos
+    s = re.sub(r"[’'`´]", "'", s)
+    s = re.sub(r"[^\w\s'!?💔😭😢😞]", " ", s, flags=re.UNICODE)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def _leet_to_plain(s: str) -> str:
+    return (s.replace("0", "o")
+             .replace("1", "i")
+             .replace("3", "e")
+             .replace("4", "a")
+             .replace("5", "s")
+             .replace("7", "t"))
+
+def _collapse_repeats(s: str) -> str:
+    return re.sub(r"(.)\1{2,}", r"\1\1", s)
+
+def _normalize_all(s: str) -> str:
+    return _collapse_repeats(_leet_to_plain(_normalize_base(s)))
+
+def _lev_dist(a: str, b: str) -> int:
+    dp = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        prev = i - 1
+        dp[0] = i
+        for j, cb in enumerate(b, 1):
+            tmp = dp[j]
+            dp[j] = prev if ca == cb else 1 + min(prev, dp[j], dp[j-1])
+            prev = tmp
+    return dp[-1]
+
+def _fuzzy_includes(hay: str, needle: str, max_edits: int = 1) -> bool:
+    if needle in hay:
+        return True
+    n = len(needle)
+    if n == 0 or len(hay) < n:
+        return False
+    max_edits = min(max_edits + n // 12, 2)
+    for i in range(0, len(hay) - n + 1):
+        if _lev_dist(hay[i:i+n], needle) <= max_edits:
+            return True
+    return False
+
+def _fuzzy_any(hay: str, variants, max_edits: int = 1) -> bool:
+    return any(_fuzzy_includes(hay, _normalize_all(v), max_edits) for v in variants if v)
+
+CRITICAL_PATTERNS = {
+    "suicidio": [
+        "suicidio","me matar","tirar minha vida","acabar com tudo",
+        "quero morrer","sem vontade de viver","nao quero mais viver",
+        "pensando em morrer","ideacao suicida","quero sumir"
+    ],
+    "distress": [
+        "nao aguento","nao aguento mais","desespero","sem saida","sem saída",
+        "to mal","tô mal","muito mal","pior dia","crise de panico","crise panico",
+        "ataque de panico","ansiedade forte","desesperado","no fundo do poco","no fundo do poço",
+        "sou um lixo","nao presto","nao vejo futuro","sofrendo demais"
+    ],
+    "help": [
+        "quero ajuda","preciso de ajuda","socorro","me ajuda","ajuda por favor",
+        "urgente","falar com alguem","conversar com alguem","preciso falar com alguem",
+        "posso falar com alguem","quero conversar com alguem","apoio agora"
+    ],
+    "gambling_crisis": [
+        "nao consigo parar de apostar","nao consigo parar","compulsao por apostar","compulsao por jogo",
+        "recaida","recaída","voltei a apostar","perdi tudo","perdi meu salario","perdi meu salário",
+        "endividado","muita divida","muitas dividas","divida com agiota","cobranca pesada",
+        "quebrado","rompi limite"
+    ],
+    "family": [
+        "meu marido aposta","minha esposa aposta","meu filho viciado","minha filha viciada",
+        "meu pai viciado","minha mae viciada","meu irmão viciado","minha irmã viciada",
+        "meu namorado aposta","minha namorada aposta","alguem proximo viciado","alguém próximo viciado",
+        "ajuda para familia","sou familiar de viciado","sou parente de viciado"
+    ]
+}
+CORE_SIGNALS = [
+    "me matar","acabar com tudo","quero morrer","nao aguento mais",
+    "preciso de ajuda","socorro","sem saida","muito mal",
+    "nao consigo parar","perdi tudo","endividado"
+]
+
+def detect_critical(text: str) -> bool:
+    if not text or not text.strip():
+        return False
+    raw = text
+    n = _normalize_all(raw)
+    if any(e in raw for e in ["😭", "💔", "😢", "😞"]):
+        return True
+    for variants in CRITICAL_PATTERNS.values():
+        if _fuzzy_any(n, variants, 1):
+            return True
+    if _fuzzy_any(n, CORE_SIGNALS, 2):
+        return True
+    return False
+
+def pediu_profissional(texto):
+    if not texto:
+        return False
+
+    texto = _normalize_all(texto)
+
+    pedidos = [
+        "quero conversar com um profissional",
+        "quero falar com um profissional",
+        "preciso conversar com um profissional",
+        "preciso falar com um profissional",
+        "quero atendimento profissional",
+        "preciso de atendimento profissional",
+        "quero ajuda de um profissional",
+        "preciso de ajuda de um profissional",
+        "quero falar com psicologo",
+        "quero conversar com psicologo",
+        "preciso falar com psicologo",
+        "preciso conversar com psicologo"
+    ]
+
+    return any(pedido in texto for pedido in pedidos)
+
+@app.route("/chatbot", methods=["POST"])
+def chatbot():
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        dados = request.get_json()
+
+        if not dados:
+            return {"erro": "Nenhum dado recebido."}, 400
+
+        mensagem = dados.get("mensagem", "").strip()
+
+        if not mensagem:
+            return {"erro": "Digite uma mensagem."}, 400
+
+        usuario_id = session.get("usuario_id")
+
+        # =========================================================
+        # USUÁRIO DESLOGADO
+        # =========================================================
+
+        if not usuario_id:
+
+            # Se pedir atendimento profissional, precisa fazer login
+            if pediu_profissional(mensagem):
+
+                return {
+                    "resposta": (
+                        "Para conversar com um profissional, "
+                        "faça login ou cadastro no site."
+                    ),
+                    "handoff": False,
+                    "login_necessario": True
+                }
+
+            # Situação crítica também não cria atendimento sem identificação.
+            # A IA continua podendo oferecer acolhimento.
+            if detect_critical(mensagem):
+
+                instrucoes = SYSTEM_PROMPT
+
+                resposta = client.responses.create(
+                    model="gpt-5.6-luna",
+                    instructions=instrucoes,
+                    input=mensagem
+                )
+
+                texto_resposta = resposta.output_text
+
+                return {
+                    "resposta": texto_resposta,
+                    "critico": True,
+                    "atendimento_id": None
+                }
+
+            # Conversa normal com a IA
+            instrucoes = SYSTEM_PROMPT
+
+            resposta = client.responses.create(
+                model="gpt-5.6-luna",
+                instructions=instrucoes,
+                input=mensagem
+            )
+
+            texto_resposta = resposta.output_text
+
+            return {
+                "resposta": texto_resposta,
+                "critico": False,
+                "atendimento_id": None
+            }
+
+        # =========================================================
+        # USUÁRIO LOGADO
+        # =========================================================
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT *
+            FROM atendimentos_chatbot
+            WHERE usuario_id = %s
+              AND status IN (
+                  'ia',
+                  'aguardando',
+                  'em_atendimento'
+              )
+            ORDER BY id DESC
+            LIMIT 1
+        """, (usuario_id,))
+
+        atendimento = cursor.fetchone()
+
+        # =========================================================
+        # CRIA ATENDIMENTO SE NÃO EXISTIR
+        # =========================================================
+
+        if not atendimento:
+
+            cursor.execute("""
+                INSERT INTO atendimentos_chatbot
+                    (usuario_id, status, motivo)
+                VALUES
+                    (%s, 'ia', %s)
+            """, (
+                usuario_id,
+                "Conversa com o Apoio Virtual"
+            ))
+
+            atendimento_id = cursor.lastrowid
+
+        else:
+
+            atendimento_id = atendimento["id"]
+
+        # =========================================================
+        # SALVA MENSAGEM DO USUÁRIO
+        # =========================================================
+
+        cursor.execute("""
+            INSERT INTO mensagens_atendimento
+                (atendimento_id, usuario_id, remetente, mensagem)
+            VALUES
+                (%s, %s, 'usuario', %s)
+        """, (
+            atendimento_id,
+            usuario_id,
+            mensagem
+        ))
+
+        # =========================================================
+        # PROFISSIONAL JÁ ESTÁ ATENDENDO
+        # =========================================================
+
+        if atendimento and atendimento["status"] == "em_atendimento":
+
+            conexao.commit()
+
+            return {
+                "resposta": (
+                    "Um profissional está atendendo você. "
+                    "Sua mensagem foi enviada para ele."
+                ),
+                "handoff": True,
+                "atendimento_id": atendimento_id
+            }
+
+        # =========================================================
+        # JÁ ESTÁ AGUARDANDO PROFISSIONAL
+        # =========================================================
+
+        if atendimento and atendimento["status"] == "aguardando":
+
+            conexao.commit()
+
+            return {
+                "resposta": (
+                    "Sua solicitação de atendimento já está registrada. "
+                    "Aguarde um profissional assumir a conversa."
+                ),
+                "handoff": True,
+                "atendimento_id": atendimento_id
+            }
+
+        # =========================================================
+        # DETECÇÃO DE SITUAÇÃO CRÍTICA / PEDIDO DE PROFISSIONAL
+        # =========================================================
+
+        mensagem_critica = detect_critical(mensagem)
+        pedido_profissional = pediu_profissional(mensagem)
+
+        if mensagem_critica or pedido_profissional:
+
+            if mensagem_critica:
+
+                motivo = (
+                    "Situação crítica detectada pelo Apoio Virtual"
+                )
+
+                resposta_handoff = (
+                    "Estou aqui com você. "
+                    "Percebi que você está passando por uma situação difícil "
+                    "e solicitei atendimento de um profissional. "
+                    "Fique por aqui, alguém poderá continuar essa conversa com você."
+                )
+
+            else:
+
+                motivo = (
+                    "Usuário solicitou atendimento profissional"
+                )
+
+                resposta_handoff = (
+                    "Claro. Sua solicitação foi registrada. "
+                    "Um profissional poderá continuar essa conversa com você."
+                )
+
+            cursor.execute("""
+                UPDATE atendimentos_chatbot
+                SET
+                    status = 'aguardando',
+                    motivo = %s
+                WHERE id = %s
+            """, (
+                motivo,
+                atendimento_id
+            ))
+
+            cursor.execute("""
+                INSERT INTO mensagens_atendimento
+                    (atendimento_id, usuario_id, remetente, mensagem)
+                VALUES
+                    (%s, %s, 'bot', %s)
+            """, (
+                atendimento_id,
+                usuario_id,
+                resposta_handoff
+            ))
+
+            conexao.commit()
+
+            return {
+                "resposta": resposta_handoff,
+                "handoff": True,
+                "critico": mensagem_critica,
+                "atendimento_id": atendimento_id
+            }
+
+        # =========================================================
+        # RESPOSTA NORMAL DA IA
+        # =========================================================
+
+        instrucoes = SYSTEM_PROMPT
+
+        resposta = client.responses.create(
+            model="gpt-5.6-luna",
+            instructions=instrucoes,
+            input=mensagem
+        )
+
+        texto_resposta = resposta.output_text
+
+        # =========================================================
+        # SALVA RESPOSTA DA IA
+        # =========================================================
+
+        cursor.execute("""
+            INSERT INTO mensagens_atendimento
+                (atendimento_id, usuario_id, remetente, mensagem)
+            VALUES
+                (%s, %s, 'bot', %s)
+        """, (
+            atendimento_id,
+            usuario_id,
+            texto_resposta
+        ))
+
+        conexao.commit()
+
+        return {
+            "resposta": texto_resposta,
+            "critico": False,
+            "atendimento_id": atendimento_id
+        }
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO NO CHATBOT:")
+        traceback.print_exc()
+
+        return {
+            "erro": (
+                "Não foi possível responder agora. "
+                "Tente novamente em alguns instantes."
+            )
+        }, 500
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+        
+        
+@app.route("/profissional/atendimentos")
+def profissional_atendimentos():
+
+    if "usuario_id" not in session:
+        return redirect(url_for("login"))
+
+    if session.get("tipo_usuario") != "profissional":
+        abort(403)
+
+    usuario_id = session["usuario_id"]
+
+    try:
+        conexao = get_db_connection()
+
+        cursor = conexao.cursor(dictionary=True)
+
+        # Descobre o ID do profissional logado
+        cursor.execute("""
+            SELECT id
+            FROM profissionais
+            WHERE usuario_id = %s
+              AND status_aprovacao = 'aprovado'
+            LIMIT 1
+        """, (usuario_id,))
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+            cursor.close()
+            conexao.close()
+            abort(403)
+
+        # Busca atendimentos aguardando profissional
+        cursor.execute("""
+            SELECT
+                a.id,
+                a.usuario_id,
+                a.status,
+                a.motivo,
+                a.data_inicio,
+                u.nome,
+                u.sobrenome
+            FROM atendimentos_chatbot a
+            INNER JOIN usuarios u
+                ON u.id = a.usuario_id
+            WHERE a.status = 'aguardando'
+            ORDER BY a.data_inicio ASC
+        """)
+
+        atendimentos = cursor.fetchall()
+
+        cursor.close()
+        conexao.close()
+
+        return render_template(
+            "profissional_atendimentos.html",
+            atendimentos=atendimentos
+        )
+
+    except Exception:
+        print("ERRO AO BUSCAR ATENDIMENTOS:")
+        traceback.print_exc()
+        flash("Não foi possível carregar os atendimentos.", "danger")
+        return redirect(url_for("dashboard"))
+    
+    
+@app.route("/lista_sessoes")
+def lista_sessoes():
+
+    if "usuario_id" not in session:
+        return [], 401
+
+    if session.get("tipo_usuario") != "profissional":
+        return [], 403
+
+    usuario_id = session["usuario_id"]
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # Descobre o profissional logado
+        cursor.execute("""
+            SELECT id
+            FROM profissionais
+            WHERE usuario_id = %s
+              AND status_aprovacao = 'aprovado'
+            LIMIT 1
+        """, (usuario_id,))
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+            return [], 403
+
+        profissional_id = profissional["id"]
+
+        # Mostra:
+        # 1. atendimentos aguardando qualquer profissional
+        # 2. atendimentos em atendimento pelo profissional logado
+        cursor.execute("""
+            SELECT id
+            FROM atendimentos_chatbot
+            WHERE
+                status = 'aguardando'
+                OR (
+                    status = 'em_atendimento'
+                    AND profissional_id = %s
+                )
+            ORDER BY data_inicio ASC
+        """, (profissional_id,))
+
+        atendimentos = cursor.fetchall()
+
+        return [a["id"] for a in atendimentos]
+
+    except Exception:
+        print("ERRO AO LISTAR ATENDIMENTOS:")
+        traceback.print_exc()
+        return [], 500
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
+
+@app.route("/assumir_atendimento/<int:atendimento_id>", methods=["POST"])
+def assumir_atendimento(atendimento_id):
+
+    if "usuario_id" not in session:
+        return {"erro": "Usuário não identificado."}, 401
+
+    if session.get("tipo_usuario") != "profissional":
+        return {"erro": "Acesso negado."}, 403
+
+    usuario_id = session["usuario_id"]
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # Descobre o profissional logado
+        cursor.execute("""
+            SELECT id
+            FROM profissionais
+            WHERE usuario_id = %s
+              AND status_aprovacao = 'aprovado'
+            LIMIT 1
+        """, (usuario_id,))
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+            return {"erro": "Profissional não autorizado."}, 403
+
+        profissional_id = profissional["id"]
+
+        # Verifica o estado atual do atendimento
+        cursor.execute("""
+            SELECT
+                id,
+                profissional_id,
+                status
+            FROM atendimentos_chatbot
+            WHERE id = %s
+            LIMIT 1
+        """, (atendimento_id,))
+
+        atendimento = cursor.fetchone()
+
+        if not atendimento:
+            return {"erro": "Atendimento não encontrado."}, 404
+
+        # Já está sendo atendido pelo próprio profissional
+        if (
+            atendimento["status"] == "em_atendimento"
+            and atendimento["profissional_id"] == profissional_id
+        ):
+            return {
+                "sucesso": True,
+                "atendimento_id": atendimento_id,
+                "ja_assumido": True
+            }
+
+        # Já está sendo atendido por outro profissional
+        if atendimento["status"] == "em_atendimento":
+            return {
+                "erro": "Este atendimento já está sendo realizado por outro profissional."
+            }, 409
+
+        # Só pode assumir atendimentos aguardando
+        if atendimento["status"] != "aguardando":
+            return {
+                "erro": "Este atendimento não está disponível."
+            }, 409
+
+        # Assume o atendimento
+        cursor.execute("""
+            UPDATE atendimentos_chatbot
+            SET profissional_id = %s,
+                status = 'em_atendimento'
+            WHERE id = %s
+              AND status = 'aguardando'
+        """, (profissional_id, atendimento_id))
+
+        if cursor.rowcount == 0:
+            conexao.rollback()
+            return {
+                "erro": "Este atendimento já foi assumido por outro profissional."
+            }, 409
+
+        conexao.commit()
+
+        return {
+            "sucesso": True,
+            "atendimento_id": atendimento_id,
+            "ja_assumido": False
+        }
+
+    except Exception:
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO ASSUMIR ATENDIMENTO:")
+        traceback.print_exc()
+
+        return {
+            "erro": "Não foi possível assumir o atendimento."
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
+
+@app.route("/mensagens/<int:atendimento_id>")
+def mensagens(atendimento_id):
+
+    if "usuario_id" not in session:
+        return [], 401
+
+    usuario_id = session["usuario_id"]
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # Verifica se o atendimento pertence ao usuário
+        cursor.execute("""
+            SELECT id
+            FROM atendimentos_chatbot
+            WHERE id = %s
+              AND usuario_id = %s
+            LIMIT 1
+        """, (atendimento_id, usuario_id))
+
+        atendimento = cursor.fetchone()
+
+        # Se não for o usuário dono do atendimento,
+        # verifica se é o profissional responsável
+        if not atendimento:
+
+            cursor.execute("""
+                SELECT a.id
+                FROM atendimentos_chatbot a
+                INNER JOIN profissionais p
+                    ON p.id = a.profissional_id
+                WHERE a.id = %s
+                  AND p.usuario_id = %s
+                LIMIT 1
+            """, (atendimento_id, usuario_id))
+
+            atendimento = cursor.fetchone()
+
+        if not atendimento:
+            return [], 403
+
+        cursor.execute("""
+            SELECT
+                id,
+                remetente,
+                mensagem,
+                data_envio
+            FROM mensagens_atendimento
+            WHERE atendimento_id = %s
+            ORDER BY id ASC
+        """, (atendimento_id,))
+
+        mensagens_db = cursor.fetchall()
+
+        resultado = []
+
+        for mensagem in mensagens_db:
+
+            if mensagem["remetente"] == "profissional":
+                sender = "human"
+
+            elif mensagem["remetente"] == "usuario":
+                sender = "user"
+
+            else:
+                sender = "bot"
+
+            resultado.append({
+                "id": mensagem["id"],
+                "sender": sender,
+                "text": mensagem["mensagem"]
+            })
+
+        return resultado
+
+    except Exception:
+        print("ERRO AO BUSCAR MENSAGENS:")
+        traceback.print_exc()
+        return [], 500
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+            
+@app.route("/enviar_profissional/<int:atendimento_id>", methods=["POST"])
+def enviar_profissional(atendimento_id):
+
+    if "usuario_id" not in session:
+        return {"erro": "Usuário não identificado."}, 401
+
+    if session.get("tipo_usuario") != "profissional":
+        return {"erro": "Acesso negado."}, 403
+
+    usuario_id = session["usuario_id"]
+
+    dados = request.get_json()
+
+    if not dados:
+        return {"erro": "Nenhum dado recebido."}, 400
+
+    mensagem = dados.get("message", "").strip()
+
+    if not mensagem:
+        return {"erro": "Digite uma mensagem."}, 400
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # Descobre o profissional logado
+        cursor.execute("""
+            SELECT id
+            FROM profissionais
+            WHERE usuario_id = %s
+              AND status_aprovacao = 'aprovado'
+            LIMIT 1
+        """, (usuario_id,))
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+            return {"erro": "Profissional não autorizado."}, 403
+
+        profissional_id = profissional["id"]
+
+        # Verifica se o atendimento pertence a este profissional
+        cursor.execute("""
+            SELECT id
+            FROM atendimentos_chatbot
+            WHERE id = %s
+              AND profissional_id = %s
+              AND status = 'em_atendimento'
+            LIMIT 1
+        """, (atendimento_id, profissional_id))
+
+        atendimento = cursor.fetchone()
+
+        if not atendimento:
+            return {
+                "erro": "Este atendimento não está mais disponível."
+            }, 403
+
+        # Salva a mensagem
+        cursor.execute("""
+            INSERT INTO mensagens_atendimento
+            (atendimento_id, usuario_id, remetente, mensagem)
+            VALUES (%s, %s, 'profissional', %s)
+        """, (
+            atendimento_id,
+            usuario_id,
+            mensagem
+        ))
+
+        conexao.commit()
+
+        return {
+            "sucesso": True
+        }
+
+    except Exception:
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO ENVIAR MENSAGEM DO PROFISSIONAL:")
+        traceback.print_exc()
+
+        return {
+            "erro": "Não foi possível enviar a mensagem."
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
+
+@app.route("/encerrar/<int:atendimento_id>", methods=["POST"])
+def encerrar_atendimento(atendimento_id):
+
+    if "usuario_id" not in session:
+        return {"erro": "Usuário não identificado."}, 401
+
+    if session.get("tipo_usuario") != "profissional":
+        return {"erro": "Acesso negado."}, 403
+
+    usuario_id = session["usuario_id"]
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # Descobre o profissional logado
+        cursor.execute("""
+            SELECT id
+            FROM profissionais
+            WHERE usuario_id = %s
+              AND status_aprovacao = 'aprovado'
+            LIMIT 1
+        """, (usuario_id,))
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+            return {"erro": "Profissional não autorizado."}, 403
+
+        profissional_id = profissional["id"]
+
+        # Só pode encerrar o próprio atendimento
+        cursor.execute("""
+            UPDATE atendimentos_chatbot
+            SET status = 'finalizado'
+            WHERE id = %s
+              AND profissional_id = %s
+              AND status = 'em_atendimento'
+        """, (
+            atendimento_id,
+            profissional_id
+        ))
+
+        if cursor.rowcount == 0:
+            conexao.rollback()
+            return {
+                "erro": "Atendimento não encontrado ou já encerrado."
+            }, 404
+
+        conexao.commit()
+
+        return {
+            "sucesso": True
+        }
+
+    except Exception:
+        if conexao:
+            conexao.rollback()
+
+        print("ERRO AO ENCERRAR ATENDIMENTO:")
+        traceback.print_exc()
+
+        return {
+            "erro": "Não foi possível encerrar o atendimento."
+        }, 500
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
 
 
 @app.route("/login", methods=["GET", "POST"])
