@@ -515,9 +515,42 @@
 
                 setOnline(r.ok);
 
-                const msgs = r.ok
-                    ? await r.json()
-                    : [];
+                if (!r.ok) {
+                    return;
+                }
+
+                const dados = await r.json();
+
+                // ========================================
+                // ATENDIMENTO ENCERRADO
+                // ========================================
+
+                if (dados.status === "finalizado") {
+
+                    console.log(
+                        "Atendimento finalizado."
+                    );
+
+                    clearMessagesUI();
+
+                    elMessages.appendChild(
+                        messageRow({
+                            sender: "bot",
+                            text: "Este atendimento foi encerrado."
+                        })
+                    );
+
+                    return;
+                }
+
+                // ========================================
+                // MENSAGENS
+                // ========================================
+
+                const msgs = dados.mensagens;
+
+                console.log("MENSAGENS RECEBIDAS:", msgs);
+                console.log("IDS JÁ RENDERIZADOS:", [...renderedIds]);
 
                 if (!Array.isArray(msgs)) {
                     return;
@@ -531,7 +564,7 @@
                         return;
                     }
 
-                    // Se essa mensagem já apareceu na tela,
+                    // Se essa mensagem já apareceu,
                     // não adiciona novamente.
                     if (renderedIds.has(m.id)) {
                         return;
@@ -553,7 +586,6 @@
                     scrollBottom();
                 }
 
-                // Mantemos apenas como referência.
                 ultCount = msgs.length;
 
             } catch (e) {
@@ -561,7 +593,7 @@
                 setOnline(false);
 
                 console.error(
-                    'Erro ao buscar mensagens',
+                    "Erro ao buscar mensagens",
                     e
                 );
             }
