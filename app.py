@@ -857,23 +857,24 @@ def mensagens(atendimento_id):
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
 
-        # Verifica se o atendimento pertence ao usuário
         cursor.execute("""
-            SELECT id
-            FROM atendimentos_chatbot
-            WHERE id = %s
-              AND usuario_id = %s
+            SELECT
+                a.id,
+                a.status
+            FROM atendimentos_chatbot a
+            WHERE a.id = %s
+              AND a.usuario_id = %s
             LIMIT 1
         """, (atendimento_id, usuario_id))
 
         atendimento = cursor.fetchone()
 
-        # Se não for o usuário dono do atendimento,
-        # verifica se é o profissional responsável
         if not atendimento:
 
             cursor.execute("""
-                SELECT a.id
+                SELECT
+                    a.id,
+                    a.status
                 FROM atendimentos_chatbot a
                 INNER JOIN profissionais p
                     ON p.id = a.profissional_id
@@ -885,7 +886,7 @@ def mensagens(atendimento_id):
             atendimento = cursor.fetchone()
 
         if not atendimento:
-            return [], 403
+            return {"erro": "Acesso negado."}, 403
 
         cursor.execute("""
             SELECT
@@ -919,14 +920,20 @@ def mensagens(atendimento_id):
                 "text": mensagem["mensagem"]
             })
 
-        return resultado
+        return {
+            "status": atendimento["status"],
+            "mensagens": resultado
+        }
 
     except Exception:
+
         print("ERRO AO BUSCAR MENSAGENS:")
         traceback.print_exc()
+
         return [], 500
 
     finally:
+
         if cursor:
             cursor.close()
 

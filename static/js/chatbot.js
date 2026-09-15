@@ -11,8 +11,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const quickReplies = document.querySelectorAll(".chatbot-quick-reply");
 
     let atendimentoId = null;
-    let ultimaMensagemId = 0;
     let pollingMensagens = null;
+    let mensagensExibidas = new Set();
+    let atendimentoInicializado = false;
 
 
     // ========================================
@@ -71,18 +72,16 @@ document.addEventListener("DOMContentLoaded", function () {
     // ========================================
 
     function verificarMensagensProfissional() {
+
         if (!atendimentoId) {
             return;
         }
 
         fetch("/mensagens/" + atendimentoId)
+
             .then(function (resposta) {
 
                 if (resposta.status === 401 || resposta.status === 403) {
-
-                    console.log(
-                        "Sessão sem acesso ao atendimento. Parando polling."
-                    );
 
                     if (pollingMensagens) {
                         clearInterval(pollingMensagens);
@@ -90,7 +89,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
 
                     atendimentoId = null;
-                    ultimaMensagemId = 0;
+                    mensagensExibidas.clear();
+                    atendimentoInicializado = false;
 
                     return null;
                 }
@@ -101,28 +101,94 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 return resposta.json();
             })
+
             .then(function (dados) {
 
-                if (!dados || !Array.isArray(dados)) {
+                if (!dados) {
                     return;
                 }
 
-                dados.forEach(function (mensagem) {
+                // ========================================
+                // ATENDIMENTO ENCERRADO
+                // ========================================
 
-                    if (mensagem.id <= ultimaMensagemId) {
+                if (dados.status === "finalizado") {
+
+                    if (pollingMensagens) {
+                        clearInterval(pollingMensagens);
+                        pollingMensagens = null;
+                    }
+
+                    atendimentoId = null;
+                    atendimentoInicializado = false;
+
+                    adicionarMensagem(
+                        "Este atendimento foi encerrado pelo profissional. Se precisar de ajuda novamente, você pode continuar conversando com o Apoio Virtual.",
+                        "bot"
+                    );
+
+                    return;
+                }
+
+                const mensagens = dados.mensagens;
+
+                if (!Array.isArray(mensagens)) {
+                    return;
+                }
+
+                // ========================================
+                // PRIMEIRA CONSULTA
+                // ========================================
+
+                if (!atendimentoInicializado) {
+
+                    mensagens.forEach(function (mensagem) {
+
+                        if (mensagem && mensagem.id) {
+                            mensagensExibidas.add(mensagem.id);
+                        }
+
+                    });
+
+                    atendimentoInicializado = true;
+
+                    console.log(
+                        "Histórico do atendimento registrado."
+                    );
+
+                    return;
+                }
+
+                // ========================================
+                // NOVAS MENSAGENS
+                // ========================================
+
+                mensagens.forEach(function (mensagem) {
+
+                    if (!mensagem || !mensagem.id) {
                         return;
                     }
 
-                    ultimaMensagemId = mensagem.id;
+                    if (mensagensExibidas.has(mensagem.id)) {
+                        return;
+                    }
 
+                    mensagensExibidas.add(mensagem.id);
+
+                    // Só mensagens do profissional
+                    // são adicionadas pelo polling.
                     if (mensagem.sender === "human") {
+
                         adicionarMensagem(
                             mensagem.text,
                             "profissional"
                         );
                     }
+
                 });
+
             })
+
             .catch(function (erro) {
 
                 console.error(
@@ -131,7 +197,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
             });
     }
-
 
     // ========================================
     // INICIAR VERIFICAÇÃO AUTOMÁTICA
@@ -225,23 +290,25 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (dados.atendimento_id) {
 
+                const novoAtendimento =
+                    atendimentoId !== dados.atendimento_id;
+
                 atendimentoId = dados.atendimento_id;
 
                 /*
-                 * Verifica imediatamente se já existe
-                 * alguma mensagem do profissional.
-                 */
+                * Se for um atendimento novo,
+                * começamos o acompanhamento.
+                */
+                if (novoAtendimento) {
 
-                ultimaMensagemId = 0;
+                    atendimentoInicializado = false;
 
-                verificarMensagensProfissional();
+                    mensagensExibidas.clear();
 
-                /*
-                 * Depois continua verificando
-                 * automaticamente a cada 2 segundos.
-                 */
+                    verificarMensagensProfissional();
 
-                iniciarPolling();
+                    iniciarPolling();
+                }
             }
 
             /*
