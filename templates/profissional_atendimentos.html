@@ -1,746 +1,113 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Painel do Profissional</title>
-    <style>
-        :root {
-            --bg: #f3f4f6;
-            --surface: #fff;
-            --primary: #4f46e5;
-            --primary-600: #4338ca;
-            --muted: #6b7280;
-            --border: #e5e7eb;
-            --ok: #16a34a;
-            --warn: #dc2626;
-            --user: #d1fae5;
-            --bot: #e0e7ff;
-            --human: #fde68a;
-        }
+{% block title %}
+Painel do Profissional - Apoio & Consciência
+{% endblock %}
 
-        * {
-            box-sizing: border-box
-        }
+{% block content %}
 
-        body {
-            margin: 0;
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
-            background: var(--bg);
-            color: #111827
-        }
+<link
+    rel="stylesheet"
+    href="{{ url_for('static', filename='css/profissional_atendimentos.css') }}"
+>
 
-        header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            justify-content: space-between;
-            background: var(--primary);
-            color: #fff;
-            padding: 14px 18px;
-            font-weight: 600
-        }
+<header class="professional-header">
+    <div>🩺 Painel do Profissional</div>
 
-        header .right {
-            font-weight: 400;
-            font-size: 13px;
-            opacity: .9
-        }
+    <div class="right">
+        <span class="status-dot" id="onlineDot"></span>
+        <span id="lastSync">sincronizando…</span>
+    </div>
+</header>
 
-        main {
-            display: flex;
-            min-height: calc(100vh - 56px)
-        }
+<main class="professional-main">
 
-        /* sidebar */
-        .sidebar {
-            width: 300px;
-            max-width: 100%;
-            background: var(--surface);
-            border-right: 1px solid var(--border);
-            display: flex;
-            flex-direction: column
-        }
+    <!-- Sidebar -->
+    <aside class="sidebar">
 
-        .sidebar-head {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 12px 8px
-        }
+        <div class="sidebar-head">
+            <h3>Sessões aguardando</h3>
 
-        .sidebar h3 {
-            margin: 0;
-            font-size: 16px
-        }
-
-        .refresh {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 10px;
-            border: 1px solid var(--border);
-            background: #fff;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px
-        }
-
-        .refresh:hover {
-            background: #fafafa
-        }
-
-        .sessions {
-            flex: 1;
-            overflow: auto;
-            padding: 8px
-        }
-
-        .item {
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 10px 12px;
-            margin: 8px 0;
-            cursor: pointer;
-            background: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px
-        }
-
-        .item:hover {
-            background: #fafafa
-        }
-
-        .item.active {
-            outline: 2px solid var(--primary)
-        }
-
-        .badge {
-            background: var(--primary);
-            color: #fff;
-            border-radius: 999px;
-            padding: 2px 8px;
-            font-size: 12px
-        }
-
-        .empty {
-            padding: 16px;
-            color: var(--muted);
-            text-align: center
-        }
-
-        /* chat area */
-        .chat {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0
-        }
-
-        .chat-head {
-            background: #eef2ff;
-            border-bottom: 1px solid var(--border);
-            padding: 10px 14px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px
-        }
-
-        .chat-title {
-            font-weight: 600
-        }
-
-        .chat-tools {
-            display: flex;
-            align-items: center;
-            gap: 8px
-        }
-
-        .danger {
-            background: var(--warn);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 8px 12px;
-            cursor: pointer
-        }
-
-        .danger:hover {
-            filter: brightness(.95)
-        }
-
-        .messages {
-            flex: 1;
-            overflow: auto;
-            background: #fafafa;
-            padding: 12px;
-            scroll-behavior: smooth
-        }
-
-        .row {
-            display: flex;
-            margin: 6px 0
-        }
-
-        .msg {
-            max-width: 70%;
-            padding: 8px 12px;
-            border-radius: 10px;
-            white-space: pre-wrap;
-            word-wrap: break-word
-        }
-
-        .user .msg {
-            background: var(--user)
-        }
-
-        .bot .msg {
-            background: var(--bot)
-        }
-
-        .human .msg {
-            background: var(--human);
-            margin-left: auto
-        }
-
-        .meta {
-            font-size: 11px;
-            color: #6b7280;
-            margin-top: 2px
-        }
-
-        .composer {
-            display: flex;
-            gap: 8px;
-            padding: 10px;
-            border-top: 1px solid var(--border);
-            background: #fff
-        }
-
-        .composer textarea {
-            flex: 1;
-            min-height: 42px;
-            max-height: 160px;
-            resize: vertical;
-            padding: 10px 12px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 14px
-        }
-
-        .send {
-            background: var(--primary);
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 10px 14px;
-            cursor: pointer;
-            min-width: 88px;
-            font-weight: 600
-        }
-
-        .send:hover {
-            background: var(--primary-600)
-        }
-
-        .muted {
-            color: var(--muted);
-            font-size: 12px
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--ok);
-            display: inline-block;
-            margin-right: 6px
-        }
-
-        .toast {
-            position: fixed;
-            bottom: 16px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #111827;
-            color: #fff;
-            padding: 10px 14px;
-            border-radius: 10px;
-            font-size: 13px;
-            opacity: 0;
-            transition: opacity .2s ease;
-            pointer-events: none
-        }
-
-        .toast.show {
-            opacity: 1
-        }
-
-        @media (max-width: 900px) {
-            .sidebar {
-                width: 230px
-            }
-        }
-
-        @media (max-width: 720px) {
-            main {
-                flex-direction: column
-            }
-
-            .sidebar {
-                width: 100%;
-                border-right: none;
-                border-bottom: 1px solid var(--border)
-            }
-        }
-    </style>
-</head>
-
-<body>
-    <header>
-        <div>🩺 Painel do Profissional</div>
-        <div class="right">
-            <span class="status-dot" id="onlineDot"></span>
-            <span id="lastSync">sincronizando…</span>
+            <button class="refresh" id="btnRefresh">
+                🔄 Atualizar
+            </button>
         </div>
-    </header>
 
-    <main>
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-head">
-                <h3>Sessões aguardando</h3>
-                <button class="refresh" id="btnRefresh">🔄 Atualizar</button>
+        <div id="sessions" class="sessions">
+            <div class="empty">
+                Nenhuma sessão aguardando.
             </div>
-            <div id="sessions" class="sessions">
-                <div class="empty">Nenhuma sessão aguardando.</div>
-            </div>
-        </aside>
+        </div>
 
-        <!-- Chat -->
-        <section class="chat">
-            <div class="chat-head">
-                <div class="chat-title" id="chatTitle">Nenhuma sessão selecionada</div>
-                <div class="chat-tools">
-                    <button class="danger" id="btnEnd" disabled>🚫 Encerrar</button>
-                </div>
+    </aside>
+
+    <!-- Chat -->
+    <section class="chat">
+
+        <div class="chat-head">
+
+            <div class="chat-title" id="chatTitle">
+                Nenhuma sessão selecionada
             </div>
 
-            <div id="messages" class="messages">
-                <div class="empty">Selecione uma sessão à esquerda para começar.</div>
+            <div class="chat-tools">
+
+                <button
+                    class="danger"
+                    id="btnEnd"
+                    disabled
+                >
+                    🚫 Encerrar
+                </button>
+
             </div>
 
-            <div class="composer">
-                <textarea id="inputMsg" placeholder="Digite sua resposta... (Enter envia • Shift+Enter quebra linha)"
-                    disabled></textarea>
-                <button class="send" id="btnSend" disabled>Enviar</button>
+        </div>
+
+        <div id="messages" class="messages">
+
+            <div class="empty">
+                Selecione uma sessão à esquerda para começar.
             </div>
 
-            <div style="padding:6px 12px"><span class="muted">Dica: use Enter para enviar • Shift+Enter para nova
-                    linha</span></div>
-        </section>
-    </main>
+        </div>
 
-    <div id="toast" class="toast"></div>
+        <div class="composer">
 
-    <script>
-        // ------------ State ------------
-        let sessaoSelecionada = null;
-        let pollSessionsTimer = null;
-        let pollMessagesTimer = null;
-        let renderedIds = new Set(); // dedupe por ID para a sessão atual
-        let ultCount = 0;            // ponteiro incremental
-        const SESSIONS_POLL_MS = 5000;
-        const MESSAGES_POLL_MS = 2000;
+            <textarea
+                id="inputMsg"
+                placeholder="Digite sua resposta... (Enter envia • Shift+Enter quebra linha)"
+                disabled
+            ></textarea>
 
-        // ------------ DOM refs ------------
-        const elSessions = document.getElementById('sessions');
-        const elMessages = document.getElementById('messages');
-        const elTitle = document.getElementById('chatTitle');
-        const elInput = document.getElementById('inputMsg');
-        const elSend = document.getElementById('btnSend');
-        const elEnd = document.getElementById('btnEnd');
-        const elRefresh = document.getElementById('btnRefresh');
-        const elToast = document.getElementById('toast');
-        const elLastSync = document.getElementById('lastSync');
-        const elDot = document.getElementById('onlineDot');
+            <button
+                class="send"
+                id="btnSend"
+                disabled
+            >
+                Enviar
+            </button>
 
-        // ------------ Utils ------------
-        const nowHHMM = () => {
-            const d = new Date();
-            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        }
-        const setOnline = (ok) => elDot.style.background = ok ? 'var(--ok)' : '#9ca3af';
-        const toast = (msg) => { elToast.textContent = msg; elToast.classList.add('show'); setTimeout(() => elToast.classList.remove('show'), 1800); }
-        const scrollBottom = () => elMessages.scrollTop = elMessages.scrollHeight;
+        </div>
 
-        function messageRow({ sender, text, ts }) {
-            const row = document.createElement('div');
-            row.className = 'row ' + (sender === 'human' ? 'human' : sender === 'user' ? 'user' : 'bot');
-            const bubble = document.createElement('div');
-            bubble.className = 'msg';
-            bubble.textContent = text;
-            const meta = document.createElement('div');
-            meta.className = 'meta';
-            meta.textContent = ts ? ts : nowHHMM();
-            bubble.appendChild(document.createElement('br'));
-            bubble.appendChild(meta);
-            row.appendChild(bubble);
-            return row;
-        }
+        <div style="padding:6px 12px">
 
-        function clearMessagesUI() {
-            renderedIds.clear();
-            ultCount = 0;
-            elMessages.innerHTML = '';
-        }
+            <span class="muted">
+                Dica: use Enter para enviar • Shift+Enter para nova linha
+            </span>
 
-        // ------------ Sessions ------------
-        async function carregarSessoes() {
-            try {
-                const r = await fetch('/lista_sessoes');
-                setOnline(r.ok);
-                const lista = r.ok ? await r.json() : [];
-                elSessions.innerHTML = '';
-                if (!lista || lista.length === 0) {
-                    elSessions.innerHTML = '<div class="empty">Nenhuma sessão aguardando.</div>';
-                } else {
-                    lista.forEach(id => {
-                        const item = document.createElement('div');
-                        item.className = 'item' + (id === sessaoSelecionada ? ' active' : '');
-                        item.innerHTML = `<div><strong>${id}</strong></div><span class="badge">aguardando</span>`;
-                        item.onclick = () => selecionarSessao(id);
-                        elSessions.appendChild(item);
-                    });
-                }
-                elLastSync.textContent = `atualizado às ${nowHHMM()}`;
-            } catch (e) {
-                setOnline(false);
-                console.error(e);
-                elLastSync.textContent = `falha ao sincronizar`;
-            }
-        }
+        </div>
 
-        function startSessionsPolling() {
-            if (pollSessionsTimer) clearInterval(pollSessionsTimer);
-            pollSessionsTimer = setInterval(carregarSessoes, SESSIONS_POLL_MS);
-        }
+    </section>
 
-        // ------------ Messages ------------
-        async function selecionarSessao(id) {
+</main>
 
-            try {
+<div id="toast" class="toast"></div>
 
-                // Primeiro assume o atendimento
-                const csrfToken = document
-                    .querySelector('meta[name="csrf-token"]')
-                    .getAttribute('content');
+    <script src="{{ url_for('static', filename='js/profissional_atendimentos.js') }}"></script>
 
-                const resposta = await fetch(`/assumir_atendimento/${id}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': csrfToken
-                    }
-                });
+</div>
 
-                const dados = await resposta.json();
 
-                if (!resposta.ok) {
-                    toast(dados.erro || 'Não foi possível assumir o atendimento.');
-                    await carregarSessoes();
-                    return;
-                }
 
-                // Atendimento assumido com sucesso
-                sessaoSelecionada = id;
-
-                elTitle.textContent = `Atendendo sessão: ${id}`;
-
-                elInput.disabled = false;
-                elSend.disabled = false;
-                elEnd.disabled = false;
-
-                // Destaque visual na lista
-                [...elSessions.querySelectorAll('.item')].forEach(n => {
-                    n.classList.toggle(
-                        'active',
-                        n.textContent.includes(String(id))
-                    );
-                });
-
-                // Limpa mensagens anteriores
-                clearMessagesUI();
-
-                // Carrega histórico
-                await renderIncremental();
-
-                // Começa atualização automática
-                startMessagesPolling();
-
-                // Atualiza lista
-                await carregarSessoes();
-
-                toast(`Atendimento ${id} assumido.`);
-
-            } catch (e) {
-
-                console.error('Erro ao assumir atendimento:', e);
-
-                toast('Não foi possível assumir o atendimento.');
-            }
-        }
-
-        function startMessagesPolling() {
-            if (pollMessagesTimer) clearInterval(pollMessagesTimer);
-            pollMessagesTimer = setInterval(renderIncremental, MESSAGES_POLL_MS);
-        }
-
-        async function renderIncremental() {
-
-            if (!sessaoSelecionada) {
-                return;
-            }
-
-            try {
-
-                const r = await fetch(
-                    `/mensagens/${sessaoSelecionada}`
-                );
-
-                setOnline(r.ok);
-
-                if (!r.ok) {
-                    return;
-                }
-
-                const dados = await r.json();
-
-                // ========================================
-                // ATENDIMENTO ENCERRADO
-                // ========================================
-
-                if (dados.status === "finalizado") {
-
-                    console.log(
-                        "Atendimento finalizado."
-                    );
-
-                    clearMessagesUI();
-
-                    elMessages.appendChild(
-                        messageRow({
-                            sender: "bot",
-                            text: "Este atendimento foi encerrado."
-                        })
-                    );
-
-                    return;
-                }
-
-                // ========================================
-                // MENSAGENS
-                // ========================================
-
-                const msgs = dados.mensagens;
-
-                console.log("MENSAGENS RECEBIDAS:", msgs);
-                console.log("IDS JÁ RENDERIZADOS:", [...renderedIds]);
-
-                if (!Array.isArray(msgs)) {
-                    return;
-                }
-
-                let adicionouMensagem = false;
-
-                msgs.forEach(function (m) {
-
-                    if (!m || !m.id) {
-                        return;
-                    }
-
-                    // Se essa mensagem já apareceu,
-                    // não adiciona novamente.
-                    if (renderedIds.has(m.id)) {
-                        return;
-                    }
-
-                    renderedIds.add(m.id);
-
-                    elMessages.appendChild(
-                        messageRow({
-                            sender: m.sender,
-                            text: m.text
-                        })
-                    );
-
-                    adicionouMensagem = true;
-                });
-
-                if (adicionouMensagem) {
-                    scrollBottom();
-                }
-
-                ultCount = msgs.length;
-
-            } catch (e) {
-
-                setOnline(false);
-
-                console.error(
-                    "Erro ao buscar mensagens",
-                    e
-                );
-            }
-        }
-        // ------------ Actions ------------
-        async function enviar() {
-
-            const texto = elInput.value.trim();
-
-            if (!texto || !sessaoSelecionada) {
-                return;
-            }
-
-            elSend.disabled = true;
-
-            try {
-
-                const csrfToken = document
-                    .querySelector('meta[name="csrf-token"]')
-                    .getAttribute('content');
-
-                const r = await fetch(
-                    `/enviar_profissional/${sessaoSelecionada}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken
-                        },
-                        body: JSON.stringify({
-                            message: texto
-                        })
-                    }
-                );
-
-                const dados = await r.json();
-
-                if (!r.ok) {
-                    throw new Error(
-                        dados.erro || 'Falha ao enviar'
-                    );
-                }
-
-                elInput.value = '';
-
-                await renderIncremental();
-
-            } catch (e) {
-
-                console.error(e);
-
-                toast(
-                    e.message || 'Erro ao enviar. Tente de novo.'
-                );
-
-            } finally {
-
-                elSend.disabled = false;
-                elInput.focus();
-            }
-        }
-
-        async function encerrar() {
-
-            if (!sessaoSelecionada) {
-                return;
-            }
-
-            const ok = confirm('Encerrar este atendimento?');
-
-            if (!ok) {
-                return;
-            }
-
-            try {
-
-                const csrfToken = document
-                    .querySelector('meta[name="csrf-token"]')
-                    .getAttribute('content');
-
-                const r = await fetch(
-                    `/encerrar/${sessaoSelecionada}`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': csrfToken
-                        }
-                    }
-                );
-
-                const dados = await r.json();
-
-                if (!r.ok) {
-                    throw new Error(
-                        dados.erro || 'Falha ao encerrar'
-                    );
-                }
-
-                clearMessagesUI();
-
-                elTitle.textContent = 'Nenhuma sessão selecionada';
-
-                elInput.disabled = true;
-                elSend.disabled = true;
-                elEnd.disabled = true;
-
-                sessaoSelecionada = null;
-
-                if (pollMessagesTimer) {
-                    clearInterval(pollMessagesTimer);
-                    pollMessagesTimer = null;
-                }
-
-                await carregarSessoes();
-
-                toast('Atendimento encerrado.');
-
-            } catch (e) {
-
-                console.error(e);
-
-                toast(
-                    e.message || 'Não foi possível encerrar.'
-                );
-            }
-        }
-
-        // ------------ Wire-up ------------
-        elRefresh.addEventListener('click', carregarSessoes);
-        elSend.addEventListener('click', enviar);
-        elEnd.addEventListener('click', encerrar);
-
-        // Enter envia, Shift+Enter quebra linha
-        elInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                enviar();
-            }
-        });
-
-        // boot
-        (async function init() {
-            await carregarSessoes();
-            startSessionsPolling();
-        })();
-    </script>
-</body>
-
-</html>
+{% endblock %}
