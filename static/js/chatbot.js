@@ -110,6 +110,22 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
 
                 // ========================================
+                // VERIFICAR STATUS DO ATENDIMENTO
+                // ========================================
+
+                if (dados.status === "em_atendimento") {
+
+                    profissionalAtendendo = true;
+
+                } else if (
+                    dados.status === "aguardando" ||
+                    dados.status === "ia"
+                ) {
+
+                    profissionalAtendendo = false;
+                }
+
+                // ========================================
                 // ATENDIMENTO ENCERRADO
                 // ========================================
 
@@ -274,7 +290,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         .then(function (dados) {
 
-            console.log("5 - dados:", dados);]
+            console.log("5 - dados:", dados);
 
             if (dados.profissional_atendendo) {
                 profissionalAtendendo = true;
