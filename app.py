@@ -445,11 +445,9 @@ def chatbot():
             conexao.commit()
 
             return {
-                "resposta": (
-                    "Um profissional está atendendo você. "
-                    "Sua mensagem foi enviada para ele."
-                ),
+                "resposta": "",
                 "handoff": True,
+                "profissional_atendendo": True,
                 "atendimento_id": atendimento_id
             }
 

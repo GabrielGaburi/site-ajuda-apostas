@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let atendimentoId = null;
     let pollingMensagens = null;
     let mensagensExibidas = new Set();
+    let profissionalAtendendo = false;
     let atendimentoInicializado = false;
 
 
@@ -121,6 +122,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     atendimentoId = null;
                     atendimentoInicializado = false;
+                    profissionalAtendendo = false;
 
                     adicionarMensagem(
                         "Este atendimento foi encerrado pelo profissional. Se precisar de ajuda novamente, você pode continuar conversando com o Apoio Virtual.",
@@ -272,7 +274,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         .then(function (dados) {
 
-            console.log("5 - dados:", dados);
+            console.log("5 - dados:", dados);]
+
+            if (dados.profissional_atendendo) {
+                profissionalAtendendo = true;
+            }
+
 
             if (dados.erro) {
 
