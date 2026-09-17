@@ -10,6 +10,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const quickReplies = document.querySelectorAll(".chatbot-quick-reply");
 
+    const botoesContexto = document.querySelectorAll(".chatbot-context-button");
+
+    const botaoProfissional = document.querySelector(".chatbot-profissional-button");
+
     let atendimentoId = null;
     let pollingMensagens = null;
     let mensagensExibidas = new Set();
@@ -44,6 +48,26 @@ document.addEventListener("DOMContentLoaded", function () {
     // ========================================
     // ADICIONAR MENSAGEM NA TELA
     // ========================================
+
+    // MOSTRAR SOMENTE O BOTÃO DE PROFISSIONAL
+    function mostrarBotaoProfissional() {
+
+        botoesContexto.forEach(function (botao) {
+            botao.style.display = "none";
+        });
+
+        if (botaoProfissional) {
+            botaoProfissional.style.display = "block";
+        }
+    }
+
+    function esconderTodosOsBotoes() {
+
+        quickReplies.forEach(function (botao) {
+            botao.style.display = "none";
+        });
+
+    }
 
     function adicionarMensagem(texto, tipo) {
 
@@ -117,6 +141,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     profissionalAtendendo = true;
 
+                if (dados.status === "em_atendimento") {
+                    esconderTodosOsBotoes();
+                }
+
                 } else if (
                     dados.status === "aguardando" ||
                     dados.status === "ia"
@@ -139,6 +167,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     atendimentoId = null;
                     atendimentoInicializado = false;
                     profissionalAtendendo = false;
+                    
+                    mostrarBotaoProfissional();
 
                     adicionarMensagem(
                         "Este atendimento foi encerrado pelo profissional. Se precisar de ajuda novamente, você pode continuar conversando com o Apoio Virtual.",
@@ -396,16 +426,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     quickReplies.forEach(function (botao) {
 
-        botao.addEventListener("click", function () {
+    botao.addEventListener("click", function () {
 
-            const texto = botao.textContent.trim();
+        const texto = botao.textContent.trim();
 
-            input.value = texto;
+        if (botao.classList.contains("chatbot-context-button")) {
+            mostrarBotaoProfissional();
+        }
 
-            enviarMensagem();
-
-        });
-
+        input.value = texto;
+        enviarMensagem();
     });
+
+});
 
 });
