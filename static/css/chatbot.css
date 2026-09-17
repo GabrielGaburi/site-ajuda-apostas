@@ -242,3 +242,43 @@
     }
 
 }
+
+
+/* Indicador de que a IA está digitando */
+.chatbot-typing {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 14px;
+    margin-top: 6px;
+    width: fit-content;
+    background: #f1f1f1;
+    border-radius: 15px;
+}
+
+.chatbot-typing span {
+    width: 7px;
+    height: 7px;
+    background: #777;
+    border-radius: 50%;
+    display: block;
+    animation: chatbotTyping 1.2s infinite ease-in-out;
+}
+
+.chatbot-typing span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.chatbot-typing span:nth-child(3) {
+    animation-delay: 0.30s;
+}
+
+@keyframes chatbotTyping {
+    0%, 60%, 100% {
+        transform: translateY(0);
+    }
+
+    30% {
+        transform: translateY(-5px);
+    }
+}

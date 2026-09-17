@@ -91,6 +91,43 @@ document.addEventListener("DOMContentLoaded", function () {
         messages.scrollTop = messages.scrollHeight;
     }
 
+    // ========================================
+    // INDICADOR DE DIGITAÇÃO DA IA
+    // ========================================
+
+    function mostrarDigitando() {
+
+        // Evita criar mais de um indicador
+        if (document.getElementById("chatbot-typing")) {
+            return;
+        }
+
+        const typing = document.createElement("div");
+
+        typing.id = "chatbot-typing";
+        typing.classList.add("chatbot-typing");
+
+        typing.innerHTML = `
+            <span></span>
+            <span></span>
+            <span></span>
+        `;
+
+        messages.appendChild(typing);
+
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+
+    function removerDigitando() {
+
+        const typing = document.getElementById("chatbot-typing");
+
+        if (typing) {
+            typing.remove();
+        }
+    }
+
 
     // ========================================
     // VERIFICAR MENSAGENS DO PROFISSIONAL
@@ -288,6 +325,9 @@ document.addEventListener("DOMContentLoaded", function () {
         input.value = "";
         input.focus();
 
+        // Mostra os três pontos enquanto a IA processa
+        mostrarDigitando();
+
         console.log("3 - preparando fetch");
 
         fetch("/chatbot", {
@@ -321,6 +361,8 @@ document.addEventListener("DOMContentLoaded", function () {
         .then(function (dados) {
 
             console.log("5 - dados:", dados);
+
+            removerDigitando();
 
             if (dados.profissional_atendendo) {
                 profissionalAtendendo = true;
@@ -384,6 +426,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 "6 - ERRO:",
                 erro
             );
+
+            removerDigitando();
 
             adicionarMensagem(
                 "Desculpe, não consegui responder agora. Tente novamente em alguns instantes.",
