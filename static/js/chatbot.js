@@ -8,6 +8,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const send = document.getElementById("chatbot-send");
     const messages = document.getElementById("chatbot-messages");
 
+    const headerAvatar = document.getElementById("chatbot-header-avatar");
+    const headerTitle = document.getElementById("chatbot-header-title");
+    const headerStatus = document.getElementById("chatbot-header-status");
+
     const quickReplies = document.querySelectorAll(".chatbot-quick-reply");
 
     const botoesContexto = document.querySelectorAll(".chatbot-context-button");
@@ -28,6 +32,13 @@ document.addEventListener("DOMContentLoaded", function () {
     toggle.addEventListener("click", function () {
 
         windowChat.style.display = "flex";
+
+        windowChat.classList.remove("chatbot-animando");
+
+        void windowChat.offsetWidth;
+
+        windowChat.classList.add("chatbot-animando");
+
         toggle.style.display = "none";
 
         input.focus();
@@ -90,7 +101,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         messages.scrollTop = messages.scrollHeight;
     }
-
     // ========================================
     // INDICADOR DE DIGITAÇÃO DA IA
     // ========================================
@@ -126,6 +136,34 @@ document.addEventListener("DOMContentLoaded", function () {
         if (typing) {
             typing.remove();
         }
+    }
+
+    function mostrarAtendimentoProfissional() {
+
+        headerAvatar.src = "/static/img/imagens.png";
+        headerAvatar.alt = "Profissional";
+
+        headerTitle.textContent = "Atendimento profissional";
+        headerStatus.textContent = "Profissional atendendo";
+    }
+
+
+    function mostrarApoioVirtual() {
+
+        headerAvatar.src = "/static/img/caozinho.jpg";
+        headerAvatar.alt = "Apoio Virtual";
+
+        headerTitle.textContent = "Apoio Virtual";
+        headerStatus.textContent = "Estou aqui para ouvir você";
+    }
+
+    function mostrarAguardandoProfissional() {
+
+        headerAvatar.src = "/static/img/caozinho.jpg";
+        headerAvatar.alt = "Apoio Virtual";
+
+        headerTitle.textContent = "Atendimento profissional";
+        headerStatus.textContent = "Aguardando profissional...";
     }
 
 
@@ -178,16 +216,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     profissionalAtendendo = true;
 
-                if (dados.status === "em_atendimento") {
-                    esconderTodosOsBotoes();
-                }
+                    mostrarAtendimentoProfissional();
 
-                } else if (
-                    dados.status === "aguardando" ||
-                    dados.status === "ia"
-                ) {
+                    esconderTodosOsBotoes();
+
+                } else if (dados.status === "aguardando") {
 
                     profissionalAtendendo = false;
+
+                    mostrarAguardandoProfissional();
+
+                } else if (dados.status === "ia") {
+
+                    profissionalAtendendo = false;
+
+                    mostrarApoioVirtual();
                 }
 
                 // ========================================
@@ -204,6 +247,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     atendimentoId = null;
                     atendimentoInicializado = false;
                     profissionalAtendendo = false;
+
+                    mostrarApoioVirtual();
                     
                     mostrarBotaoProfissional();
 
@@ -322,12 +367,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
         adicionarMensagem(texto, "usuario");
 
+        if (!profissionalAtendendo) {
+            mostrarDigitando();
+        }
+
+        if (!profissionalAtendendo) {
+            mostrarBotaoProfissional();
+        }
+
         input.value = "";
         input.focus();
 
-        // Mostra os três pontos enquanto a IA processa
-        mostrarDigitando();
-
+       
         console.log("3 - preparando fetch");
 
         fetch("/chatbot", {

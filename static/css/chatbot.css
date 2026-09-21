@@ -66,6 +66,22 @@
     flex-direction: column;
 }
 
+#chatbot-window.chatbot-animando {
+    animation: chatbotAbrir 0.2s ease-out;
+}
+
+@keyframes chatbotAbrir {
+    from {
+        opacity: 0;
+        transform: translateY(10px) scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
 
 /* CABEÇALHO */
 
@@ -122,6 +138,7 @@
     padding: 15px;
 
     overflow-y: auto;
+    scroll-behavior: smooth;
 
     display: flex;
     flex-direction: column;
@@ -156,29 +173,47 @@
 
 /* RESPOSTAS RÁPIDAS */
 
+/* RESPOSTAS RÁPIDAS */
+
 #chatbot-quick-replies {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 7px;
 
-    padding: 8px 12px;
+    padding: 10px 12px;
 }
 
 .chatbot-quick-reply {
+    width: 100%;
+
     border: 1px solid #555;
+    border-radius: 20px;
 
-    border-radius: 8px;
-
-    padding: 7px;
+    padding: 9px 13px;
 
     background-color: #292929;
     color: #ddd;
 
-    font-size: 12px;
+    font-size: 13px;
+    text-align: left;
+
+    cursor: pointer;
+
+    transition:
+        background-color 0.2s ease,
+        border-color 0.2s ease,
+        transform 0.15s ease;
 }
 
 .chatbot-quick-reply:hover {
     background-color: #3a3a3a;
+    border-color: #777;
+
+    transform: translateY(-1px);
+}
+
+.chatbot-quick-reply:active {
+    transform: scale(0.98);
 }
 
 
@@ -282,3 +317,6 @@
         transform: translateY(-5px);
     }
 }
+
+/* Avatar das mensagens do Apoio Virtual */
+
