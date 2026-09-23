@@ -17,8 +17,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const botoesContexto = document.querySelectorAll(".chatbot-context-button");
 
     const botaoProfissional = document.querySelector(".chatbot-profissional-button");
+    const chatbotContainer = document.getElementById("chatbot-container");
+    const usuarioAutenticado = chatbotContainer &&
+        chatbotContainer.dataset.chatbotAuthenticated === "true";
+    const historicoLocalKey = "chatbotHistorico";
 
-    let atendimentoId = null;
+    let atendimentoId = sessionStorage.getItem("atendimentoId");
     let pollingMensagens = null;
     let mensagensExibidas = new Set();
     let profissionalAtendendo = false;
@@ -99,6 +103,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
         messages.appendChild(mensagem);
 
+        if (!usuarioAutenticado && tipo !== "profissional") {
+            const historico = JSON.parse(
+                localStorage.getItem(historicoLocalKey) || "[]"
+            );
+
+            historico.push({
+                mensagem: texto,
+                remetente: tipo === "usuario" ? "usuario" : "bot"
+            });
+
+            localStorage.setItem(
+                historicoLocalKey,
+                JSON.stringify(historico)
+            );
+        }
+
         messages.scrollTop = messages.scrollHeight;
     }
     // ========================================
@@ -166,6 +186,63 @@ document.addEventListener("DOMContentLoaded", function () {
         headerStatus.textContent = "Aguardando profissional...";
     }
 
+    function carregarHistoricoChat() {
+
+        if (!usuarioAutenticado) {
+            const historicoLocal = JSON.parse(
+                localStorage.getItem(historicoLocalKey) || "[]"
+            );
+
+            historicoLocal.forEach(function (mensagem) {
+                adicionarMensagemSemPersistir(
+                    mensagem.mensagem,
+                    mensagem.remetente === "usuario" ? "usuario" : "bot"
+                );
+            });
+
+            return;
+        }
+
+        fetch("/chatbot/historico")
+            .then(function (resposta) {
+                return resposta.json();
+            })
+            .then(function (dados) {
+
+                if (!dados.mensagens) {
+                    return;
+                }
+
+                dados.mensagens.forEach(function (mensagem) {
+
+                    if (mensagem.remetente === "usuario") {
+
+                        adicionarMensagem(
+                            mensagem.mensagem,
+                            "usuario"
+                        );
+
+                    } else if (mensagem.remetente === "bot") {
+
+                        adicionarMensagem(
+                            mensagem.mensagem,
+                            "bot"
+                        );
+
+                    }
+
+                });
+
+            })
+            .catch(function (erro) {
+
+                console.error(
+                    "Erro ao carregar histórico:",
+                    erro
+                );
+
+            });
+    }
 
     // ========================================
     // VERIFICAR MENSAGENS DO PROFISSIONAL
@@ -245,6 +322,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
 
                     atendimentoId = null;
+                    sessionStorage.removeItem("atendimentoId");
                     atendimentoInicializado = false;
                     profissionalAtendendo = false;
 
@@ -274,8 +352,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     mensagens.forEach(function (mensagem) {
 
-                        if (mensagem && mensagem.id) {
-                            mensagensExibidas.add(mensagem.id);
+                        if (!mensagem || !mensagem.id) {
+                            return;
+                        }
+
+                        mensagensExibidas.add(mensagem.id);
+
+                        if (mensagem.sender === "human") {
+
+                            adicionarMensagem(
+                                mensagem.text,
+                                "profissional"
+                            );
+
+                        } else if (mensagem.sender === "user") {
+
+                            adicionarMensagem(
+                                mensagem.text,
+                                "usuario"
+                            );
+
+                        } else {
+
+                            adicionarMensagem(
+                                mensagem.text,
+                                "bot"
+                            );
                         }
 
                     });
@@ -283,12 +385,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     atendimentoInicializado = true;
 
                     console.log(
-                        "Histórico do atendimento registrado."
+                        "Histórico do atendimento restaurado."
                     );
 
                     return;
                 }
-
                 // ========================================
                 // NOVAS MENSAGENS
                 // ========================================
@@ -440,6 +541,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     atendimentoId !== dados.atendimento_id;
 
                 atendimentoId = dados.atendimento_id;
+                sessionStorage.setItem("atendimentoId", atendimentoId);
 
                 /*
                 * Se for um atendimento novo,
@@ -485,6 +587,22 @@ document.addEventListener("DOMContentLoaded", function () {
                 "bot"
             );
         });
+    }
+
+    function adicionarMensagemSemPersistir(texto, tipo) {
+
+        const mensagem = document.createElement("div");
+
+        mensagem.classList.add("chatbot-message");
+        mensagem.classList.add(
+            tipo === "usuario"
+                ? "chatbot-user-message"
+                : "chatbot-bot-message"
+        );
+        mensagem.textContent = texto;
+
+        messages.appendChild(mensagem);
+        messages.scrollTop = messages.scrollHeight;
     }
 
 
@@ -534,5 +652,12 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
 });
+
+    carregarHistoricoChat();
+
+    if (atendimentoId) {
+        verificarMensagensProfissional();
+        iniciarPolling();
+    }
 
 });

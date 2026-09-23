@@ -152,7 +152,7 @@
 
         <!-- CHATBOT -->
     {% if session.get("tipo_usuario") != "profissional" and session.get("tipo_usuario") != "admin" %}
-    <div id="chatbot-container">
+    <div id="chatbot-container" data-chatbot-authenticated="{{ 'true' if session.get('usuario_id') else 'false' }}">
 
         <!-- Botão flutuante -->
         <button id="chatbot-toggle" type="button">

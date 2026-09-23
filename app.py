@@ -591,7 +591,55 @@ def chatbot():
 
         if conexao:
             conexao.close()
-        
+
+@app.route("/chatbot/historico")
+def chatbot_historico():
+
+    usuario_id = session.get("usuario_id")
+
+    if not usuario_id:
+        return {"mensagens": []}
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT
+                m.remetente,
+                m.mensagem
+            FROM mensagens_atendimento m
+            INNER JOIN atendimentos_chatbot a
+                ON m.atendimento_id = a.id
+            WHERE a.usuario_id = %s
+            ORDER BY m.id ASC
+        """, (usuario_id,))
+
+        mensagens = cursor.fetchall()
+
+        return {
+            "mensagens": mensagens
+        }
+
+    except Exception:
+
+        traceback.print_exc()
+
+        return {
+            "mensagens": []
+        }
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()       
         
 @app.route("/profissional/atendimentos")
 def profissional_atendimentos():
