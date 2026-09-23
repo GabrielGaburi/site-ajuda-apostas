@@ -12,21 +12,39 @@ document.addEventListener("DOMContentLoaded", function () {
     const headerTitle = document.getElementById("chatbot-header-title");
     const headerStatus = document.getElementById("chatbot-header-status");
 
+    if (!toggle || !close || !windowChat || !input || !send || !messages) {
+        return;
+    }
+
     const quickReplies = document.querySelectorAll(".chatbot-quick-reply");
 
     const botoesContexto = document.querySelectorAll(".chatbot-context-button");
 
     const botaoProfissional = document.querySelector(".chatbot-profissional-button");
     const chatbotContainer = document.getElementById("chatbot-container");
-    const usuarioAutenticado = chatbotContainer &&
-        chatbotContainer.dataset.chatbotAuthenticated === "true";
+    const usuarioAutenticado = chatbotContainer && chatbotContainer.dataset.chatbotAuthenticated === "true";
     const historicoLocalKey = "chatbotHistorico";
+    const botoesOcultosKey = "chatbotBotoesOcultos";
+    const janelaAbertaKey = "chatbotJanelaAberta";
+
+    const sessaoChatKey = "chatbotSessaoAtiva";
+
+    const navigationEntry = performance.getEntriesByType("navigation")[0];
+
+    if (navigationEntry && navigationEntry.type === "reload") {
+        sessionStorage.removeItem(sessaoChatKey);
+        sessionStorage.removeItem("chatbotHistoricoSessao");
+        sessionStorage.removeItem("atendimentoId");
+    }
 
     let atendimentoId = sessionStorage.getItem("atendimentoId");
     let pollingMensagens = null;
     let mensagensExibidas = new Set();
     let profissionalAtendendo = false;
     let atendimentoInicializado = false;
+    let historicoCarregando = false;
+    let historicoCarregado = false;
+    let iaRespondendo = false;
 
 
     // ========================================
@@ -36,6 +54,7 @@ document.addEventListener("DOMContentLoaded", function () {
     toggle.addEventListener("click", function () {
 
         windowChat.style.display = "flex";
+        localStorage.setItem(janelaAbertaKey, "true");
 
         windowChat.classList.remove("chatbot-animando");
 
@@ -44,6 +63,17 @@ document.addEventListener("DOMContentLoaded", function () {
         windowChat.classList.add("chatbot-animando");
 
         toggle.style.display = "none";
+
+        const mensagensRenderizadas = messages.querySelectorAll(
+            ".chatbot-user-message, .chatbot-bot-message"
+        ).length;
+
+        if (mensagensRenderizadas <= 1 && !historicoCarregando) {
+            historicoCarregado = false;
+            carregarHistoricoChat();
+        }
+
+        rolarChatParaBaixo();
 
         input.focus();
     });
@@ -57,6 +87,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         windowChat.style.display = "none";
         toggle.style.display = "flex";
+        localStorage.setItem(janelaAbertaKey, "false");
     });
 
 
@@ -74,6 +105,8 @@ document.addEventListener("DOMContentLoaded", function () {
         if (botaoProfissional) {
             botaoProfissional.style.display = "block";
         }
+
+        localStorage.setItem(botoesOcultosKey, "true");
     }
 
     function esconderTodosOsBotoes() {
@@ -82,6 +115,18 @@ document.addEventListener("DOMContentLoaded", function () {
             botao.style.display = "none";
         });
 
+    }
+
+    function restaurarEstadoInterface() {
+
+        if (localStorage.getItem(botoesOcultosKey) === "true") {
+            mostrarBotaoProfissional();
+        }
+
+        if (localStorage.getItem(janelaAbertaKey) === "true") {
+            windowChat.style.display = "flex";
+            toggle.style.display = "none";
+        }
     }
 
     function adicionarMensagem(texto, tipo) {
@@ -105,7 +150,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (!usuarioAutenticado && tipo !== "profissional") {
             const historico = JSON.parse(
-                localStorage.getItem(historicoLocalKey) || "[]"
+                sessionStorage.getItem("chatbotHistoricoSessao") || "[]"
             );
 
             historico.push({
@@ -113,8 +158,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 remetente: tipo === "usuario" ? "usuario" : "bot"
             });
 
-            localStorage.setItem(
-                historicoLocalKey,
+            sessionStorage.setItem(
+                "chatbotHistoricoSessao",
                 JSON.stringify(historico)
             );
         }
@@ -188,10 +233,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function carregarHistoricoChat() {
 
+        if (historicoCarregado || historicoCarregando) {
+            return;
+        }
+
+        historicoCarregando = true;
+
         if (!usuarioAutenticado) {
             const historicoLocal = JSON.parse(
-                localStorage.getItem(historicoLocalKey) || "[]"
+                sessionStorage.getItem("chatbotHistoricoSessao") || "[]"
             );
+
+            if (historicoLocal.length > 0) {
+                mostrarBotaoProfissional();
+            }
 
             historicoLocal.forEach(function (mensagem) {
                 adicionarMensagemSemPersistir(
@@ -199,6 +254,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     mensagem.remetente === "usuario" ? "usuario" : "bot"
                 );
             });
+
+            rolarChatParaBaixo();
+
+            historicoCarregado = true;
+            historicoCarregando = false;
 
             return;
         }
@@ -210,7 +270,13 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(function (dados) {
 
                 if (!dados.mensagens) {
+                    historicoCarregado = true;
+                    historicoCarregando = false;
                     return;
+                }
+
+                if (dados.mensagens.length > 0) {
+                    mostrarBotaoProfissional();
                 }
 
                 dados.mensagens.forEach(function (mensagem) {
@@ -233,8 +299,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 });
 
+                rolarChatParaBaixo();
+
+                historicoCarregado = true;
+                historicoCarregando = false;
+
             })
             .catch(function (erro) {
+
+                historicoCarregando = false;
 
                 console.error(
                     "Erro ao carregar histórico:",
@@ -455,6 +528,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         console.log("1 - função enviarMensagem iniciou");
 
+        if (iaRespondendo) {
+            return;
+        }
+
         const texto = input.value.trim();
 
         if (texto === "") {
@@ -463,6 +540,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
             return;
         }
+
+        iaRespondendo = true;
 
         console.log("2 - mensagem:", texto);
 
@@ -515,6 +594,8 @@ document.addEventListener("DOMContentLoaded", function () {
             console.log("5 - dados:", dados);
 
             removerDigitando();
+
+            iaRespondendo = false;
 
             if (dados.profissional_atendendo) {
                 profissionalAtendendo = true;
@@ -582,6 +663,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
             removerDigitando();
 
+            iaRespondendo = false;
+
             adicionarMensagem(
                 "Desculpe, não consegui responder agora. Tente novamente em alguns instantes.",
                 "bot"
@@ -603,6 +686,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         messages.appendChild(mensagem);
         messages.scrollTop = messages.scrollHeight;
+    }
+
+    function rolarChatParaBaixo() {
+        requestAnimationFrame(function () {
+            requestAnimationFrame(function () {
+                messages.scrollTop = messages.scrollHeight;
+            });
+        });
     }
 
 
@@ -654,6 +745,7 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 
     carregarHistoricoChat();
+    restaurarEstadoInterface();
 
     if (atendimentoId) {
         verificarMensagensProfissional();
