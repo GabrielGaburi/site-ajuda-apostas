@@ -1,4 +1,4 @@
-import re, os, traceback, uuid, mysql.connector, requests, unicodedata
+import re, os, traceback, uuid, mysql.connector, requests, unicodedata, threading, time
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
 from datetime import datetime
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -22,6 +22,9 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 print("OPENAI_API_KEY carregada:", bool(OPENAI_API_KEY))
 
 csrf = CSRFProtect(app)
+
+atendimentos_processando = set()
+atendimentos_lock = threading.Lock()
 # =========================
 # CONEXÃO COM MYSQL
 # =========================
@@ -302,6 +305,178 @@ def pediu_profissional(texto):
 
     return any(pedido in texto for pedido in pedidos)
 
+
+def processar_ia_em_background(atendimento_id):
+
+    # Impede duas IAs processando o mesmo atendimento ao mesmo tempo
+    with atendimentos_lock:
+
+        if atendimento_id in atendimentos_processando:
+            return
+
+        atendimentos_processando.add(atendimento_id)
+
+    try:
+        
+        print(">>> THREAD DA IA FOI INICIADA:", atendimento_id)
+
+        # Pequena espera para juntar mensagens enviadas rapidamente
+        time.sleep(1)
+
+        conexao = None
+        cursor = None
+
+        try:
+
+            conexao = get_db_connection()
+            cursor = conexao.cursor(dictionary=True)
+
+            # Verifica se o atendimento ainda está com a IA
+            cursor.execute("""
+                SELECT status
+                FROM atendimentos_chatbot
+                WHERE id = %s
+            """, (atendimento_id,))
+
+            atendimento = cursor.fetchone()
+
+            if not atendimento:
+                return
+
+            if atendimento["status"] != "ia":
+                return
+
+            # Descobre a última resposta da IA
+            cursor.execute("""
+                SELECT MAX(id) AS ultimo_bot
+                FROM mensagens_atendimento
+                WHERE atendimento_id = %s
+                  AND remetente = 'bot'
+            """, (atendimento_id,))
+
+            resultado = cursor.fetchone()
+
+            ultimo_bot = resultado["ultimo_bot"]
+
+            if ultimo_bot is None:
+                ultimo_bot = 0
+
+            # Pega todas as mensagens do usuário que ainda não receberam resposta
+            cursor.execute("""
+                SELECT id, mensagem
+                FROM mensagens_atendimento
+                WHERE atendimento_id = %s
+                  AND remetente = 'usuario'
+                  AND id > %s
+                ORDER BY id ASC
+            """, (
+                atendimento_id,
+                ultimo_bot
+            ))
+
+            mensagens = cursor.fetchall()
+
+            if not mensagens:
+                return
+
+            # Junta as mensagens em uma única entrada para a IA
+            texto_ia = "\n".join(
+                mensagem["mensagem"]
+                for mensagem in mensagens
+            )
+
+        finally:
+
+            if cursor:
+                cursor.close()
+
+            if conexao:
+                conexao.close()
+
+        # =====================================================
+        # CHAMADA DA IA
+        # =====================================================
+
+        resposta = client.responses.create(
+            model="gpt-5.6-luna",
+            instructions=SYSTEM_PROMPT,
+            input=texto_ia
+        )
+
+        texto_resposta = resposta.output_text
+
+        # =====================================================
+        # SALVA A RESPOSTA DA IA
+        # =====================================================
+
+        conexao = None
+        cursor = None
+
+        try:
+
+            conexao = get_db_connection()
+            cursor = conexao.cursor(dictionary=True)
+
+            # Verifica novamente se um profissional assumiu
+            # o atendimento enquanto a IA estava pensando
+            cursor.execute("""
+                SELECT status
+                FROM atendimentos_chatbot
+                WHERE id = %s
+            """, (atendimento_id,))
+
+            atendimento = cursor.fetchone()
+
+            if not atendimento:
+                return
+
+            if atendimento["status"] != "ia":
+                return
+
+            cursor.execute("""
+                INSERT INTO mensagens_atendimento
+                    (atendimento_id, usuario_id, remetente, mensagem)
+                SELECT
+                    %s,
+                    usuario_id,
+                    'bot',
+                    %s
+                FROM atendimentos_chatbot
+                WHERE id = %s
+            """, (
+                atendimento_id,
+                texto_resposta,
+                atendimento_id
+            ))
+
+            conexao.commit()
+
+        except Exception:
+
+            if conexao:
+                conexao.rollback()
+
+            print("ERRO AO SALVAR RESPOSTA DA IA:")
+            traceback.print_exc()
+
+        finally:
+
+            if cursor:
+                cursor.close()
+
+            if conexao:
+                conexao.close()
+
+    except Exception:
+
+        print("ERRO NO PROCESSAMENTO DA IA:")
+        traceback.print_exc()
+
+    finally:
+
+        with atendimentos_lock:
+            atendimentos_processando.discard(atendimento_id)
+
 @app.route("/chatbot", methods=["POST"])
 def chatbot():
 
@@ -536,37 +711,19 @@ def chatbot():
         # RESPOSTA NORMAL DA IA
         # =========================================================
 
-        instrucoes = SYSTEM_PROMPT
-
-        resposta = client.responses.create(
-            model="gpt-5.6-luna",
-            instructions=instrucoes,
-            input=mensagem
-        )
-
-        texto_resposta = resposta.output_text
-
-        # =========================================================
-        # SALVA RESPOSTA DA IA
-        # =========================================================
-
-        cursor.execute("""
-            INSERT INTO mensagens_atendimento
-                (atendimento_id, usuario_id, remetente, mensagem)
-            VALUES
-                (%s, %s, 'bot', %s)
-        """, (
-            atendimento_id,
-            usuario_id,
-            texto_resposta
-        ))
-
         conexao.commit()
 
+        threading.Thread(
+            target=processar_ia_em_background,
+            args=(atendimento_id,),
+            daemon=True
+        ).start()
+
         return {
-            "resposta": texto_resposta,
+            "resposta": "",
             "critico": False,
-            "atendimento_id": atendimento_id
+            "atendimento_id": atendimento_id,
+            "processando": True
         }
 
     except Exception:
