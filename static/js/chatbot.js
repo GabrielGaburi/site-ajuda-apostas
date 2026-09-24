@@ -487,6 +487,15 @@ document.addEventListener("DOMContentLoaded", function () {
                             mensagem.text,
                             "profissional"
                         );
+
+                    } else if (mensagem.sender === "bot") {
+
+                        removerDigitando();
+
+                        adicionarMensagem(
+                            mensagem.text,
+                            "bot"
+                        );
                     }
 
                 });
