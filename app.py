@@ -1671,6 +1671,52 @@ def login():
 @app.route("/logout", methods=["POST"])
 def logout():
 
+    usuario_id = session.get("usuario_id")
+    
+    print("LOGOUT - usuario_id:", usuario_id)
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        if usuario_id:
+
+            conexao = get_db_connection()
+            cursor = conexao.cursor()
+
+            # Primeiro apaga as mensagens dos atendimentos do usuário
+            cursor.execute("""
+                DELETE m
+                FROM mensagens_atendimento m
+                INNER JOIN atendimentos_chatbot a
+                    ON m.atendimento_id = a.id
+                WHERE a.usuario_id = %s
+            """, (usuario_id,))
+
+            # Depois apaga os atendimentos do usuário
+            cursor.execute("""
+                DELETE FROM atendimentos_chatbot
+                WHERE usuario_id = %s
+            """, (usuario_id,))
+
+            conexao.commit()
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        traceback.print_exc()
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
     session.clear()
 
     flash("Você saiu da sua conta com sucesso.", "success")
