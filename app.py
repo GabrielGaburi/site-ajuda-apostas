@@ -486,6 +486,7 @@ def chatbot():
     try:
 
         dados = request.get_json()
+    
 
         if not dados:
             return {"erro": "Nenhum dado recebido."}, 400
@@ -501,6 +502,7 @@ def chatbot():
         # USUÁRIO DESLOGADO
         # =========================================================
 
+        
         if not usuario_id:
 
             # Se pedir atendimento profissional, precisa fazer login
@@ -515,25 +517,116 @@ def chatbot():
                     "login_necessario": True
                 }
 
-            # Situação crítica também não cria atendimento sem identificação.
-            # A IA continua podendo oferecer acolhimento.
+            # =====================================================
+            # RECUPERA ATENDIMENTO DO USUÁRIO DESLOGADO
+            # =====================================================
+            
+            novo_atendimento = dados.get("novo_atendimento", False)
+
+            if novo_atendimento:
+                session.pop("chatbot_atendimento_id", None)
+
+            atendimento_id = session.get("chatbot_atendimento_id")
+            
+            
+
+            # Se ainda não existe atendimento, cria um
+            if not atendimento_id:
+
+                cursor_temp = None
+                conexao_temp = None
+
+                try:
+
+                    conexao_temp = get_db_connection()
+                    cursor_temp = conexao_temp.cursor()
+
+                    cursor_temp.execute("""
+                        INSERT INTO atendimentos_chatbot
+                            (usuario_id, status, motivo)
+                        VALUES
+                            (NULL, 'ia', %s)
+                    """, (
+                        "Conversa com o Apoio Virtual",
+                    ))
+
+                    atendimento_id = cursor_temp.lastrowid
+
+                    conexao_temp.commit()
+
+                    session["chatbot_atendimento_id"] = atendimento_id
+
+                finally:
+
+                    if cursor_temp:
+                        cursor_temp.close()
+
+                    if conexao_temp:
+                        conexao_temp.close()
+
+            # =====================================================
+            # SALVA MENSAGEM DO USUÁRIO
+            # =====================================================
+
+            conexao_temp = None
+            cursor_temp = None
+
+            try:
+
+                conexao_temp = get_db_connection()
+                cursor_temp = conexao_temp.cursor()
+
+                cursor_temp.execute("""
+                    INSERT INTO mensagens_atendimento
+                        (atendimento_id, usuario_id, remetente, mensagem)
+                    VALUES
+                        (%s, NULL, 'usuario', %s)
+                """, (
+                    atendimento_id,
+                    mensagem
+                ))
+
+                conexao_temp.commit()
+
+            finally:
+
+                if cursor_temp:
+                    cursor_temp.close()
+
+                if conexao_temp:
+                    conexao_temp.close()
+
+            # =====================================================
+            # DETECÇÃO DE SITUAÇÃO CRÍTICA
+            # =====================================================
+
             if detect_critical(mensagem):
 
-                instrucoes = SYSTEM_PROMPT
-
-                resposta = client.responses.create(
-                    model="gpt-5.6-luna",
-                    instructions=instrucoes,
-                    input=mensagem
-                )
-
-                texto_resposta = resposta.output_text
-
                 return {
-                    "resposta": texto_resposta,
+                    "resposta": (
+                        "Estou aqui com você. "
+                        "Se precisar, posso continuar conversando com você."
+                    ),
                     "critico": True,
-                    "atendimento_id": None
+                    "atendimento_id": atendimento_id
                 }
+
+            # =====================================================
+            # IA EM BACKGROUND
+            # =====================================================
+
+            threading.Thread(
+                target=processar_ia_em_background,
+                args=(atendimento_id,),
+                daemon=True
+            ).start()
+
+            return {
+                "resposta": "",
+                "critico": False,
+                "atendimento_id": atendimento_id,
+                "processando": True
+            }
 
             # Conversa normal com a IA
             instrucoes = SYSTEM_PROMPT
@@ -1048,10 +1141,15 @@ def assumir_atendimento(atendimento_id):
 @app.route("/mensagens/<int:atendimento_id>")
 def mensagens(atendimento_id):
 
-    if "usuario_id" not in session:
-        return [], 401
+    usuario_id = session.get("usuario_id")
 
-    usuario_id = session["usuario_id"]
+    # Usuário deslogado
+    if not usuario_id:
+
+        atendimento_sessao = session.get("chatbot_atendimento_id")
+
+        if atendimento_sessao != atendimento_id:
+            return {"erro": "Acesso negado."}, 403
 
     conexao = None
     cursor = None
@@ -1060,17 +1158,33 @@ def mensagens(atendimento_id):
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
 
-        cursor.execute("""
-            SELECT
-                a.id,
-                a.status
-            FROM atendimentos_chatbot a
-            WHERE a.id = %s
-              AND a.usuario_id = %s
-            LIMIT 1
-        """, (atendimento_id, usuario_id))
+        if usuario_id:
 
-        atendimento = cursor.fetchone()
+            cursor.execute("""
+                SELECT
+                    a.id,
+                    a.status
+                FROM atendimentos_chatbot a
+                WHERE a.id = %s
+                AND a.usuario_id = %s
+                LIMIT 1
+            """, (atendimento_id, usuario_id))
+
+            atendimento = cursor.fetchone()
+
+        else:
+
+            cursor.execute("""
+                SELECT
+                    a.id,
+                    a.status
+                FROM atendimentos_chatbot a
+                WHERE a.id = %s
+                AND a.usuario_id IS NULL
+                LIMIT 1
+            """, (atendimento_id,))
+
+            atendimento = cursor.fetchone()
 
         if not atendimento:
 
