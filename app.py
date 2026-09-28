@@ -1667,7 +1667,7 @@ def login():
 def logout():
 
     usuario_id = session.get("usuario_id")
-    
+
     print("LOGOUT - usuario_id:", usuario_id)
 
     conexao = None
@@ -1680,28 +1680,31 @@ def logout():
             conexao = get_db_connection()
             cursor = conexao.cursor()
 
-            # Primeiro apaga as mensagens dos atendimentos do usuário
-            cursor.execute("""
-                DELETE m
-                FROM mensagens_atendimento m
-                INNER JOIN atendimentos_chatbot a
-                    ON m.atendimento_id = a.id
-                WHERE a.usuario_id = %s
-            """, (usuario_id,))
+            # ========================================
+            # FINALIZA ATENDIMENTO ATIVO DO CHATBOT
+            # ========================================
 
-            # Depois apaga os atendimentos do usuário
             cursor.execute("""
-                DELETE FROM atendimentos_chatbot
+                UPDATE atendimentos_chatbot
+                SET status = 'finalizado'
                 WHERE usuario_id = %s
+                  AND status IN (
+                      'ia',
+                      'aguardando',
+                      'em_atendimento'
+                  )
             """, (usuario_id,))
 
             conexao.commit()
+
+            print("LOGOUT - atendimentos ativos finalizados.")
 
     except Exception:
 
         if conexao:
             conexao.rollback()
 
+        print("ERRO AO FINALIZAR ATENDIMENTO NO LOGOUT:")
         traceback.print_exc()
 
     finally:
@@ -1712,11 +1715,18 @@ def logout():
         if conexao:
             conexao.close()
 
+    # ========================================
+    # ENCERRA A SESSÃO DO USUÁRIO
+    # ========================================
+
     session.clear()
 
-    flash("Você saiu da sua conta com sucesso.", "success")
+    flash(
+        "Você saiu da sua conta com sucesso.",
+        "success"
+    )
 
-    return redirect(url_for("login"))
+    return redirect(url_for("login", logout="1"))
 
 # =========================
 # PERFIL

@@ -23,11 +23,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const botaoProfissional = document.querySelector(".chatbot-profissional-button");
     const chatbotContainer = document.getElementById("chatbot-container");
     const usuarioAutenticado = chatbotContainer && chatbotContainer.dataset.chatbotAuthenticated === "true";
-    const historicoLocalKey = "chatbotHistorico";
     const botoesOcultosKey = "chatbotBotoesOcultos";
     const janelaAbertaKey = "chatbotJanelaAberta";
 
     const sessaoChatKey = "chatbotSessaoAtiva";
+
+    const parametrosURL = new URLSearchParams(window.location.search);
+
+    if (parametrosURL.get("logout") === "1") {
+
+        sessionStorage.removeItem("atendimentoId");
+        sessionStorage.removeItem("chatbotHistoricoSessao");
+        sessionStorage.removeItem("chatbotIAProcessando");
+        sessionStorage.removeItem("chatbotNovoAtendimento");
+        sessionStorage.removeItem("chatbotSessaoAtiva");
+    }
 
     const sessaoAtiva = sessionStorage.getItem(sessaoChatKey) === "true";
 
