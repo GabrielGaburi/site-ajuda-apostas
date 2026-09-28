@@ -628,47 +628,44 @@ def chatbot():
                 "processando": True
             }
 
-            # Conversa normal com a IA
-            instrucoes = SYSTEM_PROMPT
-
-            resposta = client.responses.create(
-                model="gpt-5.6-luna",
-                instructions=instrucoes,
-                input=mensagem
-            )
-
-            texto_resposta = resposta.output_text
-
-            return {
-                "resposta": texto_resposta,
-                "critico": False,
-                "atendimento_id": None
-            }
-
         # =========================================================
         # USUÁRIO LOGADO
         # =========================================================
 
         conexao = get_db_connection()
-        cursor = conexao.cursor(dictionary=True)
-
-        cursor.execute("""
-            SELECT *
-            FROM atendimentos_chatbot
-            WHERE usuario_id = %s
-              AND status IN (
-                  'ia',
-                  'aguardando',
-                  'em_atendimento'
-              )
-            ORDER BY id DESC
-            LIMIT 1
-        """, (usuario_id,))
-
-        atendimento = cursor.fetchone()
+        cursor = conexao.cursor(dictionary=True)    
 
         # =========================================================
-        # CRIA ATENDIMENTO SE NÃO EXISTIR
+        # RECUPERA O ATENDIMENTO DA SESSÃO ATUAL
+        # =========================================================
+
+        atendimento_id = session.get("chatbot_atendimento_id")
+
+        atendimento = None
+
+        if atendimento_id:
+
+            cursor.execute("""
+                SELECT *
+                FROM atendimentos_chatbot
+                WHERE id = %s
+                AND usuario_id = %s
+                AND status IN (
+                    'ia',
+                    'aguardando',
+                    'em_atendimento'
+                )
+                LIMIT 1
+            """, (
+                atendimento_id,
+                usuario_id
+            ))
+
+            atendimento = cursor.fetchone()
+
+
+        # =========================================================
+        # CRIA NOVO ATENDIMENTO SE NÃO EXISTIR NA SESSÃO
         # =========================================================
 
         if not atendimento:
@@ -685,9 +682,7 @@ def chatbot():
 
             atendimento_id = cursor.lastrowid
 
-        else:
-
-            atendimento_id = atendimento["id"]
+            session["chatbot_atendimento_id"] = atendimento_id
 
         # =========================================================
         # SALVA MENSAGEM DO USUÁRIO
