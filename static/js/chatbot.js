@@ -50,6 +50,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let mensagensExibidas = new Set();
     let profissionalAtendendo = false;
     let atendimentoInicializado = false;
+    let statusAtendimentoAnterior = null;
+    let avisoProfissionalExibido = false;
     let historicoCarregando = false;
     let historicoCarregado = false;
     let iaRespondendo = !usuarioAutenticado
@@ -159,6 +161,10 @@ document.addEventListener("DOMContentLoaded", function () {
         if (tipo === "usuario") {
 
             mensagem.classList.add("chatbot-user-message");
+
+        } else if (tipo === "profissional") {
+
+            mensagem.classList.add("chatbot-profissional-message");
 
         } else {
 
@@ -348,20 +354,20 @@ document.addEventListener("DOMContentLoaded", function () {
                     });
 
                     if (botaoProfissional) {
-                        botaoProfissional.style.display = "block";
+                        botaoProfissional.style.display = "none";
                     }
 
-                } else if (dados.status === "aguardando") {
+                    if (statusAtendimentoAnterior !== "em_atendimento") {
 
-                    profissionalAtendendo = false;
+                        removerDigitando();
 
-                    mostrarAguardandoProfissional();
+                        adicionarMensagem(
+                            "Você está sendo atendido por um profissional.",
+                            "bot"
+                        );
+                    }
 
-                } else if (dados.status === "ia") {
-
-                    profissionalAtendendo = false;
-
-                    mostrarApoioVirtual();
+                    statusAtendimentoAnterior = "em_atendimento";
                 }
 
                 // ========================================
@@ -379,17 +385,33 @@ document.addEventListener("DOMContentLoaded", function () {
                     sessionStorage.removeItem("atendimentoId");
                     atendimentoInicializado = false;
                     profissionalAtendendo = false;
+                    iaRespondendo = false;
+                    sessionStorage.removeItem("chatbotIAProcessando");
+                    statusAtendimentoAnterior = "finalizado";
 
                     mostrarApoioVirtual();
                     
                     mostrarBotaoProfissional();
 
                     adicionarMensagem(
-                        "Este atendimento foi encerrado pelo profissional. Se precisar de ajuda novamente, você pode continuar conversando com o Apoio Virtual.",
+                        "O atendimento profissional foi encerrado. A partir de agora, você está novamente conversando com o Apoio Virtual.",
                         "bot"
                     );
 
                     return;
+                }
+
+                if (dados.status === "aguardando") {
+
+                    profissionalAtendendo = false;
+
+                    mostrarAguardandoProfissional();
+
+                    if (botaoProfissional) {
+                        botaoProfissional.style.display = "none";
+                    }
+
+                    statusAtendimentoAnterior = "aguardando";
                 }
 
                 const mensagens = dados.mensagens;
@@ -411,9 +433,22 @@ document.addEventListener("DOMContentLoaded", function () {
                         mensagensExibidas.add(mensagem.id);
 
                         if (mensagem.sender === "human") {
+
                             adicionarMensagem(
                                 mensagem.text,
                                 "profissional"
+                            );
+
+                        } else if (mensagem.sender === "bot" && dados.status === "aguardando") {
+
+                            removerDigitando();
+
+                            iaRespondendo = false;
+                            sessionStorage.removeItem("chatbotIAProcessando");
+
+                            adicionarMensagem(
+                                mensagem.text,
+                                "bot"
                             );
                         }
                     });
@@ -495,6 +530,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // ========================================
     // ENVIAR MENSAGEM
     // ========================================
+
 
     function enviarMensagem() {
 
@@ -656,11 +692,20 @@ document.addEventListener("DOMContentLoaded", function () {
         const mensagem = document.createElement("div");
 
         mensagem.classList.add("chatbot-message");
-        mensagem.classList.add(
-            tipo === "usuario"
-                ? "chatbot-user-message"
-                : "chatbot-bot-message"
-        );
+
+        if (tipo === "usuario") {
+
+            mensagem.classList.add("chatbot-user-message");
+
+        } else if (tipo === "profissional") {
+
+            mensagem.classList.add("chatbot-profissional-message");
+
+        } else {
+
+            mensagem.classList.add("chatbot-bot-message");
+        }
+
         mensagem.textContent = texto;
 
         messages.appendChild(mensagem);
