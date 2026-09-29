@@ -163,6 +163,13 @@
     color: #fff;
 }
 
+.chatbot-profissional-message {
+    align-self: flex-start !important;
+
+    background-color: #73bf23 !important;
+    color: #fff !important;
+}
+
 .chatbot-user-message {
     align-self: flex-end;
 
