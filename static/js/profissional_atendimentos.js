@@ -53,25 +53,120 @@
         async function carregarSessoes() {
             try {
                 const r = await fetch('/lista_sessoes');
+
                 setOnline(r.ok);
-                const lista = r.ok ? await r.json() : [];
+
+                if (!r.ok) {
+                    return;
+                }
+
+                const dados = await r.json();
+
+                const aguardando = dados.aguardando || [];
+                const meusAtendimentos = dados.meus_atendimentos || [];
+
                 elSessions.innerHTML = '';
-                if (!lista || lista.length === 0) {
-                    elSessions.innerHTML = '<div class="empty">Nenhuma sessão aguardando.</div>';
+
+                // -----------------------------
+                // SESSÕES AGUARDANDO
+                // -----------------------------
+
+                const tituloAguardando = document.createElement('div');
+                tituloAguardando.className = 'session-section-title';
+                tituloAguardando.textContent = 'Sessões aguardando';
+
+                elSessions.appendChild(tituloAguardando);
+
+                if (aguardando.length === 0) {
+
+                    const vazio = document.createElement('div');
+                    vazio.className = 'empty';
+                    vazio.textContent = 'Nenhuma sessão aguardando.';
+
+                    elSessions.appendChild(vazio);
+
                 } else {
-                    lista.forEach(id => {
+
+                    aguardando.forEach(id => {
+
                         const item = document.createElement('div');
-                        item.className = 'item' + (id === sessaoSelecionada ? ' active' : '');
-                        item.innerHTML = `<div><strong>${id}</strong></div><span class="badge">aguardando</span>`;
+
+                        item.className =
+                            'item' +
+                            (id === sessaoSelecionada ? ' active' : '');
+
+                        item.innerHTML = `
+                            <div>
+                                <strong>${id}</strong>
+                            </div>
+
+                            <span class="badge">
+                                aguardando
+                            </span>
+                        `;
+
                         item.onclick = () => selecionarSessao(id);
+
                         elSessions.appendChild(item);
                     });
                 }
-                elLastSync.textContent = `atualizado às ${nowHHMM()}`;
+
+
+                // -----------------------------
+                // MEUS ATENDIMENTOS
+                // -----------------------------
+
+                const tituloMeus = document.createElement('div');
+                tituloMeus.className = 'session-section-title';
+                tituloMeus.textContent = 'Meus atendimentos';
+
+                elSessions.appendChild(tituloMeus);
+
+                if (meusAtendimentos.length === 0) {
+
+                    const vazio = document.createElement('div');
+                    vazio.className = 'empty';
+                    vazio.textContent = 'Nenhum atendimento em andamento.';
+
+                    elSessions.appendChild(vazio);
+
+                } else {
+
+                    meusAtendimentos.forEach(id => {
+
+                        const item = document.createElement('div');
+
+                        item.className =
+                            'item' +
+                            (id === sessaoSelecionada ? ' active' : '');
+
+                        item.innerHTML = `
+                            <div>
+                                <strong>${id}</strong>
+                            </div>
+
+                            <span class="badge">
+                                em atendimento
+                            </span>
+                        `;
+
+                        item.onclick = () => selecionarSessao(id);
+
+                        elSessions.appendChild(item);
+                    });
+                }
+
+                elLastSync.textContent =
+                    `atualizado às ${nowHHMM()}`;
+
             } catch (e) {
+
                 setOnline(false);
+
                 console.error(e);
-                elLastSync.textContent = `falha ao sincronizar`;
+
+                elLastSync.textContent =
+                    `falha ao sincronizar`;
             }
         }
 
