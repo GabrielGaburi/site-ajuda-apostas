@@ -1098,6 +1098,7 @@ def assumir_atendimento(atendimento_id):
                 status = 'em_atendimento'
             WHERE id = %s
               AND status = 'aguardando'
+              AND profissional_id IS NULL
         """, (profissional_id, atendimento_id))
 
         if cursor.rowcount == 0:
@@ -4888,6 +4889,7 @@ def cadastro_profissional():
             )
 
             foto.save(caminho_temporario)
+            session["foto_temporaria_profissional"] = nome_temporario
 
         # Validação em ordem de cima para baixo conforme o formulário
         campos_validacao = [

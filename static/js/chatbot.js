@@ -582,6 +582,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
             method: "POST",
 
+            keepalive: true,
+
             headers: {
 
                 "Content-Type": "application/json",
