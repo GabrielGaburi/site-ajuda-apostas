@@ -3,9 +3,10 @@
    ======================================== */
 
 #chatbot-container {
-    position: fixed;
-    right: 25px;
-    bottom: 25px;
+    position: fixed !important;
+    right: 25px !important;
+    left: auto !important;
+    bottom: 25px !important;
     z-index: 9999;
 }
 

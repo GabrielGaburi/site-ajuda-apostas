@@ -158,31 +158,34 @@ function buscarCEP() {
     erroCep.textContent = "";
 
     fetch(`https://viacep.com.br/ws/${valor}/json/`)
-        .then(response => response.json())
-        .then(dados => {
-            if (dados.erro) {
-                limparEndereco();
-                erroCep.textContent = "CEP não encontrado.";
-                erroCep.style.display = "block";
-                cep.classList.remove("is-valid");
-                cep.classList.add("is-invalid");
-                return;
-            }
-            const estado = document.getElementById("estado");
-            const cidade = document.getElementById("cidade");
-            const rua = document.getElementById("rua");
-            const bairro = document.getElementById("bairro");
+    .then(response => response.json())
+    .then(dados => {
 
-            if (estado) estado.value = dados.uf || "";
-            if (cidade) cidade.value = dados.localidade || "";
-            if (rua) rua.value = dados.logradouro || "";
-            if (bairro) bairro.value = dados.bairro || "";
+        if (dados.erro) {
+            erroCep.textContent = "CEP não encontrado.";
+            cep.classList.add("is-invalid");
+            limparEndereco();
+            return;
+        }
 
-            erroCep.textContent = "";
-            erroCep.style.display = "none";
-            cep.classList.remove("is-invalid");
-            cep.classList.add("is-valid");
-        });
+        const estado = document.getElementById("estado");
+        const cidade = document.getElementById("cidade");
+        const rua = document.getElementById("rua");
+        const bairro = document.getElementById("bairro");
+
+        if (estado) estado.value = dados.uf || "";
+        if (cidade) cidade.value = dados.localidade || "";
+        if (rua) rua.value = dados.logradouro || "";
+        if (bairro) bairro.value = dados.bairro || "";
+
+        cep.classList.remove("is-invalid");
+        cep.classList.add("is-valid");
+        erroCep.textContent = "";
+    })
+    .catch(() => {
+        erroCep.textContent = "Não foi possível consultar o CEP. Tente novamente.";
+        cep.classList.add("is-invalid");
+    });
 }
 
 function limparEndereco() {
@@ -421,6 +424,7 @@ function normalizarTexto(texto) {
             }
         });
     }
+
 
 
     if (dataNascimento) {
