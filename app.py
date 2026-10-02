@@ -3622,7 +3622,7 @@ def cadastro_usuario():
         # EMAIL DE CONFIRMAÇÃO
         # =========================
 
-        if enviar_email_confirmacao(dados["email"]):
+        if enviar_email_confirmacao_usuario(dados["email"]):
 
             flash(
                 "Conta criada! Verifique seu email para confirmar o cadastro.",
@@ -5147,6 +5147,12 @@ def cadastro_profissional():
             # =========================
             # CRIA O HASH DA SENHA
             # =========================
+            
+            print("================================")
+            print("TESTE SENHA")
+            print("SENHA:", senha)
+            print("SENHA VÁLIDA:", senha_valida(senha))
+            print("================================")
 
             senha_hash = generate_password_hash(senha)
 
@@ -5310,7 +5316,7 @@ def cadastro_profissional():
         # ENVIA EMAIL DE CONFIRMAÇÃO
         # =========================
 
-        enviar_email_confirmacao(dados["email"])
+        enviar_email_cadastro_profissional(dados["email"])
 
         flash(
             "Cadastro realizado! Aguarde a aprovação do administrador.",
@@ -7076,8 +7082,149 @@ def editar_profissional(profissional_id):
 def escolher_cadastro():
     return render_template('escolher_cadastro.html')
 
+def enviar_email_cadastro_profissional(email):
+    try:
 
-def enviar_email_confirmacao(email):
+        msg = Message(
+            subject='Cadastro recebido - Apoio & Consciência',
+            recipients=[email],
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+
+        msg.body = f"""
+Olá!
+
+Seu cadastro profissional no Apoio & Consciência foi recebido com sucesso.
+
+Seu perfil será analisado por um administrador.
+
+Você receberá uma nova mensagem por e-mail quando houver uma decisão sobre o seu cadastro.
+
+Atenciosamente,
+Equipe Apoio & Consciência
+        """
+
+        msg.html = """
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+</head>
+
+<body style="
+    margin:0;
+    padding:0;
+    background-color:#f4f6f9;
+    font-family:Arial, Helvetica, sans-serif;
+">
+
+    <div style="
+        max-width:600px;
+        margin:40px auto;
+        background:#ffffff;
+        border-radius:16px;
+        overflow:hidden;
+        box-shadow:0 8px 25px rgba(0,0,0,0.08);
+    ">
+
+        <div style="
+            background:linear-gradient(135deg, #1d3557, #457b9d);
+            padding:30px;
+            text-align:center;
+            color:white;
+        ">
+
+            <h1 style="margin:0; font-size:28px;">
+                Apoio &amp; Consciência
+            </h1>
+
+            <p style="
+                margin-top:8px;
+                font-size:15px;
+                opacity:0.9;
+            ">
+                Cadastro profissional
+            </p>
+
+        </div>
+
+        <div style="
+            padding:40px 30px;
+            color:#333;
+        ">
+
+            <h2 style="
+                color:#1d3557;
+                margin-top:0;
+                text-align:center;
+            ">
+                Cadastro recebido
+            </h2>
+
+            <p style="
+                font-size:16px;
+                line-height:1.6;
+                color:#555;
+            ">
+                Seu cadastro profissional no
+                <strong>Apoio &amp; Consciência</strong>
+                foi recebido com sucesso.
+            </p>
+
+            <p style="
+                font-size:16px;
+                line-height:1.6;
+                color:#555;
+            ">
+                Seu perfil será analisado por um administrador.
+            </p>
+
+            <p style="
+                font-size:16px;
+                line-height:1.6;
+                color:#555;
+            ">
+                Você receberá uma nova mensagem por e-mail quando
+                houver uma decisão sobre o seu cadastro.
+            </p>
+
+        </div>
+
+        <div style="
+            background:#f8f9fa;
+            padding:20px;
+            text-align:center;
+            font-size:13px;
+            color:#6c757d;
+            border-top:1px solid #e9ecef;
+        ">
+            Equipe Apoio &amp; Consciência
+        </div>
+
+    </div>
+
+</body>
+</html>
+        """
+
+        mail.send(msg)
+
+        print("EMAIL DE CADASTRO PROFISSIONAL ENVIADO PARA:", email)
+
+        return True
+
+    except Exception as e:
+
+        print("================================")
+        print("ERRO AO ENVIAR EMAIL DO PROFISSIONAL:")
+        print("TIPO:", type(e).__name__)
+        print("ERRO:", str(e))
+        print("================================")
+
+        return False
+
+
+def enviar_email_confirmacao_usuario(email):
     try:
         token = serializer.dumps(email, salt='confirmacao-email')
 
@@ -7246,16 +7393,7 @@ Se você não criou essa conta, ignore esta mensagem.
         return False
 
 
-@app.route("/teste-email")
-def teste_email():
-    email_teste = "gabrielgaburi6@gmail.com"  # troque se quiser
 
-    sucesso = enviar_email_confirmacao(email_teste)
-
-    if sucesso:
-        return "Email enviado com sucesso! Verifique caixa de entrada, spam e lixo eletrônico."
-    else:
-        return "Falha no envio. Veja o terminal."
     
 def enviar_email_recuperacao(email):
     try:

@@ -194,31 +194,19 @@
 
                         </div>
 
-                        <div class="mb-4">
+                        <div class="input-group has-validation">
 
-                            <label class="form-label">
-                                Telefone
-                            </label>
+                            <span class="input-group-text">
+                                <i class="bi bi-telephone-fill"></i>
+                            </span>
 
-                            <div class="input-group">
+                            <input type="text" id="telefone" class="form-control" name="telefone"
+                                placeholder="(00) 00000-0000" maxlength="15" value="{{ dados.get('telefone', '') }}"
+                                required>
 
-                                <span class="input-group-text">
-                                    <i class="bi bi-telephone-fill"></i>
-                                </span>
-
-                                <input type="text" id="telefone" class="form-control" name="telefone"
-                                    placeholder="(00) 00000-0000" maxlength="15" value="{{ dados.get('telefone', '') }}"
-                                    required>
-
+                            <div id="erroTelefone" class="invalid-feedback" style="margin-left: 48px;">
+                                Digite um número de telefone válido.
                             </div>
-
-
-                            {% if campo_erro == "telefone" %}
-                            <div class="text-danger small mt-1">
-                                {{ mensagem_erro }}
-                            </div>
-                            {% endif %}
-
 
                         </div>
 
@@ -234,7 +222,7 @@
 
                                 <label class="form-label">CEP</label>
 
-                                <div class="input-group">
+                                <div class="input-group has-validation">
 
                                     <input type="text" class="form-control" id="cep" name="cep" maxlength="9"
                                         placeholder="00000-000" value="{{ dados.get('cep', '') }}" required>
@@ -245,6 +233,10 @@
 
                                     </button>
 
+                                    <div id="erroCep" class="invalid-feedback">
+                                        CEP não encontrado.
+                                    </div>
+
                                 </div>
 
                                 <small class="text-muted d-block mt-1">
@@ -254,9 +246,6 @@
                                     </a>
                                 </small>
 
-                                <div id="erroCep" class="invalid-feedback">
-                                    CEP não encontrado.
-                                </div>
 
                                 {% if campo_erro == "cep" %}
                                 <div class="text-danger small mt-1">
@@ -681,55 +670,172 @@
 
                                         </h2>
 
-                                        <div id="collapseTermos" class="accordion-collapse collapse"
-                                            aria-labelledby="headingTermos" data-bs-parent="#accordionTermos">
+                                        <div class="accordion-body">
 
-                                            <div class="accordion-body">
+                                            <h6>Termos de Uso</h6>
 
-                                                <h6>1. Aceitação dos termos</h6>
+                                            <p>
+                                                Bem-vindo ao <strong>Apoio &amp; Consciência</strong>.
+                                            </p>
 
-                                                <p>
-                                                    Ao utilizar esta plataforma, o usuário declara estar
-                                                    ciente e de acordo com os presentes Termos de Uso.
-                                                </p>
+                                            <p>
+                                                Estes Termos de Uso estabelecem as condições para utilização
+                                                da plataforma. Ao criar uma conta ou utilizar nossos recursos,
+                                                você declara que leu e concorda com estas condições.
+                                            </p>
 
-                                                <h6>2. Utilização da plataforma</h6>
+                                            <h6>1. Sobre a plataforma</h6>
 
-                                                <p>
-                                                    Esta plataforma tem finalidade informativa e busca
-                                                    disponibilizar recursos relacionados à prevenção e
-                                                    conscientização sobre problemas relacionados a apostas.
-                                                </p>
+                                            <p>
+                                                O Apoio &amp; Consciência é uma plataforma voltada à
+                                                <strong>informação, prevenção e conscientização sobre o uso
+                                                problemático de apostas e seus possíveis impactos</strong>.
+                                            </p>
 
-                                                <h6>3. Responsabilidades do usuário</h6>
+                                            <p>
+                                                A plataforma disponibiliza recursos como conteúdos informativos,
+                                                questionário de autoavaliação, fórum de discussão e ferramentas
+                                                de apoio.
+                                            </p>
 
-                                                <p>
-                                                    O usuário é responsável pelas informações fornecidas
-                                                    durante o cadastro e pela utilização adequada dos
-                                                    recursos disponibilizados pela plataforma.
-                                                </p>
+                                            <h6>2. Finalidade dos recursos</h6>
 
-                                                <h6>4. Alterações</h6>
+                                            <p>
+                                                Os conteúdos e ferramentas disponibilizados possuem caráter
+                                                <strong>informativo e educativo</strong>.
+                                            </p>
 
-                                                <p>
-                                                    Estes termos poderão ser atualizados para adequação
-                                                    às necessidades da plataforma e à legislação aplicável.
-                                                </p>
+                                            <p>
+                                                As informações apresentadas não constituem diagnóstico médico
+                                                ou psicológico e não substituem avaliação, acompanhamento ou
+                                                tratamento realizado por profissional habilitado.
+                                            </p>
 
-                                                <hr>
+                                            <p>
+                                                O questionário disponibilizado pela plataforma tem finalidade
+                                                de <strong>autoavaliação e conscientização</strong>, não devendo
+                                                ser interpretado como diagnóstico.
+                                            </p>
 
-                                                <p class="text-muted mb-0">
-                                                    <small>
-                                                        Texto provisório. Os termos definitivos serão
-                                                        elaborados após a revisão das informações legais.
-                                                    </small>
-                                                </p>
+                                            <h6>3. Cadastro e informações fornecidas</h6>
 
-                                            </div>
+                                            <p>
+                                                Para utilizar determinados recursos, poderá ser necessário
+                                                criar uma conta.
+                                            </p>
+
+                                            <p>
+                                                O usuário é responsável por fornecer informações verdadeiras,
+                                                completas e atualizadas no momento do cadastro e por manter
+                                                a segurança de seus dados de acesso.
+                                            </p>
+
+                                            <p>
+                                                Não é permitido utilizar informações falsas, criar contas em
+                                                nome de terceiros ou utilizar a plataforma para finalidades
+                                                incompatíveis com estes Termos.
+                                            </p>
+
+                                            <h6>4. Uso do fórum e dos demais recursos</h6>
+
+                                            <p>
+                                                Ao utilizar o fórum e outros espaços de interação, o usuário
+                                                deve manter uma conduta respeitosa.
+                                            </p>
+
+                                            <p>Não são permitidos conteúdos que:</p>
+
+                                            <ul>
+                                                <li>promovam ou incentivem comportamentos relacionados ao uso prejudicial de apostas;</li>
+                                                <li>contenham ameaças, ofensas ou assédio;</li>
+                                                <li>divulguem dados pessoais de terceiros sem autorização;</li>
+                                                <li>sejam ilegais ou violem direitos de terceiros;</li>
+                                                <li>sejam utilizados para spam, fraude ou divulgação indevida de serviços.</li>
+                                            </ul>
+
+                                            <p>
+                                                Conteúdos que violem estas regras poderão ser removidos,
+                                                e a conta poderá sofrer restrições de acordo com as regras
+                                                da plataforma.
+                                            </p>
+
+                                            <h6>5. Atendimento com profissionais</h6>
+
+                                            <p>
+                                                Quando disponível, a plataforma poderá permitir que o usuário
+                                                solicite contato com um profissional cadastrado.
+                                            </p>
+
+                                            <p>
+                                                Esse recurso tem finalidade de facilitar o acesso a orientação
+                                                e apoio profissional. O atendimento realizado pelo profissional
+                                                possui suas próprias condições e responsabilidades, não sendo
+                                                a plataforma responsável por substituir serviços de saúde ou
+                                                atendimento de emergência.
+                                            </p>
+
+                                            <h6>6. Situações de emergência</h6>
+
+                                            <p>
+                                                O Apoio &amp; Consciência <strong>não é um serviço de emergência</strong>.
+                                            </p>
+
+                                            <p>
+                                                Em situações que envolvam risco imediato à integridade física
+                                                ou à vida, o usuário deve procurar os serviços de emergência
+                                                e atendimento profissional disponíveis em sua região.
+                                            </p>
+
+                                            <h6>7. Privacidade</h6>
+
+                                            <p>
+                                                A coleta e o tratamento de informações pessoais realizados pela
+                                                plataforma são descritos na <strong>Política de Privacidade</strong>.
+                                            </p>
+
+                                            <p>
+                                                Ao utilizar a plataforma, o usuário declara estar ciente de que
+                                                determinadas informações poderão ser necessárias para o funcionamento
+                                                dos recursos disponibilizados, sempre de acordo com a legislação aplicável.
+                                            </p>
+
+                                            <h6>8. Disponibilidade da plataforma</h6>
+
+                                            <p>
+                                                Embora sejam adotadas medidas para manter a plataforma disponível,
+                                                podem ocorrer interrupções temporárias decorrentes de manutenção,
+                                                atualizações, problemas técnicos ou fatores externos.
+                                            </p>
+
+                                            <h6>9. Alterações dos Termos</h6>
+
+                                            <p>
+                                                Estes Termos de Uso poderão ser atualizados para acompanhar
+                                                alterações na plataforma, em seus recursos ou na legislação aplicável.
+                                            </p>
+
+                                            <p>
+                                                A versão mais recente ficará disponível na plataforma.
+                                            </p>
+
+                                            <h6>10. Aceitação</h6>
+
+                                            <p>
+                                                Ao marcar a opção
+                                                <strong>"Li e concordo com os Termos de Uso e a Política de Privacidade"</strong>
+                                                e prosseguir com o cadastro, o usuário declara que teve acesso
+                                                a estes documentos e concorda com suas condições.
+                                            </p>
+
+                                            <p class="mb-0">
+                                                <strong>
+                                                    Se você não concordar com estes Termos de Uso, não deverá
+                                                    prosseguir com o cadastro ou utilizar os recursos que dependam
+                                                    de sua aceitação.
+                                                </strong>
+                                            </p>
 
                                         </div>
-
-                                    </div>
 
 
                                     <!-- POLÍTICA DE PRIVACIDADE -->
@@ -748,52 +854,121 @@
 
                                         </h2>
 
-                                        <div id="collapsePrivacidade" class="accordion-collapse collapse"
-                                            aria-labelledby="headingPrivacidade" data-bs-parent="#accordionTermos">
+                                        <div class="accordion-body">
 
-                                            <div class="accordion-body">
+                                            <h6>Política de Privacidade</h6>
 
-                                                <h6>1. Informações coletadas</h6>
+                                            <p>
+                                                O <strong>Apoio &amp; Consciência</strong> valoriza a privacidade
+                                                de seus usuários e busca tratar seus dados pessoais de forma
+                                                responsável, transparente e de acordo com a legislação aplicável.
+                                            </p>
 
-                                                <p>
-                                                    A plataforma poderá coletar informações fornecidas
-                                                    pelo usuário durante o processo de cadastro e utilização
-                                                    dos seus recursos.
-                                                </p>
+                                            <h6>1. Informações coletadas</h6>
 
-                                                <h6>2. Utilização das informações</h6>
+                                            <p>
+                                                Durante o cadastro e a utilização da plataforma, poderão ser
+                                                coletados dados pessoais necessários para o funcionamento dos
+                                                recursos disponibilizados, como nome, e-mail, telefone, CPF,
+                                                data de nascimento e outras informações fornecidas pelo usuário.
+                                            </p>
 
-                                                <p>
-                                                    As informações coletadas serão utilizadas para permitir
-                                                    o funcionamento da plataforma, autenticação do usuário
-                                                    e disponibilização dos recursos oferecidos.
-                                                </p>
+                                            <p>
+                                                Algumas informações também poderão ser registradas durante a
+                                                utilização de recursos como fórum, questionário, chatbot e
+                                                atendimento com profissionais.
+                                            </p>
 
-                                                <h6>3. Proteção dos dados</h6>
+                                            <h6>2. Finalidade do tratamento</h6>
 
-                                                <p>
-                                                    A plataforma adotará medidas técnicas e organizacionais
-                                                    destinadas à proteção das informações dos usuários.
-                                                </p>
+                                            <p>
+                                                Os dados pessoais poderão ser utilizados para:
+                                            </p>
 
-                                                <h6>4. Direitos do usuário</h6>
+                                            <ul>
+                                                <li>realizar o cadastro e a autenticação do usuário;</li>
+                                                <li>disponibilizar os recursos da plataforma;</li>
+                                                <li>permitir o funcionamento do fórum e das ferramentas de apoio;</li>
+                                                <li>possibilitar o contato com profissionais cadastrados, quando solicitado;</li>
+                                                <li>enviar comunicações relacionadas ao funcionamento da conta;</li>
+                                                <li>manter a segurança e o funcionamento adequado da plataforma.</li>
+                                            </ul>
 
-                                                <p>
-                                                    O usuário poderá exercer os direitos previstos na
-                                                    legislação aplicável em relação aos seus dados pessoais.
-                                                </p>
+                                            <h6>3. Armazenamento e proteção</h6>
 
-                                                <hr>
+                                            <p>
+                                                Os dados pessoais são armazenados nos sistemas utilizados pela
+                                                plataforma e poderão ser mantidos pelo período necessário para
+                                                cumprir as finalidades para as quais foram coletados, observadas
+                                                as obrigações legais aplicáveis.
+                                            </p>
 
-                                                <p class="text-muted mb-0">
-                                                    <small>
-                                                        Texto provisório. A política definitiva será
-                                                        elaborada após a pesquisa e revisão da legislação
-                                                        aplicável.
-                                                    </small>
-                                                </p>
+                                            <p>
+                                                A plataforma busca adotar medidas técnicas e organizacionais
+                                                adequadas para proteger os dados contra acesso não autorizado,
+                                                alteração, divulgação ou destruição indevida.
+                                            </p>
 
-                                            </div>
+                                            <h6>4. Compartilhamento de informações</h6>
+
+                                            <p>
+                                                Os dados pessoais não serão utilizados para finalidades incompatíveis
+                                                com aquelas apresentadas nesta Política de Privacidade.
+                                            </p>
+
+                                            <p>
+                                                Quando necessário para o funcionamento de determinados recursos,
+                                                algumas informações poderão ser disponibilizadas aos profissionais
+                                                cadastrados envolvidos no atendimento solicitado pelo usuário,
+                                                observadas as finalidades do serviço e a legislação aplicável.
+                                            </p>
+
+                                            <h6>5. Cookies e tecnologias semelhantes</h6>
+
+                                            <p>
+                                                A plataforma poderá utilizar cookies e tecnologias semelhantes
+                                                necessários para manter sessões, autenticar usuários e garantir
+                                                o funcionamento adequado de seus recursos.
+                                            </p>
+
+                                            <h6>6. Direitos do usuário</h6>
+
+                                            <p>
+                                                O usuário poderá exercer os direitos previstos na legislação
+                                                aplicável em relação aos seus dados pessoais, incluindo aqueles
+                                                relacionados ao acesso, correção e demais direitos previstos
+                                                pela legislação de proteção de dados.
+                                            </p>
+
+                                            <h6>7. Segurança da conta</h6>
+
+                                            <p>
+                                                O usuário é responsável por manter suas credenciais de acesso
+                                                em segurança e não compartilhá-las com terceiros.
+                                            </p>
+
+                                            <p>
+                                                Caso identifique qualquer atividade suspeita relacionada à sua
+                                                conta, o usuário deverá comunicar a situação à plataforma.
+                                            </p>
+
+                                            <h6>8. Alterações desta Política</h6>
+
+                                            <p>
+                                                Esta Política de Privacidade poderá ser atualizada para acompanhar
+                                                alterações nos recursos da plataforma, nas práticas de tratamento
+                                                de dados ou na legislação aplicável.
+                                            </p>
+
+                                            <p>
+                                                A versão mais recente ficará disponível na plataforma.
+                                            </p>
+
+                                            <p class="text-muted mb-0">
+                                                <small>
+                                                    <strong>Última atualização:</strong> [data]
+                                                </small>
+                                            </p>
 
                                         </div>
 
