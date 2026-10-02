@@ -90,6 +90,7 @@ app.config['MAIL_USE_SSL'] = False
 
 # CONTA GMAIL REMETENTE
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
+print("DEBUG MAIL_USERNAME:", os.getenv("MAIL_USERNAME"))
 
 
 # SENHA DE APP DO GMAIL (via terminal)
@@ -4891,6 +4892,13 @@ def cadastro_profissional():
 
         foto = request.files.get("foto")
         foto_temporaria = session.get("foto_temporaria_profissional")
+        
+        print("================================")
+        print("DEBUG FOTO")
+        print("FOTO RECEBIDA:", foto)
+        print("NOME DA FOTO:", foto.filename if foto else None)
+        print("FOTO TEMPORÁRIA NA SESSÃO:", foto_temporaria)
+        print("================================")
 
         senha = request.form.get("senha", "").strip()
         confirmar_senha = request.form.get("confirmar_senha", "").strip()
@@ -4923,7 +4931,12 @@ def cadastro_profissional():
             )
 
             foto.save(caminho_temporario)
+            
+            print("ARQUIVO TEMPORÁRIO SALVO EM:", caminho_temporario)
+            print("ARQUIVO EXISTE APÓS SALVAR:", os.path.exists(caminho_temporario))
+            
             session["foto_temporaria_profissional"] = nome_temporario
+            foto_temporaria = nome_temporario
 
         # Validação em ordem de cima para baixo conforme o formulário
         campos_validacao = [
@@ -5078,6 +5091,58 @@ def cadastro_profissional():
                     campo_erro="email",
                     mensagem_erro="Este email já está cadastrado."
                 )
+                
+            # =========================
+            # VERIFICA SE O CPF JÁ EXISTE
+            # =========================
+
+            cursor.execute(
+                """
+                SELECT id
+                FROM usuarios
+                WHERE cpf = %s
+                """,
+                (dados["cpf"],)
+            )
+
+            cpf_existente = cursor.fetchone()
+
+            if cpf_existente:
+                flash("Este CPF já está cadastrado.", "warning")
+
+                return render_template(
+                    "cadastro_profissional.html",
+                    dados=dados,
+                    campo_erro="cpf",
+                    mensagem_erro="Este CPF já está cadastrado."
+                )
+                 
+            # =========================
+            # VERIFICA SE O CRP JÁ EXISTE
+            # =========================
+
+            cursor.execute(
+                """
+                SELECT id
+                FROM profissionais
+                WHERE crp = %s
+                """,
+                (dados["crp"],)
+            )
+
+            crp_existente = cursor.fetchone()
+
+            if crp_existente:
+                flash("Este CRP já está cadastrado.", "warning")
+
+                return render_template(
+                    "cadastro_profissional.html",
+                    dados=dados,
+                    campo_erro="crp",
+                    mensagem_erro="Este CRP já está cadastrado."
+                )           
+            
+            
 
             # =========================
             # CRIA O HASH DA SENHA
@@ -5253,6 +5318,11 @@ def cadastro_profissional():
         )
 
         return redirect(url_for("login"))
+    
+    print("================================")
+    print("CHEGOU NO FINAL DA ROTA")
+    print("NÃO HOUVE REDIRECT")
+    print("================================")
 
     return render_template(
         "cadastro_profissional.html",
@@ -7168,8 +7238,11 @@ Se você não criou essa conta, ignore esta mensagem.
         return True
 
     except Exception as e:
+        print("================================")
         print("ERRO AO ENVIAR EMAIL:")
-        traceback.print_exc()
+        print("TIPO:", type(e).__name__)
+        print("ERRO:", str(e))
+        print("================================")
         return False
 
 
