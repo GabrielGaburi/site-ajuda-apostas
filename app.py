@@ -3673,7 +3673,7 @@ def confirmar_email(token):
         # Procura o email no MySQL
         cursor.execute(
             """
-            SELECT id, email, email_confirmado
+            SELECT id, email, email_confirmado, tipo
             FROM usuarios
             WHERE email = %s AND tipo = 'usuario'
             """,
