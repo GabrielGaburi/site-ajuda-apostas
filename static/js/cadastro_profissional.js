@@ -489,4 +489,17 @@ function normalizarTexto(texto) {
     if (btnBuscarCep) {
         btnBuscarCep.addEventListener("click", buscarCEP);
     }
+
+
+    // ==========================================
+    // LIMITES DOS CAMPOS DE ENDEREÇO
+    // ==========================================
+
+    
+    const numeroInput = document.getElementById("numero")
+
+    if (numeroInput) {
+        numeroInput.maxLength = 10;
+    }
+
 })();
