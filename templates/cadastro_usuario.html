@@ -241,16 +241,25 @@
 
                                 <label class="form-label">CEP</label>
 
-                                <div class="input-group">
+                                <div class="input-group has-validation">
 
-                                    <input type="text" class="form-control" id="cep" name="cep" maxlength="9"
-                                        placeholder="00000-000" value="{{ dados.get('cep', '') }}" required>
+                                    <input type="text" class="form-control" id="cep" name="cep"
+                                        maxlength="9"
+                                        placeholder="00000-000"
+                                        value="{{ dados.get('cep', '') }}"
+                                        required>
 
-                                    <button class="btn btn-primary" type="button" id="btnBuscarCep" title="Buscar CEP">
+                                    <button class="btn btn-primary" type="button"
+                                        id="btnBuscarCep"
+                                        title="Buscar CEP">
 
                                         <i class="bi bi-search"></i>
 
                                     </button>
+
+                                    <div id="erroCep" class="invalid-feedback">
+                                        CEP não encontrado.
+                                    </div>
 
                                 </div>
 
@@ -260,10 +269,6 @@
                                         Buscar nos Correios
                                     </a>
                                 </small>
-
-                                <div id="erroCep" class="invalid-feedback">
-                                    CEP não encontrado.
-                                </div>
 
                                 {% if campo_erro == "cep" %}
                                 <div class="text-danger small mt-1">
