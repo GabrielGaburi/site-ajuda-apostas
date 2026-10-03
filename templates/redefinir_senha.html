@@ -1,5 +1,7 @@
 {% extends "base.html" %}
+
 {% block title %}Redefinir Senha{% endblock %}
+
 {% block content %}
 
 <div class="container mt-5 d-flex justify-content-center">
@@ -11,21 +13,70 @@
 
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-
+            <!-- NOVA SENHA -->
             <div class="mb-3">
-                <label>Nova Senha</label>
+
+                <label class="form-label">Nova Senha</label>
 
                 <div class="input-group">
-                    <input type="password" name="senha" id="senha" class="form-control" required>
 
-                    <button type="button" class="btn btn-outline-secondary"
-                        onclick="toggleSenha('senha', 'iconeSenha')">
+                    <input
+                        type="password"
+                        name="senha"
+                        id="senha"
+                        class="form-control"
+                        maxlength="16"
+                        required
+                    >
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        onclick="toggleSenha('senha', 'iconeSenha')"
+                    >
                         <i id="iconeSenha" class="bi bi-eye"></i>
                     </button>
+
                 </div>
+
+                <div id="forcaSenha" class="small mt-2 fw-bold"></div>
+
             </div>
 
-            <button class="btn btn-success w-100">
+            <!-- CONFIRMAR SENHA -->
+            <div class="mb-4">
+
+                <label class="form-label">Confirmar Senha</label>
+
+                <div class="input-group">
+
+                    <input
+                        type="password"
+                        name="confirmar_senha"
+                        id="confirmarSenha"
+                        class="form-control"
+                        maxlength="16"
+                        required
+                    >
+
+                    <button
+                        type="button"
+                        class="btn btn-outline-secondary"
+                        onclick="toggleSenha('confirmarSenha', 'iconeConfirmar')"
+                    >
+                        <i id="iconeConfirmar" class="bi bi-eye"></i>
+                    </button>
+
+                </div>
+
+                <div id="erroConfirmarSenha" class="small mt-2 fw-bold"></div>
+
+            </div>
+
+            <button
+                type="submit"
+                class="btn btn-success w-100"
+            >
                 Salvar nova senha
             </button>
 
@@ -34,6 +85,6 @@
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+<script src="{{ url_for('static', filename='js/redefinir_senha.js') }}"></script>
 
 {% endblock %}
