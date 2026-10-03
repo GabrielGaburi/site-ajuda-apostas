@@ -241,7 +241,7 @@ if (cep) {
     });
 }
 
-// Validação de força de senha
+// Validação dos requisitos da senha
 const senha = document.getElementById("senha");
 const confirmar = document.getElementById("confirmarSenha");
 
@@ -249,43 +249,107 @@ if (senha) {
     senha.addEventListener("keyup", () => {
         const texto = senha.value;
         const forca = document.getElementById("forcaSenha");
-        if (!forca) {
+
+        if (!forca) return;
+
+        // Se estiver vazia, não mostra mensagem
+        if (texto.length === 0) {
+            forca.innerHTML = "";
             return;
         }
 
-        let pontos = 0;
-        if (texto.length >= 8 && texto.length <= 16) pontos++;
+        // Limite de caracteres
         if (texto.length > 16) {
-            forca.innerHTML = "<span class='text-danger'>Máximo de 16 caracteres</span>";
+            forca.innerHTML =
+                "<span class='text-danger'>A senha deve ter no máximo 16 caracteres.</span>";
             return;
         }
-        if (/[A-Z]/.test(texto)) pontos++;
-        if (/[0-9]/.test(texto)) pontos++;
-        if (/[!@#$%^&*(),.?":{}|<>]/.test(texto)) pontos++;
 
-        if (pontos <= 1) {
-            forca.innerHTML = "<span class='text-danger'>Senha fraca</span>";
-        } else if (pontos === 2 || pontos === 3) {
-            forca.innerHTML = "<span class='text-warning'>Senha média</span>";
-        } else {
-            forca.innerHTML = "<span class='text-success'>Senha forte</span>";
+        const faltando = [];
+
+        // Tamanho mínimo
+        if (texto.length < 8) {
+            faltando.push("8 caracteres");
         }
+
+        // Letra maiúscula
+        if (!/[A-Z]/.test(texto)) {
+            faltando.push("uma letra maiúscula");
+        }
+
+        // Número
+        if (!/[0-9]/.test(texto)) {
+            faltando.push("um número");
+        }
+
+        // Caractere especial
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(texto)) {
+            faltando.push("um caractere especial");
+        }
+
+        // Tudo correto
+        if (faltando.length === 0) {
+            forca.innerHTML =
+                "<span class='text-success'>✓ Senha válida.</span>";
+            return;
+        }
+
+        // Monta a mensagem com o que está faltando
+        let mensagem = "Precisa de ";
+
+        if (faltando.length === 1) {
+            mensagem += faltando[0] + ".";
+        } else if (faltando.length === 2) {
+            mensagem += faltando[0] + " e " + faltando[1] + ".";
+        } else {
+            mensagem +=
+                faltando.slice(0, -1).join(", ") +
+                " e " +
+                faltando[faltando.length - 1] +
+                ".";
+        }
+
+        forca.innerHTML =
+            "<span class='text-danger'>" + mensagem + "</span>";
     });
 }
 
-// Validação de confirmação de senha
 if (confirmar && senha) {
     confirmar.addEventListener("keyup", () => {
-        if (confirmar.value.length === 0) {
+
+        const mensagem = document.getElementById("erroConfirmarSenha");
+
+        if (!mensagem) {
             return;
         }
+
+        if (confirmar.value.length === 0) {
+            confirmar.classList.remove("is-valid", "is-invalid");
+            mensagem.innerHTML = "";
+            return;
+        }
+
         if (confirmar.value === senha.value) {
+
             confirmar.classList.remove("is-invalid");
             confirmar.classList.add("is-valid");
+
+            mensagem.innerHTML =
+                "<span class='text-success'>" +
+                "✓ As senhas coincidem." +
+                "</span>";
+
         } else {
+
             confirmar.classList.remove("is-valid");
             confirmar.classList.add("is-invalid");
+
+            mensagem.innerHTML =
+                "<span class='text-danger'>" +
+                "As senhas não coincidem." +
+                "</span>";
         }
     });
 }
+
 

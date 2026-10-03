@@ -7576,36 +7576,93 @@ Se você não solicitou essa alteração, ignore este email com segurança.
     
 @app.route("/esqueci-senha", methods=["GET", "POST"])
 def esqueci_senha():
+
     if request.method == "POST":
 
         email = request.form.get("email", "").strip().lower()
 
-        usuario = next(
-            (u for u in usuarios if u["email"].lower() == email),
-            None
-        )
+        conexao = None
+        cursor = None
 
-        if usuario is None:
-            usuario = next(
-                (p for p in profissionais if p["email"].lower() == email),
-                None
+        try:
+            conexao = get_db_connection()
+            cursor = conexao.cursor(dictionary=True)
+
+            cursor.execute(
+                """
+                SELECT id, email, tipo, status
+                FROM usuarios
+                WHERE LOWER(email) = %s
+                """,
+                (email,)
             )
 
-        if not usuario:
-            flash("Email não encontrado.", "danger")
-            return render_template("esqueci_senha.html", email=email)
+            usuario = cursor.fetchone()
 
-        if enviar_email_recuperacao(email):
-            flash("Enviamos um link para redefinição de senha.", "success")
-        else:
-            flash("Erro ao enviar email de recuperação.", "danger")
+            if not usuario:
+                flash("Email não encontrado.", "danger")
+                return render_template(
+                    "esqueci_senha.html",
+                    email=email
+                )
 
-        return redirect(url_for("login"))
+            # Usuário banido não pode recuperar a senha
+            if usuario["status"] == "banido":
+                flash(
+                    "Não é possível recuperar a senha desta conta.",
+                    "danger"
+                )
+                return render_template(
+                    "esqueci_senha.html",
+                    email=email
+                )
+
+            if enviar_email_recuperacao(email):
+                flash(
+                    "Enviamos um link para redefinição de senha.",
+                    "success"
+                )
+            else:
+                flash(
+                    "Erro ao enviar email de recuperação.",
+                    "danger"
+                )
+
+            return redirect(url_for("login"))
+
+        except Exception:
+
+            if conexao:
+                conexao.rollback()
+
+            print("================================")
+            print("ERRO AO LOCALIZAR EMAIL PARA RECUPERAÇÃO")
+            traceback.print_exc()
+            print("================================")
+
+            flash(
+                "Ocorreu um erro ao processar a solicitação.",
+                "danger"
+            )
+
+            return render_template(
+                "esqueci_senha.html",
+                email=email
+            )
+
+        finally:
+
+            if cursor:
+                cursor.close()
+
+            if conexao:
+                conexao.close()
 
     return render_template("esqueci_senha.html")
 
 @app.route("/redefinir-senha/<token>", methods=["GET", "POST"])
 def redefinir_senha(token):
+
     try:
         email = serializer.loads(
             token,
@@ -7617,35 +7674,108 @@ def redefinir_senha(token):
         flash("Link inválido ou expirado.", "danger")
         return redirect(url_for("login"))
 
-    usuario = next(
-        (u for u in usuarios if u["email"].lower() == email.lower()),
-        None
-    )
+    conexao = None
+    cursor = None
 
-    if usuario is None:
-        usuario = next(
-            (p for p in profissionais if p["email"].lower() == email.lower()),
-            None
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT id, email, tipo, status
+            FROM usuarios
+            WHERE LOWER(email) = %s
+            """,
+            (email.lower(),)
         )
 
-    if not usuario:
-        flash("Usuário não encontrado.", "danger")
+        usuario = cursor.fetchone()
+
+        if not usuario:
+            flash("Usuário não encontrado.", "danger")
+            return redirect(url_for("login"))
+
+        if usuario["status"] == "banido":
+            flash(
+                "Não é possível alterar a senha desta conta.",
+                "danger"
+            )
+            return redirect(url_for("login"))
+
+        if request.method == "POST":
+
+            nova_senha = request.form.get("senha", "")
+            confirmar_senha = request.form.get("confirmar_senha", "")
+
+            if nova_senha != confirmar_senha:
+                flash(
+                    "As senhas não coincidem.",
+                    "danger"
+                )
+                return render_template("redefinir_senha.html")
+
+            if not senha_valida(nova_senha):
+                flash(
+                    "Senha inválida. Use 8-16 caracteres, "
+                    "letra maiúscula, número e caractere especial.",
+                    "danger"
+                )
+                return render_template("redefinir_senha.html")
+
+            nova_senha_hash = generate_password_hash(nova_senha)
+
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET senha_hash = %s
+                WHERE id = %s
+                """,
+                (nova_senha_hash, usuario["id"])
+            )
+
+            conexao.commit()
+
+            print("================================")
+            print("SENHA REDEFINIDA")
+            print("ID:", usuario["id"])
+            print("EMAIL:", usuario["email"])
+            print("TIPO:", usuario["tipo"])
+            print("================================")
+
+            flash(
+                "Senha redefinida com sucesso! Faça login.",
+                "success"
+            )
+
+            return redirect(url_for("login"))
+
+        return render_template("redefinir_senha.html")
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("================================")
+        print("ERRO AO REDEFINIR SENHA")
+        traceback.print_exc()
+        print("================================")
+
+        flash(
+            "Ocorreu um erro ao redefinir a senha.",
+            "danger"
+        )
+
         return redirect(url_for("login"))
 
-    if request.method == "POST":
+    finally:
 
-        nova_senha = request.form.get("senha", "")
+        if cursor:
+            cursor.close()
 
-        if not senha_valida(nova_senha):
-            flash("Senha inválida. Use 8-16 caracteres, maiúscula, número e especial.", "danger")
-            return render_template("redefinir_senha.html")
-
-        usuario["senha"] = generate_password_hash(nova_senha)
-
-        flash("Senha redefinida com sucesso! Faça login.", "success")
-        return redirect(url_for("login"))
-
-    return render_template("redefinir_senha.html")
+        if conexao:
+            conexao.close()
 
 
 def enviar_email_aprovacao(email, nome):
