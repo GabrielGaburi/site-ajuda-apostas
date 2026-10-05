@@ -6229,17 +6229,9 @@ def detalhes_profissional_aprovado(profissional_id):
 @app.route("/admin/profissionais-aprovados/<int:profissional_id>/editar", methods=["GET", "POST"])
 def editar_profissional_aprovados(profissional_id):
 
-    # =========================
-    # VERIFICA LOGIN
-    # =========================
-
     if "usuario_id" not in session:
         flash("Você precisa estar logado.", "warning")
         return redirect(url_for("login"))
-
-    # =========================
-    # VERIFICA ADMIN
-    # =========================
 
     if session.get("tipo_usuario") != "admin":
         flash("Você não tem permissão para realizar esta ação.", "danger")
@@ -6249,16 +6241,10 @@ def editar_profissional_aprovados(profissional_id):
     cursor = None
 
     try:
-
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
 
-        # =========================
-        # BUSCA PROFISSIONAL
-        # =========================
-
-        cursor.execute(
-            """
+        cursor.execute("""
             SELECT
                 p.id AS profissional_id,
                 p.usuario_id,
@@ -6271,7 +6257,6 @@ def editar_profissional_aprovados(profissional_id):
                 p.biografia,
                 p.foto,
                 p.status_aprovacao,
-
                 u.nome,
                 u.sobrenome,
                 u.cpf,
@@ -6287,39 +6272,22 @@ def editar_profissional_aprovados(profissional_id):
                 u.bairro,
                 u.status,
                 u.email_confirmado
-
             FROM profissionais p
-
             INNER JOIN usuarios u
                 ON u.id = p.usuario_id
-
             WHERE p.id = %s
               AND p.status_aprovacao = 'aprovado'
-            """,
-            (profissional_id,)
-        )
+        """, (profissional_id,))
 
         profissional = cursor.fetchone()
 
         if not profissional:
-
-            flash(
-                "Profissional aprovado não encontrado.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("gerenciar_profissionais_aprovados")
-            )
-
-        # =========================
-        # POST - SALVAR ALTERAÇÕES
-        # =========================
+            flash("Profissional aprovado não encontrado.", "danger")
+            return redirect(url_for("gerenciar_profissionais_aprovados"))
 
         if request.method == "POST":
-            
+
             foto = request.files.get("foto")
-            
             foto_nova = None
 
             # =========================
@@ -6355,14 +6323,21 @@ def editar_profissional_aprovados(profissional_id):
 
                 foto_nova = nome_novo
 
-            nome = request.form.get("nome", "").strip()
+            # =========================
+            # DADOS DO USUÁRIO
+            # =========================
 
             nome = request.form.get("nome", "").strip()
             sobrenome = request.form.get("sobrenome", "").strip()
             cpf = request.form.get("cpf", "").strip()
-            data_nascimento = request.form.get("data_nascimento", "").strip()
+
+            data_nascimento = request.form.get(
+                "data_nascimento", ""
+            ).strip()
+
             if not data_nascimento:
                 data_nascimento = profissional["data_nascimento"]
+
             sexo = request.form.get("sexo", "").strip()
             email = request.form.get("email", "").strip().lower()
             telefone = request.form.get("telefone", "").strip()
@@ -6373,6 +6348,10 @@ def editar_profissional_aprovados(profissional_id):
             rua = request.form.get("rua", "").strip()
             numero = request.form.get("numero", "").strip()
             bairro = request.form.get("bairro", "").strip()
+
+            # =========================
+            # DADOS DO PROFISSIONAL
+            # =========================
 
             crp = request.form.get("crp", "").strip()
             uf_crp = request.form.get("uf_crp", "").strip()
@@ -6386,8 +6365,7 @@ def editar_profissional_aprovados(profissional_id):
             # ATUALIZA USUÁRIO
             # =========================
 
-            cursor.execute(
-                """
+            cursor.execute("""
                 UPDATE usuarios
                 SET
                     nome = %s,
@@ -6404,34 +6382,30 @@ def editar_profissional_aprovados(profissional_id):
                     numero = %s,
                     bairro = %s
                 WHERE id = %s
-                """,
-                (
-                    nome,
-                    sobrenome,
-                    cpf,
-                    data_nascimento,
-                    sexo,
-                    email,
-                    telefone,
-                    cep,
-                    estado,
-                    cidade,
-                    rua,
-                    numero,
-                    bairro,
-                    profissional["usuario_id"]
-                )
-            )
+            """, (
+                nome,
+                sobrenome,
+                cpf,
+                data_nascimento,
+                sexo,
+                email,
+                telefone,
+                cep,
+                estado,
+                cidade,
+                rua,
+                numero,
+                bairro,
+                profissional["usuario_id"]
+            ))
 
-            
             # =========================
             # ATUALIZA PROFISSIONAL
             # =========================
 
             if foto_nova:
 
-                cursor.execute(
-                    """
+                cursor.execute("""
                     UPDATE profissionais
                     SET
                         crp = %s,
@@ -6443,24 +6417,21 @@ def editar_profissional_aprovados(profissional_id):
                         biografia = %s,
                         foto = %s
                     WHERE id = %s
-                    """,
-                    (
-                        crp,
-                        uf_crp,
-                        experiencia,
-                        especialidade,
-                        faculdade,
-                        pos,
-                        biografia,
-                        foto_nova,
-                        profissional_id
-                    )
-                )
+                """, (
+                    crp,
+                    uf_crp,
+                    experiencia,
+                    especialidade,
+                    faculdade,
+                    pos,
+                    biografia,
+                    foto_nova,
+                    profissional_id
+                ))
 
             else:
 
-                cursor.execute(
-                    """
+                cursor.execute("""
                     UPDATE profissionais
                     SET
                         crp = %s,
@@ -6471,20 +6442,18 @@ def editar_profissional_aprovados(profissional_id):
                         pos = %s,
                         biografia = %s
                     WHERE id = %s
-                    """,
-                    (
-                        crp,
-                        uf_crp,
-                        experiencia,
-                        especialidade,
-                        faculdade,
-                        pos,
-                        biografia,
-                        profissional_id
-                    )
-                )
+                """, (
+                    crp,
+                    uf_crp,
+                    experiencia,
+                    especialidade,
+                    faculdade,
+                    pos,
+                    biografia,
+                    profissional_id
+                ))
 
-            conexao.commit()                
+            conexao.commit()
 
             # =========================
             # REMOVE FOTO ANTIGA
@@ -6504,17 +6473,13 @@ def editar_profissional_aprovados(profissional_id):
                 "Informações do profissional atualizadas com sucesso.",
                 "success"
             )
-            
+
             return redirect(
                 url_for(
                     "detalhes_profissional_aprovado",
                     profissional_id=profissional_id
                 )
             )
-
-        # =========================
-        # GET
-        # =========================
 
         return render_template(
             "editar_profissional.html",
@@ -6551,6 +6516,8 @@ def editar_profissional_aprovados(profissional_id):
 
         if conexao:
             conexao.close()
+            
+        
 
 @app.route("/admin/profissionais-aprovados/<int:profissional_id>/banir", methods=["POST"])
 def banir_profissional(profissional_id):

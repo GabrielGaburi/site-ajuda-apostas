@@ -1,3 +1,6 @@
+<!-- AQUI É ONDE O PRÓRPIO PROFISSIONAL EDITA SUAS INFORMAÇÕES -->
+
+
 {% extends "base.html" %}
 
 {% block title %}Editar Meu Perfil{% endblock %}
@@ -450,7 +453,8 @@
 
                 <div class="mb-3">
 
-                    <img src="{{ url_for(
+                    <img id="fotoPreview"
+                    src="{{ url_for(
                         'uploaded_file',
                         filename=profissional.foto
                     ) }}"
@@ -525,12 +529,10 @@
 
 </div>
 
+{% endblock %}
 
-<!-- JAVASCRIPT -->
+{% block scripts %}
 
-<script src="{{ url_for(
-    'static',
-    filename='js/cadastro_profissional.js'
-) }}"></script>
+<script src="{{ url_for('static', filename='js/editar_profissional.js') }}"></script>
 
 {% endblock %}
