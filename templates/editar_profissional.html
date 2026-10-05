@@ -1,3 +1,5 @@
+<!-- AQUI É ONDE O ADM EDITA AS INFORMAÇÕES DO PROFISSIONAL -->
+
 {% extends "base.html" %}
 
 {% block title %}Editar Profissional{% endblock %}
@@ -26,7 +28,7 @@
     </div>
 
 
-    <form method="POST" enctype="multipart/form-data">
+    <form id="formCadastroProfissional" method="POST" enctype="multipart/form-data">
 
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -244,20 +246,22 @@
 
                         {% if profissional.foto %}
                             <div class="mb-3">
-                                <img
-                                    src="{{ url_for('uploaded_file', filename=profissional.foto) }}"
-                                    alt="Foto do profissional"
-                                    class="img-thumbnail"
+                               <img 
+                                    id="fotoPreview"
+                                    src="{{ url_for('uploaded_file', filename=profissional.foto) }}" 
+                                    alt="Foto do profissional" 
+                                    class="img-thumbnail" 
                                     style="width: 150px; height: 150px; object-fit: cover;"
                                 >
                             </div>
                         {% endif %}
 
-                        <input
-                            type="file"
-                            name="foto"
-                            class="form-control"
-                            accept="image/png, image/jpeg"
+                        <input 
+                            type="file" 
+                            id="foto"
+                            name="foto" 
+                            class="form-control" 
+                            accept="image/png, image/jpeg" 
                         >
 
                         <small class="text-muted">
@@ -303,5 +307,11 @@
     </form>
 
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script src="{{ url_for('static', filename='js/editar_profissional.js') }}"></script>
 
 {% endblock %}
