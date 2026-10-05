@@ -4837,6 +4837,10 @@ def gerenciar_forum():
 
 @app.route('/cadastro_profissional', methods=['GET', 'POST'])
 def cadastro_profissional():
+    
+    limpar_fotos_temporarias()
+    
+    limpar_fotos_orfas()
 
 
     dados = {
@@ -8296,6 +8300,110 @@ def teste():
         )
 
     return render_template("teste.html")
+
+def limpar_fotos_temporarias():
+    pasta = app.config["UPLOAD_FOLDER"]
+
+    if not os.path.exists(pasta):
+        return
+
+    agora = time.time()
+
+    for arquivo in os.listdir(pasta):
+
+        if not arquivo.startswith("temp_"):
+            continue
+
+        caminho = os.path.join(pasta, arquivo)
+
+        if not os.path.isfile(caminho):
+            continue
+
+        idade = agora - os.path.getmtime(caminho)
+
+        # Remove temporários com mais de 1 hora
+        if idade > 3600:
+            try:
+                os.remove(caminho)
+                print("FOTO TEMPORÁRIA REMOVIDA:", arquivo)
+
+            except Exception:
+                print("ERRO AO REMOVER FOTO TEMPORÁRIA:", arquivo)
+                traceback.print_exc()
+                
+def limpar_fotos_orfas():
+    pasta = app.config["UPLOAD_FOLDER"]
+
+    if not os.path.exists(pasta):
+        return
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT foto
+            FROM profissionais
+            WHERE foto IS NOT NULL
+              AND foto != ''
+        """)
+
+        fotos_banco = {
+            registro["foto"]
+            for registro in cursor.fetchall()
+        }
+
+        print("================================")
+        print("LIMPEZA DE FOTOS ÓRFÃS")
+        print("FOTOS REGISTRADAS NO BANCO:", len(fotos_banco))
+        print("================================")
+
+        for arquivo in os.listdir(pasta):
+
+            caminho = os.path.join(pasta, arquivo)
+
+            if not os.path.isfile(caminho):
+                continue
+
+            # Não mexe nas fotos temporárias aqui
+            if arquivo.startswith("temp_"):
+                continue
+
+            # Se não estiver registrado no banco, remove
+            if arquivo not in fotos_banco:
+
+                try:
+                    os.remove(caminho)
+
+                    print(
+                        "FOTO ÓRFÃ REMOVIDA:",
+                        arquivo
+                    )
+
+                except Exception:
+                    print(
+                        "ERRO AO REMOVER FOTO:",
+                        arquivo
+                    )
+                    traceback.print_exc()
+
+        print("================================")
+
+    except Exception:
+
+        print("ERRO AO LIMPAR FOTOS ÓRFÃS:")
+        traceback.print_exc()
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
 
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
