@@ -50,7 +50,12 @@
                             Nome
                         </label>
 
-                        <input type="text" name="nome" class="form-control" value="{{ usuario.nome or '' }}" required>
+                        <input type="text" 
+                               name="nome"
+                               class="form-control"
+                               value="{{ usuario.nome or '' }}"
+                               maxlength="20"
+                               required>
 
                     </div>
 
@@ -61,8 +66,12 @@
                             Sobrenome
                         </label>
 
-                        <input type="text" name="sobrenome" class="form-control" value="{{ usuario.sobrenome or '' }}"
-                            required>
+                        <input type="text"
+                               name="sobrenome" 
+                               class="form-control" 
+                               value="{{ usuario.sobrenome or '' }}"
+                               maxlength="50"
+                               required>
 
                     </div>
 
@@ -73,7 +82,12 @@
                             CPF
                         </label>
 
-                        <input type="text" name="cpf" class="form-control" value="{{ usuario.cpf or '' }}">
+                        <input type="text" 
+                               id="cpf"
+                               name="cpf" 
+                               class="form-control" 
+                               value="{{ usuario.cpf or '' }}"
+                               maxlength="14">
 
                     </div>
 
@@ -84,8 +98,22 @@
                             Data de nascimento
                         </label>
 
-                        <input type="date" name="data_nascimento" class="form-control"
-                            value="{{ usuario.data_nascimento.strftime('%Y-%m-%d') if usuario.data_nascimento else '' }}">
+                        <input
+                            type="text"
+                            id="data_nascimento"
+                            name="data_nascimento"
+                            class="form-control"
+                            placeholder="DD/MM/AAAA"
+                            maxlength="10"
+                            value="{{ usuario.data_nascimento.strftime('%d/%m/%Y') if usuario.data_nascimento else '' }}"
+                            required>
+
+                        <div
+                            id="erroDataNascimento"
+                            class="text-danger small mt-1"
+                            style="display: none;">
+                            Data de nascimento inválida.
+                        </div>
 
                     </div>
 
@@ -97,7 +125,7 @@
                             Sexo
                         </label>
 
-                        <select name="sexo" class="form-select">
+                        <select name="sexo" class="form-select" required>
 
                             <option value="">Selecione</option>
 
@@ -143,8 +171,17 @@
                             Telefone
                         </label>
 
-                        <input type="text" name="telefone" class="form-control" value="{{ usuario.telefone or '' }}">
+                        <input type="text"
+                               id="telefone" 
+                               name="telefone" 
+                               class="form-control" 
+                               value="{{ usuario.telefone or '' }}"
+                               maxlength="15"
+                               required>
 
+                               <div id="erroTelefone" class="text-danger small mt-1" style="display: none;">
+                                    Digite um telefone válido.
+                               </div>
                     </div>
 
                 </div>
@@ -172,7 +209,21 @@
                             CEP
                         </label>
 
-                        <input type="text" name="cep" class="form-control" value="{{ usuario.cep or '' }}">
+                        <input type="text"
+                               id="cep"
+                               name="cep" 
+                               class="form-control" 
+                               value="{{ usuario.cep or '' }}"
+                               maxlength="9"
+                               required>
+                        
+                        <div id="erroCep" class="text-danger small mt-1" style="display: none;">
+                            Digite um CEP válido.
+                        </div>
+
+                        <div id="sucessoCep" class="text-success small mt-1" style="display: none;">
+                            CEP encontrado. Confira se rua, número, bairro e cidade estão corretos.
+                        </div>
 
                     </div>
 
@@ -183,8 +234,125 @@
                             Estado
                         </label>
 
-                        <input type="text" name="estado" class="form-control" value="{{ usuario.estado or '' }}">
 
+                        <select name="estado"
+                            class="form-select"
+                            required>
+
+                            
+                            <option value="">
+                                Selecione o estado
+                            </option>
+
+                            <option value="AC" {% if usuario.estado == "AC" %}selected{% endif %}>
+                                Acre
+                            </option>
+
+                            <option value="AL" {% if usuario.estado == "AL" %}selected{% endif %}>
+                                Alagoas
+                            </option>
+
+                            <option value="AP" {% if usuario.estado == "AP" %}selected{% endif %}>
+                                Amapá
+                            </option>
+
+                            <option value="AM" {% if usuario.estado == "AM" %}selected{% endif %}>
+                                Amazonas
+                            </option>
+
+                            <option value="BA" {% if usuario.estado == "BA" %}selected{% endif %}>
+                                Bahia
+                            </option>
+
+                            <option value="CE" {% if usuario.estado == "CE" %}selected{% endif %}>
+                                Ceará
+                            </option>
+
+                            <option value="DF" {% if usuario.estado == "DF" %}selected{% endif %}>
+                                Distrito Federal
+                            </option>
+
+                            <option value="ES" {% if usuario.estado == "ES" %}selected{% endif %}>
+                                Espírito Santo
+                            </option>
+
+                            <option value="GO" {% if usuario.estado == "GO" %}selected{% endif %}>
+                                Goiás
+                            </option>
+
+                            <option value="MA" {% if usuario.estado == "MA" %}selected{% endif %}>
+                                Maranhão
+                            </option>
+
+                            <option value="MT" {% if usuario.estado == "MT" %}selected{% endif %}>
+                                Mato Grosso
+                            </option>
+
+                            <option value="MS" {% if usuario.estado == "MS" %}selected{% endif %}>
+                                Mato Grosso do Sul
+                            </option>
+
+                            <option value="MG" {% if usuario.estado == "MG" %}selected{% endif %}>
+                                Minas Gerais
+                            </option>
+
+                            <option value="PA" {% if usuario.estado == "PA" %}selected{% endif %}>
+                                Pará
+                            </option>
+
+                            <option value="PB" {% if usuario.estado == "PB" %}selected{% endif %}>
+                                Paraíba
+                            </option>
+
+                            <option value="PR" {% if usuario.estado == "PR" %}selected{% endif %}>
+                                Paraná
+                            </option>
+
+                            <option value="PE" {% if usuario.estado == "PE" %}selected{% endif %}>
+                                Pernambuco
+                            </option>
+
+                            <option value="PI" {% if usuario.estado == "PI" %}selected{% endif %}>
+                                Piauí
+                            </option>
+
+                            <option value="RJ" {% if usuario.estado == "RJ" %}selected{% endif %}>
+                                Rio de Janeiro
+                            </option>
+
+                            <option value="RN" {% if usuario.estado == "RN" %}selected{% endif %}>
+                                Rio Grande do Norte
+                            </option>
+
+                            <option value="RS" {% if usuario.estado == "RS" %}selected{% endif %}>
+                                Rio Grande do Sul
+                            </option>
+
+                            <option value="RO" {% if usuario.estado == "RO" %}selected{% endif %}>
+                                Rondônia
+                            </option>
+
+                            <option value="RR" {% if usuario.estado == "RR" %}selected{% endif %}>
+                                Roraima
+                            </option>
+
+                            <option value="SC" {% if usuario.estado == "SC" %}selected{% endif %}>
+                                Santa Catarina
+                            </option>
+
+                            <option value="SP" {% if usuario.estado == "SP" %}selected{% endif %}>
+                                São Paulo
+                            </option>
+
+                            <option value="SE" {% if usuario.estado == "SE" %}selected{% endif %}>
+                                Sergipe
+                            </option>
+
+                            <option value="TO" {% if usuario.estado == "TO" %}selected{% endif %}>
+                                Tocantins
+                            </option>
+
+                        </select>
                     </div>
 
 
@@ -194,7 +362,12 @@
                             Cidade
                         </label>
 
-                        <input type="text" name="cidade" class="form-control" value="{{ usuario.cidade or '' }}">
+                        <input type="text" 
+                               name="cidade" 
+                               class="form-control" 
+                               value="{{ usuario.cidade or '' }}"
+                               maxlength="100"
+                               required>
 
                     </div>
 
@@ -205,7 +378,12 @@
                             Rua
                         </label>
 
-                        <input type="text" name="rua" class="form-control" value="{{ usuario.rua or '' }}">
+                        <input type="text" 
+                               name="rua" 
+                               class="form-control" 
+                               value="{{ usuario.rua or '' }}"
+                               maxlength="150"
+                               required>
 
                     </div>
 
@@ -216,7 +394,12 @@
                             Número
                         </label>
 
-                        <input type="text" name="numero" class="form-control" value="{{ usuario.numero or '' }}">
+                        <input type="text" 
+                               name="numero" 
+                               class="form-control" 
+                               value="{{ usuario.numero or '' }}"
+                               maxlength="10"
+                               required>
 
                     </div>
 
@@ -227,7 +410,12 @@
                             Bairro
                         </label>
 
-                        <input type="text" name="bairro" class="form-control" value="{{ usuario.bairro or '' }}">
+                        <input type="text" 
+                               name="bairro" 
+                               class="form-control" 
+                               value="{{ usuario.bairro or '' }}"
+                               maxlength="100"
+                               required>
 
                     </div>
 
@@ -263,5 +451,11 @@
     </form>
 
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script src="{{ url_for('static', filename='js/editar_usuario.js') }}"></script>
 
 {% endblock %}

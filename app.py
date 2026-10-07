@@ -1,6 +1,6 @@
 import re, os, traceback, uuid, mysql.connector, requests, unicodedata, threading, time
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
-from datetime import datetime
+from datetime import datetime, date
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
@@ -34,6 +34,8 @@ csrf = CSRFProtect(app)
 
 atendimentos_processando = set()
 atendimentos_lock = threading.Lock()
+extensoes_validas = {".jpg", ".jpeg", ".png"}
+
 # =========================
 # CONEXÃO COM MYSQL
 # =========================
@@ -2404,38 +2406,153 @@ def editar_usuario(usuario_id):
                 ""
             ).strip()
             sexo = request.form.get("sexo", "").strip()
-            email = request.form.get(
-                "email",
-                ""
-            ).strip().lower()
-            telefone = request.form.get(
-                "telefone",
-                ""
-            ).strip()
-            cep = request.form.get(
-                "cep",
-                ""
-            ).strip()
-            estado = request.form.get(
-                "estado",
-                ""
-            ).strip()
-            cidade = request.form.get(
-                "cidade",
-                ""
-            ).strip()
-            rua = request.form.get(
-                "rua",
-                ""
-            ).strip()
-            numero = request.form.get(
-                "numero",
-                ""
-            ).strip()
-            bairro = request.form.get(
-                "bairro",
-                ""
-            ).strip()
+            email = request.form.get("email", "").strip().lower()
+            telefone = request.form.get("telefone", "").strip()
+            cep = request.form.get("cep", "").strip()
+            estado = request.form.get("estado", "").strip()
+            cidade = request.form.get("cidade", "").strip()
+            rua = request.form.get("rua", "").strip()
+            numero = request.form.get("numero", "").strip()
+            bairro = request.form.get("bairro","").strip()
+            
+            # =========================
+            # VALIDA DATA DE NASCIMENTO
+            # =========================
+
+            try:
+
+                data_nascimento = datetime.strptime(
+                    data_nascimento,
+                    "%d/%m/%Y"
+                ).date()
+
+            except ValueError:
+
+                flash(
+                    "Data de nascimento inválida.",
+                    "danger"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+
+
+            hoje = date.today()
+
+
+            if data_nascimento > hoje:
+
+                flash(
+                    "A data de nascimento não pode ser futura.",
+                    "danger"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+
+
+            idade = (
+                hoje.year
+                - data_nascimento.year
+                - (
+                    (hoje.month, hoje.day)
+                    < (data_nascimento.month, data_nascimento.day)
+                )
+            )
+
+
+            if idade < 18:
+
+                flash(
+                    "O usuário deve ter pelo menos 18 anos.",
+                    "danger"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+
+
+            if idade > 100:
+
+                flash(
+                    "Informe uma data de nascimento válida.",
+                    "danger"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
 
             # =========================
             # VALIDA CAMPOS
@@ -2452,6 +2569,196 @@ def editar_usuario(usuario_id):
                     "editar_usuario.html",
                     usuario=usuario
                 )
+                
+            # =========================
+            # VALIDA TELEFONE
+            # =========================
+
+            if not telefone:
+
+                flash(
+                    "O telefone é obrigatório.",
+                    "danger"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+
+            telefone_numeros = re.sub(r"\D", "", telefone)
+
+            if len(telefone_numeros) not in (10, 11):
+
+                flash(
+                    "Digite um telefone válido.",
+                    "danger"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+                
+            # =========================
+            # VALIDA CEP
+            # =========================
+
+            if not cep:
+
+                flash(
+                    "O CEP é obrigatório.",
+                    "danger"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+
+            cep_numeros = re.sub(r"\D", "", cep)
+
+            if len(cep_numeros) != 8:
+
+                flash(
+                    "Digite um CEP válido.",
+                    "danger"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+
+            try:
+
+                resposta_cep = requests.get(
+                    f"https://viacep.com.br/ws/{cep_numeros}/json/",
+                    timeout=5
+                )
+
+                dados_cep = resposta_cep.json()
+
+                if dados_cep.get("erro"):
+
+                    flash(
+                        "CEP não encontrado.",
+                        "danger"
+                    )
+
+                    usuario.update({
+                        "nome": nome,
+                        "sobrenome": sobrenome,
+                        "cpf": cpf,
+                        "data_nascimento": data_nascimento,
+                        "sexo": sexo,
+                        "email": email,
+                        "telefone": telefone,
+                        "cep": cep,
+                        "estado": estado,
+                        "cidade": cidade,
+                        "rua": rua,
+                        "numero": numero,
+                        "bairro": bairro
+                    })
+
+                    return render_template(
+                        "editar_usuario.html",
+                        usuario=usuario
+                    )
+
+            except requests.RequestException:
+
+                flash(
+                    "Não foi possível validar o CEP. Tente novamente.",
+                    "danger"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+
 
             # =========================
             # VERIFICA EMAIL DUPLICADO
@@ -3833,9 +4140,13 @@ def perfil_profissional():
 
         if conexao:
             conexao.close()
-            
+     
+#Profissional editando o próprio perfil                      
 @app.route("/perfil_profissional/editar", methods=["GET", "POST"])
 def editar_perfil_profissional():
+    
+    limpar_fotos_temporarias()
+    limpar_fotos_orfas()
 
     if "usuario_id" not in session:
         flash("Faça login para acessar seu perfil.", "warning")
@@ -3922,6 +4233,16 @@ def editar_perfil_profissional():
                     campo_erro="telefone",
                     mensagem_erro="O telefone é obrigatório."
                 )
+                
+            telefone_numeros = re.sub(r"\D", "", telefone)
+
+            if len(telefone_numeros) not in (10, 11):
+                return render_template(
+                    "editar_perfil_profissional.html",
+                    profissional=profissional,
+                    campo_erro="telefone",
+                    mensagem_erro="Digite um telefone válido."
+                )    
 
             if not cep:
                 return render_template(
@@ -6225,9 +6546,11 @@ def detalhes_profissional_aprovado(profissional_id):
         if conexao:
             conexao.close()
             
-            
+#Administrador editando um profissional aprovado            
 @app.route("/admin/profissionais-aprovados/<int:profissional_id>/editar", methods=["GET", "POST"])
 def editar_profissional_aprovados(profissional_id):
+    
+    
 
     if "usuario_id" not in session:
         flash("Você precisa estar logado.", "warning")
@@ -6331,12 +6654,57 @@ def editar_profissional_aprovados(profissional_id):
             sobrenome = request.form.get("sobrenome", "").strip()
             cpf = request.form.get("cpf", "").strip()
 
-            data_nascimento = request.form.get(
-                "data_nascimento", ""
-            ).strip()
+            data_nascimento = request.form.get("data_nascimento", "").strip()
 
             if not data_nascimento:
                 data_nascimento = profissional["data_nascimento"]
+
+            if isinstance(data_nascimento, str):
+
+                try:
+                    data_nascimento = datetime.strptime(
+                        data_nascimento,
+                        "%d/%m/%Y"
+                    ).date()
+
+                except ValueError:
+                    flash("Data de nascimento inválida.", "danger")
+                    return render_template(
+                        "editar_profissional.html",
+                        profissional=profissional
+                    )
+
+            hoje = date.today()
+
+            if data_nascimento > hoje:
+                flash("A data de nascimento não pode ser futura.", "danger")
+                return render_template(
+                    "editar_profissional.html",
+                    profissional=profissional
+                )
+
+            idade = (
+                hoje.year
+                - data_nascimento.year
+                - (
+                    (hoje.month, hoje.day)
+                    < (data_nascimento.month, data_nascimento.day)
+                )
+            )
+
+            if idade < 18:
+                flash("O profissional deve ter pelo menos 18 anos.", "danger")
+                return render_template(
+                    "editar_profissional.html",
+                    profissional=profissional
+                )
+
+            if idade > 100:
+                flash("Informe uma data de nascimento válida.", "danger")
+                return render_template(
+                    "editar_profissional.html",
+                    profissional=profissional
+                )
 
             sexo = request.form.get("sexo", "").strip()
             email = request.form.get("email", "").strip().lower()
@@ -6808,247 +7176,7 @@ def reativar_profissional(profissional_id):
         if conexao:
             conexao.close()
             
-            
-@app.route("/admin/profissionais/<int:profissional_id>/editar", methods=["GET", "POST"])
-def editar_profissional(profissional_id):
-
-    # =========================
-    # VERIFICA LOGIN
-    # =========================
-
-    if "usuario_id" not in session:
-        flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
-
-    # =========================
-    # VERIFICA ADMIN
-    # =========================
-
-    if session.get("tipo_usuario") != "admin":
-        flash(
-            "Você não tem permissão para realizar esta ação.",
-            "danger"
-        )
-        return redirect(url_for("index"))
-
-    conexao = None
-    cursor = None
-
-    try:
-
-        conexao = get_db_connection()
-        cursor = conexao.cursor(dictionary=True)
-
-        # =========================
-        # BUSCA O PROFISSIONAL
-        # =========================
-
-        cursor.execute(
-            """
-            SELECT
-                p.id AS profissional_id,
-                p.usuario_id,
-                p.crp,
-                p.uf_crp,
-                p.experiencia,
-                p.especialidade,
-                p.faculdade,
-                p.pos,
-                p.biografia,
-                p.foto,
-
-                u.nome,
-                u.sobrenome,
-                u.cpf,
-                u.data_nascimento,
-                u.sexo,
-                u.email,
-                u.telefone,
-                u.cep,
-                u.estado,
-                u.cidade,
-                u.rua,
-                u.numero,
-                u.bairro
-
-            FROM profissionais p
-
-            INNER JOIN usuarios u
-                ON u.id = p.usuario_id
-
-            WHERE p.id = %s
-            """,
-            (profissional_id,)
-        )
-
-        profissional = cursor.fetchone()
-
-        if not profissional:
-            flash(
-                "Profissional não encontrado.",
-                "danger"
-            )
-
-            return redirect(
-                url_for("gerenciar_profissionais_aprovados")
-            )
-
-        # =========================
-        # SALVA ALTERAÇÕES
-        # =========================
-
-        if request.method == "POST":
-
-            nome = request.form.get("nome", "").strip()
-            sobrenome = request.form.get("sobrenome", "").strip()
-            cpf = request.form.get("cpf", "").strip()
-            email = request.form.get("email", "").strip().lower()
-            telefone = request.form.get("telefone", "").strip()
-
-            cep = request.form.get("cep", "").strip()
-            estado = request.form.get("estado", "").strip()
-            cidade = request.form.get("cidade", "").strip()
-            rua = request.form.get("rua", "").strip()
-            numero = request.form.get("numero", "").strip()
-            bairro = request.form.get("bairro", "").strip()
-
-            crp = request.form.get("crp", "").strip()
-            uf_crp = request.form.get("uf_crp", "").strip()
-            experiencia = request.form.get("experiencia", "").strip()
-            especialidade = request.form.get("especialidade", "").strip()
-            faculdade = request.form.get("faculdade", "").strip()
-            pos = request.form.get("pos", "").strip()
-            biografia = request.form.get("biografia", "").strip()
-
-            # =========================
-            # ATUALIZA USUARIOS
-            # =========================
-
-            cursor.execute(
-                """
-                UPDATE usuarios
-                SET
-                    nome = %s,
-                    sobrenome = %s,
-                    cpf = %s,
-                    email = %s,
-                    telefone = %s,
-                    cep = %s,
-                    estado = %s,
-                    cidade = %s,
-                    rua = %s,
-                    numero = %s,
-                    bairro = %s
-                WHERE id = %s
-                """,
-                (
-                    nome,
-                    sobrenome,
-                    cpf,
-                    email,
-                    telefone,
-                    cep,
-                    estado,
-                    cidade,
-                    rua,
-                    numero,
-                    bairro,
-                    profissional["usuario_id"]
-                )
-            )
-
-            # =========================
-            # ATUALIZA PROFISSIONAIS
-            # =========================
-
-            cursor.execute(
-                """
-                UPDATE profissionais
-                SET
-                    crp = %s,
-                    uf_crp = %s,
-                    experiencia = %s,
-                    especialidade = %s,
-                    faculdade = %s,
-                    pos = %s,
-                    biografia = %s
-                WHERE id = %s
-                """,
-                (
-                    crp,
-                    uf_crp,
-                    experiencia,
-                    especialidade,
-                    faculdade,
-                    pos,
-                    biografia,
-                    profissional_id
-                )
-            )
-
-            conexao.commit()
-
-            print("================================")
-            print("PROFISSIONAL EDITADO")
-            print("PROFISSIONAL ID:", profissional_id)
-            print("USUÁRIO ID:", profissional["usuario_id"])
-            print("================================")
-
-            flash(
-                "Informações do profissional atualizadas com sucesso.",
-                "success"
-            )
-
-            return redirect(
-                url_for(
-                    "detalhes_profissional_aprovado",
-                    profissional_id=profissional_id
-                )
-            )
-
-        # =========================
-        # ABRE FORMULÁRIO
-        # =========================
-
-        return render_template(
-            "editar_profissional.html",
-            profissional=profissional
-        )
-
-    except Exception:
-
-        if conexao:
-            conexao.rollback()
-
-        print("================================")
-        print("ERRO AO EDITAR PROFISSIONAL")
-        print("================================")
-
-        traceback.print_exc()
-
-        flash(
-            "Ocorreu um erro ao editar o profissional.",
-            "danger"
-        )
-
-        return redirect(
-            url_for(
-                "detalhes_profissional_aprovado",
-                profissional_id=profissional_id
-            )
-        )
-
-    finally:
-
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-
-
-
-            
+                        
 @app.route('/escolher_cadastro')
 def escolher_cadastro():
     return render_template('escolher_cadastro.html')
@@ -8322,6 +8450,8 @@ def limpar_fotos_orfas():
             registro["foto"]
             for registro in cursor.fetchall()
         }
+        
+        extensoes_validas = {".jpg", ".jpeg", ".png"}
 
         print("================================")
         print("LIMPEZA DE FOTOS ÓRFÃS")
@@ -8338,6 +8468,7 @@ def limpar_fotos_orfas():
             # Não mexe nas fotos temporárias aqui
             if arquivo.startswith("temp_"):
                 continue
+            
 
             # Se não estiver registrado no banco, remove
             if arquivo not in fotos_banco:
