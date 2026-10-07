@@ -45,68 +45,131 @@
                 <div class="row g-3">
 
                     <div class="col-md-6">
-                        <label class="form-label">Nome</label>
+                        <label class="form-label">
+                            Nome
+                        </label>
 
-                        <input type="text" name="nome" class="form-control" value="{{ profissional.nome or '' }}"
+                        <input type="text"
+                            name="nome"
+                            class="form-control"
+                            value="{{ profissional.nome or '' }}"
+                            maxlength="20"
                             required>
                     </div>
 
 
                     <div class="col-md-6">
-                        <label class="form-label">Sobrenome</label>
+                        <label class="form-label">
+                            Sobrenome
+                        </label>
 
-                        <input type="text" name="sobrenome" class="form-control"
-                            value="{{ profissional.sobrenome or '' }}" required>
+                        <input type="text"
+                            name="sobrenome"
+                            class="form-control"
+                            value="{{ profissional.sobrenome or '' }}"
+                            maxlength="50"
+                            required>
                     </div>
 
 
                     <div class="col-md-6">
-                        <label class="form-label">CPF</label>
+                        <label class="form-label">
+                            CPF
+                        </label>
 
-                        <input type="text" name="cpf" class="form-control" value="{{ profissional.cpf or '' }}">
+                        <input type="text"
+                            name="cpf"
+                            class="form-control"
+                            value="{{ profissional.cpf or '' }}"
+                            maxlength="14"
+                            required>
                     </div>
 
+
                     <div class="col-md-6">
-                        <label class="form-label">Sexo</label>
+                        <label class="form-label">
+                            Sexo
+                        </label>
 
-                        <select name="sexo" class="form-select">
-                            <option value="">Selecione</option>
+                        <select name="sexo" class="form-select" required>
 
-                            <option value="Masculino" {% if profissional.sexo=="Masculino" %}selected{% endif %}>
+                            <option value="">
+                                Selecione
+                            </option>
+
+                            <option value="Masculino"
+                                {% if profissional.sexo == "Masculino" %}selected{% endif %}>
                                 Masculino
                             </option>
 
-                            <option value="Feminino" {% if profissional.sexo=="Feminino" %}selected{% endif %}>
+                            <option value="Feminino"
+                                {% if profissional.sexo == "Feminino" %}selected{% endif %}>
                                 Feminino
                             </option>
 
-                            <option value="Outro" {% if profissional.sexo=="Outro" %}selected{% endif %}>
+                            <option value="Outro"
+                                {% if profissional.sexo == "Outro" %}selected{% endif %}>
                                 Outro
                             </option>
+
+                            <option value="Prefiro não informar" {% if usuario.sexo=="Prefiro não informar" %}selected{%
+                                endif %}>
+                                Prefiro não informar
+                            </option>
+
                         </select>
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Data de nascimento</label>
 
-                        <input type="date" name="data_nascimento" class="form-control"
-                            value="{{ profissional.data_nascimento.strftime('%Y-%m-%d') if profissional.data_nascimento else '' }}">
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            Data de nascimento
+                        </label>
+
+                        <input
+                            type="text"
+                            id="data_nascimento"
+                            name="data_nascimento"
+                            class="form-control"
+                            placeholder="DD/MM/AAAA"
+                            maxlength="10"
+                            value="{{ profissional.data_nascimento.strftime('%d/%m/%Y') if profissional.data_nascimento else '' }}"
+                            required>
+
+                       <div
+                            id="erroDataNascimento"
+                            class="text-danger small mt-1"
+                            style="display: none;">
+                            Data de nascimento inválida.
+                       </div>
+
                     </div>
 
-
                     <div class="col-md-6">
-                        <label class="form-label">E-mail</label>
+                        <label class="form-label">
+                            E-mail
+                        </label>
 
-                        <input type="email" name="email" class="form-control" value="{{ profissional.email or '' }}"
+                        <input type="email"
+                            name="email"
+                            class="form-control"
+                            value="{{ profissional.email or '' }}"
+                            maxlength="150"
                             required>
                     </div>
 
 
                     <div class="col-md-6">
-                        <label class="form-label">Telefone</label>
+                        <label class="form-label">
+                            Telefone
+                        </label>
 
-                        <input type="text" name="telefone" class="form-control"
-                            value="{{ profissional.telefone or '' }}">
+                        <input type="text"
+                            name="telefone"
+                            class="form-control"
+                            value="{{ profissional.telefone or '' }}"
+                            maxlength="15"
+                            required>
                     </div>
 
                 </div>
@@ -129,44 +192,197 @@
                 <div class="row g-3">
 
                     <div class="col-md-4">
-                        <label class="form-label">CEP</label>
+                        <label class="form-label">
+                            CEP
+                        </label>
 
-                        <input type="text" name="cep" class="form-control" value="{{ profissional.cep or '' }}">
+                        <input type="text"
+                            name="cep"
+                            class="form-control"
+                            value="{{ profissional.cep or '' }}"
+                            maxlength="9"
+                            required>
                     </div>
 
 
                     <div class="col-md-4">
-                        <label class="form-label">Estado</label>
+                        <label class="form-label">
+                            Estado
+                        </label>
 
-                        <input type="text" name="estado" class="form-control" value="{{ profissional.estado or '' }}">
+                        <select name="estado"
+                            class="form-select"
+                            required>
+
+                            <option value="">
+                                Selecione o estado
+                            </option>
+
+                            <option value="AC" {% if profissional.estado == "AC" %}selected{% endif %}>
+                                Acre
+                            </option>
+
+                            <option value="AL" {% if profissional.estado == "AL" %}selected{% endif %}>
+                                Alagoas
+                            </option>
+
+                            <option value="AP" {% if profissional.estado == "AP" %}selected{% endif %}>
+                                Amapá
+                            </option>
+
+                            <option value="AM" {% if profissional.estado == "AM" %}selected{% endif %}>
+                                Amazonas
+                            </option>
+
+                            <option value="BA" {% if profissional.estado == "BA" %}selected{% endif %}>
+                                Bahia
+                            </option>
+
+                            <option value="CE" {% if profissional.estado == "CE" %}selected{% endif %}>
+                                Ceará
+                            </option>
+
+                            <option value="DF" {% if profissional.estado == "DF" %}selected{% endif %}>
+                                Distrito Federal
+                            </option>
+
+                            <option value="ES" {% if profissional.estado == "ES" %}selected{% endif %}>
+                                Espírito Santo
+                            </option>
+
+                            <option value="GO" {% if profissional.estado == "GO" %}selected{% endif %}>
+                                Goiás
+                            </option>
+
+                            <option value="MA" {% if profissional.estado == "MA" %}selected{% endif %}>
+                                Maranhão
+                            </option>
+
+                            <option value="MT" {% if profissional.estado == "MT" %}selected{% endif %}>
+                                Mato Grosso
+                            </option>
+
+                            <option value="MS" {% if profissional.estado == "MS" %}selected{% endif %}>
+                                Mato Grosso do Sul
+                            </option>
+
+                            <option value="MG" {% if profissional.estado == "MG" %}selected{% endif %}>
+                                Minas Gerais
+                            </option>
+
+                            <option value="PA" {% if profissional.estado == "PA" %}selected{% endif %}>
+                                Pará
+                            </option>
+
+                            <option value="PB" {% if profissional.estado == "PB" %}selected{% endif %}>
+                                Paraíba
+                            </option>
+
+                            <option value="PR" {% if profissional.estado == "PR" %}selected{% endif %}>
+                                Paraná
+                            </option>
+
+                            <option value="PE" {% if profissional.estado == "PE" %}selected{% endif %}>
+                                Pernambuco
+                            </option>
+
+                            <option value="PI" {% if profissional.estado == "PI" %}selected{% endif %}>
+                                Piauí
+                            </option>
+
+                            <option value="RJ" {% if profissional.estado == "RJ" %}selected{% endif %}>
+                                Rio de Janeiro
+                            </option>
+
+                            <option value="RN" {% if profissional.estado == "RN" %}selected{% endif %}>
+                                Rio Grande do Norte
+                            </option>
+
+                            <option value="RS" {% if profissional.estado == "RS" %}selected{% endif %}>
+                                Rio Grande do Sul
+                            </option>
+
+                            <option value="RO" {% if profissional.estado == "RO" %}selected{% endif %}>
+                                Rondônia
+                            </option>
+
+                            <option value="RR" {% if profissional.estado == "RR" %}selected{% endif %}>
+                                Roraima
+                            </option>
+
+                            <option value="SC" {% if profissional.estado == "SC" %}selected{% endif %}>
+                                Santa Catarina
+                            </option>
+
+                            <option value="SP" {% if profissional.estado == "SP" %}selected{% endif %}>
+                                São Paulo
+                            </option>
+
+                            <option value="SE" {% if profissional.estado == "SE" %}selected{% endif %}>
+                                Sergipe
+                            </option>
+
+                            <option value="TO" {% if profissional.estado == "TO" %}selected{% endif %}>
+                                Tocantins
+                            </option>
+
+                        </select>
                     </div>
 
 
                     <div class="col-md-4">
-                        <label class="form-label">Cidade</label>
+                        <label class="form-label">
+                            Cidade
+                        </label>
 
-                        <input type="text" name="cidade" class="form-control" value="{{ profissional.cidade or '' }}">
+                        <input type="text"
+                            name="cidade"
+                            class="form-control"
+                            value="{{ profissional.cidade or '' }}"
+                            maxlength="100"
+                            required>
                     </div>
 
 
                     <div class="col-md-6">
-                        <label class="form-label">Rua</label>
+                        <label class="form-label">
+                            Rua
+                        </label>
 
-                        <input type="text" name="rua" class="form-control" value="{{ profissional.rua or '' }}">
+                        <input type="text"
+                            name="rua"
+                            class="form-control"
+                            value="{{ profissional.rua or '' }}"
+                            maxlength="150"
+                            required>
                     </div>
 
 
                     <div class="col-md-2">
-                        <label class="form-label">Número</label>
+                        <label class="form-label">
+                            Número
+                        </label>
 
-                        <input type="text" name="numero" class="form-control" value="{{ profissional.numero or '' }}">
+                        <input type="text"
+                            name="numero"
+                            class="form-control"
+                            value="{{ profissional.numero or '' }}"
+                            maxlength="10"
+                            required>
                     </div>
 
 
                     <div class="col-md-4">
-                        <label class="form-label">Bairro</label>
+                        <label class="form-label">
+                            Bairro
+                        </label>
 
-                        <input type="text" name="bairro" class="form-control" value="{{ profissional.bairro or '' }}">
+                        <input type="text"
+                            name="bairro"
+                            class="form-control"
+                            value="{{ profissional.bairro or '' }}"
+                            maxlength="100"
+                            required>
                     </div>
 
                 </div>
@@ -189,34 +405,121 @@
                 <div class="row g-3">
 
                     <div class="col-md-6">
-                        <label class="form-label">CRP</label>
+                        <label class="form-label">
+                            CRP
+                        </label>
 
-                        <input type="text" name="crp" class="form-control" value="{{ profissional.crp or '' }}"
+                       <input
+                            type="text"
+                            id="crp"
+                            name="crp"
+                            class="form-control"
+                            placeholder="00/123456"
+                            maxlength="9"
+                            value="{{ profissional.crp or '' }}"
+                            required>
+
+                        <small id="erroCrp" class="text-danger d-none">
+                            CRP inválido.
+                        </small>
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            UF do CRP
+                        </label>
+
+                        <input
+                            type="text"
+                            id="uf_crp"
+                            name="uf_crp"
+                            class="form-control"
+                            value="{{ profissional.uf_crp or '' }}"
+                            readonly
+                        >
+                    </div>
+
+
+                    <div class="col-md-6">
+                        <label class="form-label">
+                            Experiência
+                        </label>
+
+                        <input type="number"
+                            name="experiencia"
+                            class="form-control"
+                            value="{{ profissional.experiencia if profissional.experiencia is not none else '' }}"
+                            min="0"
+                            max="70"
                             required>
                     </div>
 
 
                     <div class="col-md-6">
-                        <label class="form-label">UF do CRP</label>
+                        <label class="form-label">
+                            Especialidade
+                        </label>
 
-                        <input type="text" name="uf_crp" class="form-control" value="{{ profissional.uf_crp or '' }}"
+                        <select name="especialidade"
+                            class="form-select"
                             required>
-                    </div>
 
+                            <option value="">
+                                Selecione
+                            </option>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Experiência</label>
+                            <option value="Psicologia Clínica"
+                                {% if profissional.especialidade == "Psicologia Clínica" %}selected{% endif %}>
+                                Psicologia Clínica
+                            </option>
 
-                        <input type="number" name="experiencia" class="form-control"
-                            value="{{ profissional.experiencia or '' }}" min="0">
-                    </div>
+                            <option value="Terapia Cognitivo-Comportamental"
+                                {% if profissional.especialidade == "Terapia Cognitivo-Comportamental" %}selected{% endif %}>
+                                Terapia Cognitivo-Comportamental
+                            </option>
 
+                            <option value="Dependência Química"
+                                {% if profissional.especialidade == "Dependência Química" %}selected{% endif %}>
+                                Dependência Química
+                            </option>
 
-                    <div class="col-md-6">
-                        <label class="form-label">Especialidade</label>
+                            <option value="Dependência em Jogos"
+                                {% if profissional.especialidade == "Dependência em Jogos" %}selected{% endif %}>
+                                Dependência em Jogos
+                            </option>
 
-                        <input type="text" name="especialidade" class="form-control"
-                            value="{{ profissional.especialidade or '' }}">
+                            <option value="Ansiedade"
+                                {% if profissional.especialidade == "Ansiedade" %}selected{% endif %}>
+                                Ansiedade
+                            </option>
+
+                            <option value="Depressão"
+                                {% if profissional.especialidade == "Depressão" %}selected{% endif %}>
+                                Depressão
+                            </option>
+
+                            <option value="Relacionamentos"
+                                {% if profissional.especialidade == "Relacionamentos" %}selected{% endif %}>
+                                Relacionamentos
+                            </option>
+
+                            <option value="Infantil"
+                                {% if profissional.especialidade == "Infantil" %}selected{% endif %}>
+                                Infantil
+                            </option>
+
+                            <option value="Casais"
+                                {% if profissional.especialidade == "Casais" %}selected{% endif %}>
+                                Casais
+                            </option>
+
+                            <option value="Outro"
+                                {% if profissional.especialidade == "Outro" %}selected{% endif %}>
+                                Outro
+                            </option>
+
+                        </select>
                     </div>
 
 
@@ -225,8 +528,12 @@
                             Instituição de ensino
                         </label>
 
-                        <input type="text" name="faculdade" class="form-control"
-                            value="{{ profissional.faculdade or '' }}">
+                        <input type="text"
+                            name="faculdade"
+                            class="form-control"
+                            value="{{ profissional.faculdade or '' }}"
+                            maxlength="150"
+                            required>
                     </div>
 
 
@@ -235,8 +542,14 @@
                             Pós-graduação
                         </label>
 
-                        <input type="text" name="pos" class="form-control" value="{{ profissional.pos or '' }}">
+                        <input type="text"
+                            name="pos"
+                            class="form-control"
+                            value="{{ profissional.pos or '' }}"
+                            maxlength="150"
+                            required>
                     </div>
+
 
                     <div class="col-12">
 
@@ -245,39 +558,50 @@
                         </label>
 
                         {% if profissional.foto %}
+
                             <div class="mb-3">
-                               <img 
+
+                                <img
                                     id="fotoPreview"
-                                    src="{{ url_for('uploaded_file', filename=profissional.foto) }}" 
-                                    alt="Foto do profissional" 
-                                    class="img-thumbnail" 
+                                    src="{{ url_for('uploaded_file', filename=profissional.foto) }}"
+                                    alt="Foto do profissional"
+                                    class="img-thumbnail"
                                     style="width: 150px; height: 150px; object-fit: cover;"
                                 >
+
                             </div>
+
                         {% endif %}
 
-                        <input 
-                            type="file" 
+                        <input
+                            type="file"
                             id="foto"
-                            name="foto" 
-                            class="form-control" 
-                            accept="image/png, image/jpeg" 
+                            name="foto"
+                            class="form-control"
+                            accept="image/png, image/jpeg"
                         >
 
                         <small class="text-muted">
-                            Selecione uma nova foto apenas se quiser substituir a atual. Formatos aceitos: JPG ou PNG.
+                            Selecione uma nova foto apenas se quiser substituir a atual.
+                            Formatos aceitos: JPG ou PNG.
                         </small>
 
                     </div>
 
 
                     <div class="col-12">
+
                         <label class="form-label">
                             Biografia
                         </label>
 
-                        <textarea name="biografia" class="form-control"
-                            rows="5">{{ profissional.biografia or '' }}</textarea>
+                        <textarea
+                            name="biografia"
+                            class="form-control"
+                            rows="5"
+                            maxlength="300"
+                            required>{{ profissional.biografia or '' }}</textarea>
+
                     </div>
 
                 </div>
@@ -296,9 +620,9 @@
             </button>
 
             <a href="{{ url_for(
-                    'detalhes_profissional_aprovado',
-                    profissional_id=profissional.profissional_id
-                ) }}" class="btn btn-outline-secondary">
+                'detalhes_profissional_aprovado',
+                profissional_id=profissional.profissional_id
+            ) }}" class="btn btn-outline-secondary">
                 Cancelar
             </a>
 
@@ -309,6 +633,7 @@
 </div>
 
 {% endblock %}
+
 
 {% block scripts %}
 

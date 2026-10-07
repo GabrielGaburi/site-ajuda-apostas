@@ -71,7 +71,8 @@
                             class="form-control"
                             value="{{ profissional.telefone or '' }}"
                             maxlength="15"
-                            placeholder="(00) 00000-0000">
+                            placeholder="(00) 00000-0000"
+                            required>
 
                         <div id="erroTelefone" class="text-danger mt-1"></div>
 
@@ -117,22 +118,15 @@
 
                         <div class="input-group">
 
-                            <input type="text"
-                                   id="cep"
-                                   name="cep"
-                                   class="form-control"
-                                   value="{{ profissional.cep or '' }}"
-                                   maxlength="9"
-                                   placeholder="00000-000"
-                                   required>
+                           <input type="text"
+                                id="cep"
+                                name="cep"
+                                class="form-control"
+                                value="{{ profissional.cep or '' }}"
+                                maxlength="9"
+                                placeholder="00000-000"
+                                required>
 
-                            <button type="button"
-                                    id="btnBuscarCep"
-                                    class="btn btn-outline-primary">
-
-                                Buscar CEP
-
-                            </button>
 
                         </div>
 
@@ -162,12 +156,42 @@
 
                         </label>
 
-                        <input type="text"
-                               id="estado"
-                               name="estado"
-                               class="form-control"
-                               value="{{ profissional.estado or '' }}"
-                               readonly>
+                        <select id="estado"
+                            name="estado"
+                            class="form-select"
+                            required>
+
+                        <option value="">Selecione o estado</option>
+
+                        <option value="AC" {% if profissional.estado == "AC" %}selected{% endif %}>Acre</option>
+                        <option value="AL" {% if profissional.estado == "AL" %}selected{% endif %}>Alagoas</option>
+                        <option value="AP" {% if profissional.estado == "AP" %}selected{% endif %}>Amapá</option>
+                        <option value="AM" {% if profissional.estado == "AM" %}selected{% endif %}>Amazonas</option>
+                        <option value="BA" {% if profissional.estado == "BA" %}selected{% endif %}>Bahia</option>
+                        <option value="CE" {% if profissional.estado == "CE" %}selected{% endif %}>Ceará</option>
+                        <option value="DF" {% if profissional.estado == "DF" %}selected{% endif %}>Distrito Federal</option>
+                        <option value="ES" {% if profissional.estado == "ES" %}selected{% endif %}>Espírito Santo</option>
+                        <option value="GO" {% if profissional.estado == "GO" %}selected{% endif %}>Goiás</option>
+                        <option value="MA" {% if profissional.estado == "MA" %}selected{% endif %}>Maranhão</option>
+                        <option value="MT" {% if profissional.estado == "MT" %}selected{% endif %}>Mato Grosso</option>
+                        <option value="MS" {% if profissional.estado == "MS" %}selected{% endif %}>Mato Grosso do Sul</option>
+                        <option value="MG" {% if profissional.estado == "MG" %}selected{% endif %}>Minas Gerais</option>
+                        <option value="PA" {% if profissional.estado == "PA" %}selected{% endif %}>Pará</option>
+                        <option value="PB" {% if profissional.estado == "PB" %}selected{% endif %}>Paraíba</option>
+                        <option value="PR" {% if profissional.estado == "PR" %}selected{% endif %}>Paraná</option>
+                        <option value="PE" {% if profissional.estado == "PE" %}selected{% endif %}>Pernambuco</option>
+                        <option value="PI" {% if profissional.estado == "PI" %}selected{% endif %}>Piauí</option>
+                        <option value="RJ" {% if profissional.estado == "RJ" %}selected{% endif %}>Rio de Janeiro</option>
+                        <option value="RN" {% if profissional.estado == "RN" %}selected{% endif %}>Rio Grande do Norte</option>
+                        <option value="RS" {% if profissional.estado == "RS" %}selected{% endif %}>Rio Grande do Sul</option>
+                        <option value="RO" {% if profissional.estado == "RO" %}selected{% endif %}>Rondônia</option>
+                        <option value="RR" {% if profissional.estado == "RR" %}selected{% endif %}>Roraima</option>
+                        <option value="SC" {% if profissional.estado == "SC" %}selected{% endif %}>Santa Catarina</option>
+                        <option value="SP" {% if profissional.estado == "SP" %}selected{% endif %}>São Paulo</option>
+                        <option value="SE" {% if profissional.estado == "SE" %}selected{% endif %}>Sergipe</option>
+                        <option value="TO" {% if profissional.estado == "TO" %}selected{% endif %}>Tocantins</option>
+
+                    </select>
 
                     </div>
 
@@ -183,12 +207,13 @@
 
                         </label>
 
-                        <input type="text"
-                               id="cidade"
-                               name="cidade"
-                               class="form-control"
-                               value="{{ profissional.cidade or '' }}"
-                               readonly>
+                       <input type="text"
+                            id="cidade"
+                            name="cidade"
+                            class="form-control"
+                            value="{{ profissional.cidade or '' }}"
+                            maxlength="100"
+                            required>
 
                     </div>
 
@@ -209,7 +234,8 @@
                                name="rua"
                                class="form-control"
                                value="{{ profissional.rua or '' }}"
-                               readonly>
+                               maxlength="100"
+                               required>
 
                     </div>
 
@@ -230,6 +256,7 @@
                                name="numero"
                                class="form-control"
                                value="{{ profissional.numero or '' }}"
+                               maxlength="10"
                                required>
 
                         {% if campo_erro == "numero" %}
@@ -259,7 +286,8 @@
                                name="bairro"
                                class="form-control"
                                value="{{ profissional.bairro or '' }}"
-                               readonly>
+                               maxlength="100"
+                               required>
 
                     </div>
 
@@ -320,18 +348,70 @@
                     <div class="col-md-8">
 
                         <label for="especialidade"
-                               class="form-label fw-bold">
+                            class="form-label fw-bold">
 
                             Especialidade
 
                         </label>
 
-                        <input type="text"
-                               id="especialidade"
-                               name="especialidade"
-                               class="form-control"
-                               value="{{ profissional.especialidade or '' }}"
-                               required>
+                        <select id="especialidade"
+                                class="form-select"
+                                name="especialidade"
+                                required>
+
+                            <option value="">Selecione</option>
+
+                            <option value="Psicologia Clínica"
+                                    {% if profissional.especialidade == "Psicologia Clínica" %}selected{% endif %}>
+                                Psicologia Clínica
+                            </option>
+
+                            <option value="Terapia Cognitivo-Comportamental"
+                                    {% if profissional.especialidade == "Terapia Cognitivo-Comportamental" %}selected{% endif %}>
+                                Terapia Cognitivo-Comportamental
+                            </option>
+
+                            <option value="Dependência Química"
+                                    {% if profissional.especialidade == "Dependência Química" %}selected{% endif %}>
+                                Dependência Química
+                            </option>
+
+                            <option value="Dependência em Jogos"
+                                    {% if profissional.especialidade == "Dependência em Jogos" %}selected{% endif %}>
+                                Dependência em Jogos
+                            </option>
+
+                            <option value="Ansiedade"
+                                    {% if profissional.especialidade == "Ansiedade" %}selected{% endif %}>
+                                Ansiedade
+                            </option>
+
+                            <option value="Depressão"
+                                    {% if profissional.especialidade == "Depressão" %}selected{% endif %}>
+                                Depressão
+                            </option>
+
+                            <option value="Relacionamentos"
+                                    {% if profissional.especialidade == "Relacionamentos" %}selected{% endif %}>
+                                Relacionamentos
+                            </option>
+
+                            <option value="Infantil"
+                                    {% if profissional.especialidade == "Infantil" %}selected{% endif %}>
+                                Infantil
+                            </option>
+
+                            <option value="Casais"
+                                    {% if profissional.especialidade == "Casais" %}selected{% endif %}>
+                                Casais
+                            </option>
+
+                            <option value="Outro"
+                                    {% if profissional.especialidade == "Outro" %}selected{% endif %}>
+                                Outro
+                            </option>
+
+                        </select>
 
                         {% if campo_erro == "especialidade" %}
 
@@ -342,7 +422,6 @@
                         {% endif %}
 
                     </div>
-
 
                     <!-- FACULDADE -->
 
@@ -360,6 +439,7 @@
                                name="faculdade"
                                class="form-control"
                                value="{{ profissional.faculdade or '' }}"
+                               maxlength="100"
                                required>
 
                         {% if campo_erro == "faculdade" %}
@@ -389,6 +469,7 @@
                                name="pos"
                                class="form-control"
                                value="{{ profissional.pos or '' }}"
+                               maxlength="100"
                                required>
 
                         {% if campo_erro == "pos" %}
@@ -417,6 +498,7 @@
                                   name="biografia"
                                   class="form-control"
                                   rows="6"
+                                  maxlength="300"
                                   required>{{ profissional.biografia or '' }}</textarea>
 
                         {% if campo_erro == "biografia" %}

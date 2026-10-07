@@ -378,7 +378,7 @@ function normalizarTexto(texto) {
     }
 
     const senha = document.getElementById("senha");
-const confirmar = document.getElementById("confirmarSenha");
+    const confirmar = document.getElementById("confirmarSenha");
 
 if (senha) {
     senha.addEventListener("keyup", function () {
