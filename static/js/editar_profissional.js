@@ -8,11 +8,24 @@ document.addEventListener("DOMContentLoaded", function () {
     const cpf = document.querySelector('input[name="cpf"]');
     const telefone = document.querySelector('input[name="telefone"]');
     const cep = document.querySelector('input[name="cep"]');
+    const erroCep = document.getElementById("erroCep");
+    const sucessoCep = document.getElementById("sucessoCep");
+    const estado = document.querySelector('input[name="estado"]');
+    const cidade = document.querySelector('input[name="cidade"]');
+    const rua = document.querySelector('input[name="rua"]');
+    const bairro = document.querySelector('input[name="bairro"]');
     const crp = document.getElementById("crp");
     const erroCrp = document.getElementById("erroCrp");
     const ufCrp = document.getElementById("uf_crp");
     const dataNascimento = document.getElementById("data_nascimento");
     const erroDataNascimento = document.getElementById("erroDataNascimento");
+
+    console.log("CAMPOS CEP:", {
+        estado,
+        cidade,
+        rua,
+        bairro
+    });
 
     if (!form) {
         return;
@@ -104,13 +117,77 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     if (cep) {
-
         cep.addEventListener("input", function () {
-
             cep.value = aplicarMascaraCEP(cep.value);
 
-        });
+            cep.classList.remove("is-valid", "is-invalid");
 
+            if (erroCep) {
+                erroCep.style.display = "none";
+            }
+
+            if (sucessoCep) {
+                sucessoCep.style.display = "none";
+            }
+
+            const cepNumeros = cep.value.replace(/\D/g, "");
+
+            if (cepNumeros.length === 8) {
+
+                fetch(`https://viacep.com.br/ws/${cepNumeros}/json/`)
+                    .then(response => response.json())
+                    .then(dados => {
+
+                        if (dados.erro) {
+                            cep.classList.add("is-invalid");
+
+                            if (erroCep) {
+                                erroCep.textContent = "CEP não encontrado.";
+                                erroCep.style.display = "block";
+                            }
+
+                            return;
+                        }
+
+                        // Preenche o endereço automaticamente
+                        if (estado) {
+                            estado.value = dados.uf;
+                        }
+
+                        if (cidade) {
+                            cidade.value = dados.localidade;
+                        }
+
+                        if (rua) {
+                            rua.value = dados.logradouro;
+                        }
+
+                        if (bairro) {
+                            bairro.value = dados.bairro;
+                        }
+
+                        cep.classList.add("is-valid");
+
+                        if (sucessoCep) {
+                            sucessoCep.textContent =
+                                `CEP válido. Endereço encontrado: ${dados.logradouro}, ${dados.bairro} - ${dados.localidade}/${dados.uf}.`;
+
+                            sucessoCep.style.display = "block";
+                        }
+                    })
+                    .catch(() => {
+
+                        cep.classList.add("is-invalid");
+
+                        if (erroCep) {
+                            erroCep.textContent =
+                                "Não foi possível consultar o CEP.";
+
+                            erroCep.style.display = "block";
+                        }
+                    });
+            }
+        });
     }
 
     if (dataNascimento) {

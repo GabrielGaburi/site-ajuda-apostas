@@ -126,12 +126,18 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    
 
     // =========================
     // CEP
     // =========================
 
     if (cep) {
+
+        const estado = document.getElementById("estado");
+        const cidade = document.getElementById("cidade");
+        const rua = document.getElementById("rua");
+        const bairro = document.getElementById("bairro");
 
         cep.addEventListener("input", function () {
 
@@ -169,9 +175,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 return;
             }
 
-            // CEP com 8 dígitos
-            // Agora vamos consultar o ViaCEP
-
             if (erroCep) {
                 erroCep.style.display = "none";
             }
@@ -180,6 +183,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 sucessoCep.style.display = "none";
             }
 
+            // Consulta o ViaCEP
             fetch(`https://viacep.com.br/ws/${valor}/json/`)
                 .then(response => response.json())
                 .then(dados => {
@@ -198,24 +202,54 @@ document.addEventListener("DOMContentLoaded", function () {
                             sucessoCep.style.display = "none";
                         }
 
-                    } else {
+                        return;
+                    }
 
-                        cep.classList.remove("is-invalid");
-                        cep.classList.add("is-valid");
+                    // Preenche automaticamente o endereço
+                    if (estado) {
+                        estado.value = dados.uf;
+                    }
 
-                        if (erroCep) {
-                            erroCep.style.display = "none";
-                        }
+                    if (cidade) {
+                        cidade.value = dados.localidade;
+                    }
 
-                        if (sucessoCep) {
-                            sucessoCep.style.display = "block";
-                        }
+                    if (rua) {
+                        rua.value = dados.logradouro;
+                    }
+
+                    if (bairro) {
+                        bairro.value = dados.bairro;
+                    }
+
+                    cep.classList.remove("is-invalid");
+                    cep.classList.add("is-valid");
+
+                    if (erroCep) {
+                        erroCep.style.display = "none";
+                    }
+
+                    if (sucessoCep) {
+                        sucessoCep.textContent =
+                            `CEP válido. Endereço encontrado: ${dados.logradouro}, ${dados.bairro} - ${dados.localidade}/${dados.uf}.`;
+
+                        sucessoCep.style.display = "block";
                     }
 
                 })
                 .catch(erro => {
 
                     console.error("Erro ao consultar o CEP:", erro);
+
+                    cep.classList.remove("is-valid");
+                    cep.classList.add("is-invalid");
+
+                    if (erroCep) {
+                        erroCep.textContent =
+                            "Não foi possível consultar o CEP.";
+
+                        erroCep.style.display = "block";
+                    }
 
                 });
 

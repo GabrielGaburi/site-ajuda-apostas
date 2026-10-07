@@ -209,21 +209,38 @@
                             CEP
                         </label>
 
-                        <input type="text"
-                               id="cep"
-                               name="cep" 
-                               class="form-control" 
-                               value="{{ usuario.cep or '' }}"
-                               maxlength="9"
-                               required>
-                        
-                        <div id="erroCep" class="text-danger small mt-1" style="display: none;">
-                            Digite um CEP válido.
-                        </div>
+                        <input
+                            type="text"
+                            id="cep"
+                            name="cep"
+                            class="form-control"
+                            value="{{ usuario.cep or '' }}"
+                            maxlength="9"
+                            placeholder="00000-000"
+                            required
+                        >
 
-                        <div id="sucessoCep" class="text-success small mt-1" style="display: none;">
-                            CEP encontrado. Confira se rua, número, bairro e cidade estão corretos.
-                        </div>
+                        <small class="text-muted d-block mt-1">
+                            Não sabe seu CEP?
+                            <a
+                                href="https://buscacepinter.correios.com.br/"
+                                target="_blank"
+                            >
+                                Buscar nos Correios
+                            </a>
+                        </small>
+
+                        <div
+                            id="erroCep"
+                            class="text-danger small mt-1"
+                            style="display: none;"
+                        ></div>
+
+                        <div
+                            id="sucessoCep"
+                            class="text-success small mt-1"
+                            style="display: none;"
+                        ></div>
 
                     </div>
 
@@ -234,125 +251,16 @@
                             Estado
                         </label>
 
+                        <input
+                            type="text"
+                            id="estado"
+                            name="estado"
+                            class="form-control"
+                            value="{{ usuario.estado or '' }}"
+                            maxlength="2"
+                            readonly
+                        >
 
-                        <select name="estado"
-                            class="form-select"
-                            required>
-
-                            
-                            <option value="">
-                                Selecione o estado
-                            </option>
-
-                            <option value="AC" {% if usuario.estado == "AC" %}selected{% endif %}>
-                                Acre
-                            </option>
-
-                            <option value="AL" {% if usuario.estado == "AL" %}selected{% endif %}>
-                                Alagoas
-                            </option>
-
-                            <option value="AP" {% if usuario.estado == "AP" %}selected{% endif %}>
-                                Amapá
-                            </option>
-
-                            <option value="AM" {% if usuario.estado == "AM" %}selected{% endif %}>
-                                Amazonas
-                            </option>
-
-                            <option value="BA" {% if usuario.estado == "BA" %}selected{% endif %}>
-                                Bahia
-                            </option>
-
-                            <option value="CE" {% if usuario.estado == "CE" %}selected{% endif %}>
-                                Ceará
-                            </option>
-
-                            <option value="DF" {% if usuario.estado == "DF" %}selected{% endif %}>
-                                Distrito Federal
-                            </option>
-
-                            <option value="ES" {% if usuario.estado == "ES" %}selected{% endif %}>
-                                Espírito Santo
-                            </option>
-
-                            <option value="GO" {% if usuario.estado == "GO" %}selected{% endif %}>
-                                Goiás
-                            </option>
-
-                            <option value="MA" {% if usuario.estado == "MA" %}selected{% endif %}>
-                                Maranhão
-                            </option>
-
-                            <option value="MT" {% if usuario.estado == "MT" %}selected{% endif %}>
-                                Mato Grosso
-                            </option>
-
-                            <option value="MS" {% if usuario.estado == "MS" %}selected{% endif %}>
-                                Mato Grosso do Sul
-                            </option>
-
-                            <option value="MG" {% if usuario.estado == "MG" %}selected{% endif %}>
-                                Minas Gerais
-                            </option>
-
-                            <option value="PA" {% if usuario.estado == "PA" %}selected{% endif %}>
-                                Pará
-                            </option>
-
-                            <option value="PB" {% if usuario.estado == "PB" %}selected{% endif %}>
-                                Paraíba
-                            </option>
-
-                            <option value="PR" {% if usuario.estado == "PR" %}selected{% endif %}>
-                                Paraná
-                            </option>
-
-                            <option value="PE" {% if usuario.estado == "PE" %}selected{% endif %}>
-                                Pernambuco
-                            </option>
-
-                            <option value="PI" {% if usuario.estado == "PI" %}selected{% endif %}>
-                                Piauí
-                            </option>
-
-                            <option value="RJ" {% if usuario.estado == "RJ" %}selected{% endif %}>
-                                Rio de Janeiro
-                            </option>
-
-                            <option value="RN" {% if usuario.estado == "RN" %}selected{% endif %}>
-                                Rio Grande do Norte
-                            </option>
-
-                            <option value="RS" {% if usuario.estado == "RS" %}selected{% endif %}>
-                                Rio Grande do Sul
-                            </option>
-
-                            <option value="RO" {% if usuario.estado == "RO" %}selected{% endif %}>
-                                Rondônia
-                            </option>
-
-                            <option value="RR" {% if usuario.estado == "RR" %}selected{% endif %}>
-                                Roraima
-                            </option>
-
-                            <option value="SC" {% if usuario.estado == "SC" %}selected{% endif %}>
-                                Santa Catarina
-                            </option>
-
-                            <option value="SP" {% if usuario.estado == "SP" %}selected{% endif %}>
-                                São Paulo
-                            </option>
-
-                            <option value="SE" {% if usuario.estado == "SE" %}selected{% endif %}>
-                                Sergipe
-                            </option>
-
-                            <option value="TO" {% if usuario.estado == "TO" %}selected{% endif %}>
-                                Tocantins
-                            </option>
-
-                        </select>
                     </div>
 
 
@@ -362,12 +270,15 @@
                             Cidade
                         </label>
 
-                        <input type="text" 
-                               name="cidade" 
-                               class="form-control" 
-                               value="{{ usuario.cidade or '' }}"
-                               maxlength="100"
-                               required>
+                        <input
+                            type="text"
+                            id="cidade"
+                            name="cidade"
+                            class="form-control"
+                            value="{{ usuario.cidade or '' }}"
+                            maxlength="100"
+                            readonly
+                        >
 
                     </div>
 
@@ -382,8 +293,7 @@
                                name="rua" 
                                class="form-control" 
                                value="{{ usuario.rua or '' }}"
-                               maxlength="150"
-                               required>
+                               readonly>
 
                     </div>
 
@@ -394,7 +304,8 @@
                             Número
                         </label>
 
-                        <input type="text" 
+                        <input type="text"
+                               id="numero" 
                                name="numero" 
                                class="form-control" 
                                value="{{ usuario.numero or '' }}"
@@ -414,8 +325,7 @@
                                name="bairro" 
                                class="form-control" 
                                value="{{ usuario.bairro or '' }}"
-                               maxlength="100"
-                               required>
+                               readonly>
 
                     </div>
 
