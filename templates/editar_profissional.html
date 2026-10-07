@@ -112,7 +112,7 @@
                                 Outro
                             </option>
 
-                            <option value="Prefiro não informar" {% if usuario.sexo=="Prefiro não informar" %}selected{%
+                            <option value="Prefiro não informar" {% if profissional.sexo=="Prefiro não informar" %}selected{%
                                 endif %}>
                                 Prefiro não informar
                             </option>
@@ -191,142 +191,63 @@
 
                 <div class="row g-3">
 
-                    <div class="col-md-4">
+                   <div class="col-md-4">
+
                         <label class="form-label">
                             CEP
                         </label>
 
-                        <input type="text"
+                        <input
+                            type="text"
+                            id="cep"
                             name="cep"
                             class="form-control"
                             value="{{ profissional.cep or '' }}"
                             maxlength="9"
-                            required>
+                            required
+                        >
+
+                        <small class="text-muted d-block mt-1">
+                            Não sabe seu CEP?
+                            <a
+                                href="https://buscacepinter.correios.com.br/"
+                                target="_blank"
+                            >
+                                Buscar nos Correios
+                            </a>
+                        </small>
+
+                        <div
+                            id="erroCep"
+                            class="text-danger small mt-1"
+                            style="display: none;"
+                        ></div>
+
+                        <div
+                            id="sucessoCep"
+                            class="text-success small mt-1"
+                            style="display: none;"
+                        ></div>
+
                     </div>
 
 
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+
                         <label class="form-label">
                             Estado
                         </label>
 
-                        <select name="estado"
-                            class="form-select"
-                            required>
+                        <input
+                            type="text"
+                            id="estado"
+                            name="estado"
+                            class="form-control"
+                            value="{{ profissional.estado or '' }}"
+                            maxlength="2"
+                            readonly
+                        >
 
-                            <option value="">
-                                Selecione o estado
-                            </option>
-
-                            <option value="AC" {% if profissional.estado == "AC" %}selected{% endif %}>
-                                Acre
-                            </option>
-
-                            <option value="AL" {% if profissional.estado == "AL" %}selected{% endif %}>
-                                Alagoas
-                            </option>
-
-                            <option value="AP" {% if profissional.estado == "AP" %}selected{% endif %}>
-                                Amapá
-                            </option>
-
-                            <option value="AM" {% if profissional.estado == "AM" %}selected{% endif %}>
-                                Amazonas
-                            </option>
-
-                            <option value="BA" {% if profissional.estado == "BA" %}selected{% endif %}>
-                                Bahia
-                            </option>
-
-                            <option value="CE" {% if profissional.estado == "CE" %}selected{% endif %}>
-                                Ceará
-                            </option>
-
-                            <option value="DF" {% if profissional.estado == "DF" %}selected{% endif %}>
-                                Distrito Federal
-                            </option>
-
-                            <option value="ES" {% if profissional.estado == "ES" %}selected{% endif %}>
-                                Espírito Santo
-                            </option>
-
-                            <option value="GO" {% if profissional.estado == "GO" %}selected{% endif %}>
-                                Goiás
-                            </option>
-
-                            <option value="MA" {% if profissional.estado == "MA" %}selected{% endif %}>
-                                Maranhão
-                            </option>
-
-                            <option value="MT" {% if profissional.estado == "MT" %}selected{% endif %}>
-                                Mato Grosso
-                            </option>
-
-                            <option value="MS" {% if profissional.estado == "MS" %}selected{% endif %}>
-                                Mato Grosso do Sul
-                            </option>
-
-                            <option value="MG" {% if profissional.estado == "MG" %}selected{% endif %}>
-                                Minas Gerais
-                            </option>
-
-                            <option value="PA" {% if profissional.estado == "PA" %}selected{% endif %}>
-                                Pará
-                            </option>
-
-                            <option value="PB" {% if profissional.estado == "PB" %}selected{% endif %}>
-                                Paraíba
-                            </option>
-
-                            <option value="PR" {% if profissional.estado == "PR" %}selected{% endif %}>
-                                Paraná
-                            </option>
-
-                            <option value="PE" {% if profissional.estado == "PE" %}selected{% endif %}>
-                                Pernambuco
-                            </option>
-
-                            <option value="PI" {% if profissional.estado == "PI" %}selected{% endif %}>
-                                Piauí
-                            </option>
-
-                            <option value="RJ" {% if profissional.estado == "RJ" %}selected{% endif %}>
-                                Rio de Janeiro
-                            </option>
-
-                            <option value="RN" {% if profissional.estado == "RN" %}selected{% endif %}>
-                                Rio Grande do Norte
-                            </option>
-
-                            <option value="RS" {% if profissional.estado == "RS" %}selected{% endif %}>
-                                Rio Grande do Sul
-                            </option>
-
-                            <option value="RO" {% if profissional.estado == "RO" %}selected{% endif %}>
-                                Rondônia
-                            </option>
-
-                            <option value="RR" {% if profissional.estado == "RR" %}selected{% endif %}>
-                                Roraima
-                            </option>
-
-                            <option value="SC" {% if profissional.estado == "SC" %}selected{% endif %}>
-                                Santa Catarina
-                            </option>
-
-                            <option value="SP" {% if profissional.estado == "SP" %}selected{% endif %}>
-                                São Paulo
-                            </option>
-
-                            <option value="SE" {% if profissional.estado == "SE" %}selected{% endif %}>
-                                Sergipe
-                            </option>
-
-                            <option value="TO" {% if profissional.estado == "TO" %}selected{% endif %}>
-                                Tocantins
-                            </option>
-
-                        </select>
                     </div>
 
 
@@ -339,8 +260,7 @@
                             name="cidade"
                             class="form-control"
                             value="{{ profissional.cidade or '' }}"
-                            maxlength="100"
-                            required>
+                            readonly>
                     </div>
 
 
@@ -353,8 +273,7 @@
                             name="rua"
                             class="form-control"
                             value="{{ profissional.rua or '' }}"
-                            maxlength="150"
-                            required>
+                            readonly>
                     </div>
 
 
@@ -381,8 +300,7 @@
                             name="bairro"
                             class="form-control"
                             value="{{ profissional.bairro or '' }}"
-                            maxlength="100"
-                            required>
+                            readonly>
                     </div>
 
                 </div>
