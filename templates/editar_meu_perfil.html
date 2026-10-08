@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %}Editar meu perfil{% endblock %}
+
+{% block content %}
+
+<div class="container my-5">
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+
+    <div>
+        <h2>Editar meu perfil</h2>
+
+        <p class="text-muted mb-0">
+            Altere seus dados cadastrados.
+        </p>
+    </div>
+
+    <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+        Voltar
+    </a>
+
+</div>
+
+
+<form method="POST">
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+
+    <!-- DADOS PESSOAIS -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Dados pessoais
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Nome
+                    </label>
+
+                    <input
+                        type="text"
+                        name="nome"
+                        class="form-control"
+                        value="{{ usuario.nome or '' }}"
+                        maxlength="20"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Sobrenome
+                    </label>
+
+                    <input
+                        type="text"
+                        name="sobrenome"
+                        class="form-control"
+                        value="{{ usuario.sobrenome or '' }}"
+                        maxlength="50"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        CPF
+                    </label>
+
+                    <input
+                        type="text"
+                        id="cpf"
+                        name="cpf"
+                        class="form-control"
+                        value="{{ usuario.cpf or '' }}"
+                        maxlength="14"
+                    >
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Data de nascimento
+                    </label>
+
+                    <input
+                        type="text"
+                        id="data_nascimento"
+                        name="data_de_nascimento"
+                        class="form-control"
+                        placeholder="DD/MM/AAAA"
+                        maxlength="10"
+                        value="{{ usuario.data_de_nascimento.strftime('%d/%m/%Y') if usuario.data_de_nascimento else '' }}"
+                        required
+                    >
+
+                    <div
+                        id="erroDataNascimento"
+                        class="text-danger small mt-1"
+                        style="display: none;"
+                    >
+                        Data de nascimento inválida.
+                    </div>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Sexo
+                    </label>
+
+                    <select name="sexo" class="form-select" required>
+
+                        <option value="">Selecione</option>
+
+                        <option value="Masculino"
+                            {% if usuario.sexo == "Masculino" %}selected{% endif %}>
+                            Masculino
+                        </option>
+
+                        <option value="Feminino"
+                            {% if usuario.sexo == "Feminino" %}selected{% endif %}>
+                            Feminino
+                        </option>
+
+                        <option value="Outro"
+                            {% if usuario.sexo == "Outro" %}selected{% endif %}>
+                            Outro
+                        </option>
+
+                        <option value="Prefiro não informar"
+                            {% if usuario.sexo == "Prefiro não informar" %}selected{% endif %}>
+                            Prefiro não informar
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        E-mail
+                    </label>
+
+                    <input
+                        type="email"
+                        name="email"
+                        class="form-control"
+                        value="{{ usuario.email or '' }}"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Telefone
+                    </label>
+
+                    <input
+                        type="text"
+                        id="telefone"
+                        name="telefone"
+                        class="form-control"
+                        value="{{ usuario.telefone or '' }}"
+                        maxlength="15"
+                        required
+                    >
+
+                    <div
+                        id="erroTelefone"
+                        class="text-danger small mt-1"
+                        style="display: none;"
+                    >
+                        Digite um telefone válido.
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ENDEREÇO -->
+
+    <div class="card border-0 shadow-sm mb-4">
+
+        <div class="card-body">
+
+            <h5 class="mb-4">
+                Endereço
+            </h5>
+
+            <div class="row g-3">
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        CEP
+                    </label>
+
+                    <input
+                        type="text"
+                        id="cep"
+                        name="cep"
+                        class="form-control"
+                        value="{{ usuario.cep or '' }}"
+                        maxlength="9"
+                        placeholder="00000-000"
+                        required
+                    >
+
+                    <small class="text-muted d-block mt-1">
+                        Não sabe seu CEP?
+                        <a
+                            href="https://buscacepinter.correios.com.br/"
+                            target="_blank"
+                        >
+                            Buscar nos Correios
+                        </a>
+                    </small>
+
+                    <div
+                        id="erroCep"
+                        class="text-danger small mt-1"
+                        style="display: none;"
+                    ></div>
+
+                    <div
+                        id="sucessoCep"
+                        class="text-success small mt-1"
+                        style="display: none;"
+                    ></div>
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Estado
+                    </label>
+
+                    <input
+                        type="text"
+                        id="estado"
+                        name="estado"
+                        class="form-control"
+                        value="{{ usuario.estado or '' }}"
+                        maxlength="2"
+                        readonly
+                    >
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Cidade
+                    </label>
+
+                    <input
+                        type="text"
+                        id="cidade"
+                        name="cidade"
+                        class="form-control"
+                        value="{{ usuario.cidade or '' }}"
+                        maxlength="100"
+                        readonly
+                    >
+
+                </div>
+
+
+                <div class="col-md-6">
+
+                    <label class="form-label">
+                        Rua
+                    </label>
+
+                    <input
+                        type="text"]
+                        id="rua"
+                        name="rua"
+                        class="form-control"
+                        value="{{ usuario.rua or '' }}"
+                        readonly
+                    >
+
+                </div>
+
+
+                <div class="col-md-2">
+
+                    <label class="form-label">
+                        Número
+                    </label>
+
+                    <input
+                        type="text"
+                        id="numero"
+                        name="numero"
+                        class="form-control"
+                        value="{{ usuario.numero or '' }}"
+                        maxlength="10"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="col-md-4">
+
+                    <label class="form-label">
+                        Bairro
+                    </label>
+
+                    <input
+                        type="text"
+                        id="bairro"
+                        name="bairro"
+                        class="form-control"
+                        value="{{ usuario.bairro or '' }}"
+                        readonly
+                    >
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- BOTÕES -->
+
+    <div class="d-flex gap-2">
+
+        <button type="submit" class="btn btn-primary">
+            Salvar alterações
+        </button>
+
+
+        <a
+            href="{{ url_for('perfil') }}"
+            class="btn btn-outline-secondary"
+        >
+            Cancelar
+        </a>
+
+    </div>
+
+</form>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script src="{{ url_for('static', filename='js/editar_usuario.js') }}"></script>
+
+{% endblock %}

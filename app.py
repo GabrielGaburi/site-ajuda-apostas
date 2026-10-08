@@ -2336,6 +2336,375 @@ def reativar_usuario(usuario_id):
         if conexao:
             conexao.close()
             
+@app.route("/meu-perfil/editar", methods=["GET", "POST"])
+def editar_meu_perfil():
+
+    if "usuario_id" not in session:
+        flash("Você precisa estar logado.", "warning")
+        return redirect(url_for("login"))
+
+    usuario_id = session["usuario_id"]
+
+    conexao = None
+    cursor = None
+
+    try:
+
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # =========================
+        # BUSCA O USUÁRIO LOGADO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT *
+            FROM usuarios
+            WHERE id = %s
+            """,
+            (usuario_id,)
+        )
+
+        usuario = cursor.fetchone()
+
+        if not usuario:
+            flash("Usuário não encontrado.", "danger")
+            return redirect(url_for("index"))
+
+        # =========================
+        # POST
+        # =========================
+
+        if request.method == "POST":
+
+            nome = request.form.get("nome", "").strip()
+            sobrenome = request.form.get("sobrenome", "").strip()
+            cpf = request.form.get("cpf", "").strip()
+            data_nascimento = request.form.get("data_de_nascimento", "").strip()
+            sexo = request.form.get("sexo", "").strip()
+            email = request.form.get("email", "").strip().lower()
+            telefone = request.form.get("telefone", "").strip()
+            cep = request.form.get("cep", "").strip()
+            estado = request.form.get("estado", "").strip()
+            cidade = request.form.get("cidade", "").strip()
+            rua = request.form.get("rua", "").strip()
+            numero = request.form.get("numero", "").strip()
+            bairro = request.form.get("bairro", "").strip()
+
+            # =========================
+            # VALIDA DATA DE NASCIMENTO
+            # =========================
+
+            try:
+
+                data_nascimento = datetime.strptime(
+                    data_nascimento,
+                    "%d/%m/%Y"
+                ).date()
+
+            except ValueError:
+
+                flash(
+                    "Data de nascimento inválida.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            hoje = date.today()
+
+            if data_nascimento > hoje:
+
+                flash(
+                    "A data de nascimento não pode ser futura.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            idade = (
+                hoje.year
+                - data_nascimento.year
+                - (
+                    (hoje.month, hoje.day)
+                    < (data_nascimento.month, data_nascimento.day)
+                )
+            )
+
+            if idade < 18:
+
+                flash(
+                    "O usuário deve ter pelo menos 18 anos.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            if idade > 100:
+
+                flash(
+                    "Informe uma data de nascimento válida.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            # =========================
+            # VALIDA CAMPOS
+            # =========================
+
+            if not nome or not sobrenome or not email:
+
+                flash(
+                    "Nome, sobrenome e email são obrigatórios.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            # =========================
+            # VALIDA TELEFONE
+            # =========================
+
+            if not telefone:
+
+                flash(
+                    "O telefone é obrigatório.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            telefone_numeros = re.sub(
+                r"\D",
+                "",
+                telefone
+            )
+
+            if len(telefone_numeros) not in (10, 11):
+
+                flash(
+                    "Digite um telefone válido.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            # =========================
+            # VALIDA CEP
+            # =========================
+
+            if not cep:
+
+                flash(
+                    "O CEP é obrigatório.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            cep_numeros = re.sub(
+                r"\D",
+                "",
+                cep
+            )
+
+            if len(cep_numeros) != 8:
+
+                flash(
+                    "Digite um CEP válido.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            # =========================
+            # VALIDA CEP NO VIACEP
+            # =========================
+
+            try:
+
+                resposta_cep = requests.get(
+                    f"https://viacep.com.br/ws/{cep_numeros}/json/",
+                    timeout=5
+                )
+
+                dados_cep = resposta_cep.json()
+
+                if dados_cep.get("erro"):
+
+                    flash(
+                        "CEP não encontrado.",
+                        "danger"
+                    )
+
+                    return render_template(
+                        "editar_meu_perfil.html",
+                        usuario=usuario
+                    )
+
+                # Usa os dados do CEP como fonte oficial
+                estado = dados_cep.get("uf", "")
+                cidade = dados_cep.get("localidade", "")
+                rua = dados_cep.get("logradouro", "")
+                bairro = dados_cep.get("bairro", "")
+
+            except requests.RequestException:
+
+                flash(
+                    "Não foi possível validar o CEP. Tente novamente.",
+                    "danger"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            # =========================
+            # VERIFICA EMAIL DUPLICADO
+            # =========================
+
+            cursor.execute(
+                """
+                SELECT id
+                FROM usuarios
+                WHERE email = %s
+                AND id != %s
+                """,
+                (email, usuario_id)
+            )
+
+            email_existente = cursor.fetchone()
+
+            if email_existente:
+
+                flash(
+                    "Este email já está sendo utilizado por outro usuário.",
+                    "warning"
+                )
+
+                return render_template(
+                    "editar_meu_perfil.html",
+                    usuario=usuario
+                )
+
+            # =========================
+            # ATUALIZA USUÁRIO
+            # =========================
+
+            cursor.execute(
+                """
+                UPDATE usuarios
+                SET
+                    nome = %s,
+                    sobrenome = %s,
+                    cpf = %s,
+                    data_nascimento = %s,
+                    sexo = %s,
+                    email = %s,
+                    telefone = %s,
+                    cep = %s,
+                    estado = %s,
+                    cidade = %s,
+                    rua = %s,
+                    numero = %s,
+                    bairro = %s
+                WHERE id = %s
+                """,
+                (
+                    nome,
+                    sobrenome,
+                    cpf,
+                    data_nascimento,
+                    sexo,
+                    email,
+                    telefone,
+                    cep,
+                    estado,
+                    cidade,
+                    rua,
+                    numero,
+                    bairro,
+                    usuario_id
+                )
+            )
+
+            conexao.commit()
+
+            # Atualiza o nome exibido na sessão
+            session["usuario_nome"] = nome
+
+            flash(
+                "Seus dados foram atualizados com sucesso.",
+                "success"
+            )
+
+            return redirect(
+                url_for("perfil")
+            )
+
+        return render_template(
+            "editar_meu_perfil.html",
+            usuario=usuario
+        )
+
+    except Exception:
+
+        if conexao:
+            conexao.rollback()
+
+        print("================================")
+        print("ERRO AO EDITAR MEU PERFIL")
+        print("================================")
+
+        traceback.print_exc()
+
+        flash(
+            "Ocorreu um erro ao atualizar seus dados.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("index")
+        )
+
+    finally:
+
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
 @app.route("/admin/usuarios/<int:usuario_id>/editar", methods=["GET", "POST"])
 def editar_usuario(usuario_id):
 
