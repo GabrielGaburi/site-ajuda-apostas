@@ -71,6 +71,8 @@ def testar_banco():
         print(erro)
         print("================================")
         
+
+       
         
 usuarios = []
 profissionais = []
@@ -6032,13 +6034,21 @@ def cadastro_profissional():
     )
    
 
+
 @app.route("/")
 def index():
-    return render_template("index.html", noticias=noticias[:3])
+    noticias_completas = carregar_noticias()
+    return render_template("index.html", noticias=noticias_completas[:3])
+
+@app.route("/")
+def inicio():
+    noticias_destaque = carregar_noticias()
+    return render_template("inicio.html", noticias=noticias_destaque)
 
 @app.route("/noticias")
 def todas_noticias():
-    return render_template("noticia.html", noticias=noticias)
+    noticias_completas = carregar_noticias()
+    return render_template("noticia.html", noticias=noticias_completas[:9])
 
 @app.route("/noticia/<int:noticia_id>")
 def noticia_detalhe(noticia_id):
@@ -6046,6 +6056,128 @@ def noticia_detalhe(noticia_id):
     if noticia_encontrada is None:
         abort(404)
     return render_template("noticia.html", noticia=noticia_encontrada)
+
+def testar_api_noticias():
+    chave = os.getenv("GNEWS_API_KEY")
+
+    if not chave:
+        print("ERRO: GNEWS_API_KEY não encontrada no .env")
+        return []
+
+    try:
+        resposta = requests.get(
+            "https://gnews.io/api/v4/search",
+            params={
+                "q": '"apostas online" OR bets',
+                "lang": "pt",
+                "country": "br",
+                "max": 10,
+                "apikey": chave
+            },
+            timeout=15
+        )
+
+        print("Status da API:", resposta.status_code)
+
+        if resposta.status_code != 200:
+            print("Resposta da API:", resposta.text[:500])
+            return []
+
+        dados = resposta.json()
+        noticias_relevantes = []
+
+        for artigo in dados.get("articles", []):
+            if not noticia_relevante(artigo):
+                print("[IGNORADA]", artigo.get("title"))
+                continue
+
+            noticia = {
+                "titulo": artigo.get("title", ""),
+                "resumo": artigo.get("description", ""),
+                "introducao": artigo.get("content", ""),
+                "fonte": artigo.get("url", ""),
+                "imagem": artigo.get("image", "")
+            }
+
+            noticias_relevantes.append(noticia)
+            print("[RELEVANTE]", noticia["titulo"])
+
+        print("Total de notícias relevantes:", len(noticias_relevantes))
+
+        return noticias_relevantes
+
+    except requests.RequestException as erro:
+        print("Erro ao consultar a API:", erro)
+        return []
+    
+_cache_noticias = {
+    "dados": [],
+    "atualizado_em": 0
+}
+
+def carregar_noticias():
+    agora = time.time()
+
+    # Reutiliza as notícias por 30 minutos
+    if _cache_noticias["dados"] and agora - _cache_noticias["atualizado_em"] < 1800:
+        return _cache_noticias["dados"]
+
+    noticias_api = testar_api_noticias()
+
+    # Se a API falhar, mantém as notícias anteriores
+    if not noticias_api:
+        return _cache_noticias["dados"]
+
+    for indice, noticia in enumerate(noticias_api, start=1):
+        noticia["id"] = indice
+
+    _cache_noticias["dados"] = noticias_api
+    _cache_noticias["atualizado_em"] = agora
+
+    return noticias_api
+
+def noticia_relevante(noticia):
+    texto = " ".join([
+        noticia.get("title", ""),
+        noticia.get("description", ""),
+        noticia.get("content", "")
+    ]).lower()
+
+    # Remove os acentos para padronizar a comparação
+    texto = unicodedata.normalize("NFD", texto)
+    texto = "".join(
+        caractere for caractere in texto
+        if unicodedata.category(caractere) != "Mn"
+    )
+
+    termos_relevantes = [
+        "vicio em apostas",
+        "dependencia em apostas",
+        "jogo compulsivo",
+        "jogo patologico",
+        "transtorno do jogo",
+        "saude mental",
+        "saude publica",
+        "jogos de azar",
+        "endividamento",
+        "perdas financeiras",
+        "superendividamento",
+        "apostador compulsivo",
+        "compulsao por jogos",
+        "jogo do tigrinho",
+        "impactos das apostas",
+        "tratamento para jogadores",
+        "prevencao as apostas",
+        "familiares de apostadores",
+        "regulamentacao das apostas",
+        "proibicao das apostas",
+        "proibicao das bets",
+        "proibir nao e proteger"
+    ]
+
+    return any(termo in texto for termo in termos_relevantes)
+
+
 
 @app.route("/bloqueio")
 def bloqueio():
@@ -9205,6 +9337,5 @@ testar_banco()
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
-    
     
 

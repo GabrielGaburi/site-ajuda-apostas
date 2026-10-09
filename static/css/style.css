@@ -30,6 +30,23 @@ p {
     transition: transform 0.2s ease;
 }
 
+
+/* Imagens dos cards de notícias */
+.card-img-top {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    object-position: center;
+}
+
+/* Imagens da página de notícias */
+.imagem-noticia {
+    width: 100%;
+    height: 220px;
+    object-fit: cover;
+    object-position: center;
+}
+
 .card:hover {
     transform: translateY(-4px);
 }
