@@ -6050,14 +6050,27 @@ def testar_api_noticias():
             if not noticia_relevante(artigo):
                 print("[IGNORADA]", artigo.get("title"))
                 continue
+            
+            data_publicacao = artigo.get("publishedAt")
 
+            if data_publicacao:
+                try:
+                    data_publicacao = datetime.fromisoformat(
+                        data_publicacao.replace("Z", "+00:00")
+                    ).replace(tzinfo=None)
+                except (ValueError, TypeError):
+                    data_publicacao = None
+
+           
             noticia = {
                 "titulo": artigo.get("title", ""),
                 "resumo": artigo.get("description", ""),
                 "introducao": artigo.get("content", ""),
                 "fonte": artigo.get("url", ""),
-                "imagem": artigo.get("image", "")
+                "imagem": artigo.get("image", ""),
+                "data_publicacao": data_publicacao
             }
+
 
             noticias_relevantes.append(noticia)
             print("[RELEVANTE]", noticia["titulo"])
@@ -6075,26 +6088,156 @@ _cache_noticias = {
     "atualizado_em": 0
 }
 
+
+
 def carregar_noticias():
     agora = time.time()
 
-    # Reutiliza as notícias por 30 minutos
-    if _cache_noticias["dados"] and agora - _cache_noticias["atualizado_em"] < 1800:
+    # Reutiliza o cache durante 30 minutos
+    if (
+        _cache_noticias["dados"]
+        and agora - _cache_noticias["atualizado_em"] < 1800
+    ):
         return _cache_noticias["dados"]
 
-    noticias_api = testar_api_noticias()
+    conexao = None
+    cursor = None
 
-    # Se a API falhar, mantém as notícias anteriores
-    if not noticias_api:
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        # Busca notícias novas na API
+        noticias_api = testar_api_noticias()
+        
+        print("DEBUG - Notícias recebidas da API:", len(noticias_api))
+        print("DEBUG - Primeira notícia:", noticias_api[0] if noticias_api else "Nenhuma notícia")
+
+        if noticias_api:
+            for noticia in noticias_api:
+                fonte = noticia.get("fonte", "").strip()
+
+                # Não salva notícias sem link original
+                if not fonte:
+                    continue
+
+                cursor.execute("""
+                    INSERT INTO noticias_site (
+                        titulo,
+                        resumo,
+                        introducao,
+                        fonte,
+                        imagem,
+                        data_publicacao
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE
+                        titulo = VALUES(titulo),
+                        resumo = VALUES(resumo),
+                        introducao = VALUES(introducao),
+                        imagem = VALUES(imagem)
+                """, (
+                    noticia.get("titulo", ""),
+                    noticia.get("resumo", ""),
+                    noticia.get("introducao", ""),
+                    fonte,
+                    noticia.get("imagem", ""),
+                    noticia.get("data_publicacao")
+                ))
+
+            conexao.commit()
+
+            # Mantém somente as 9 notícias mais recentes
+            cursor.execute("""
+                DELETE FROM noticias_site
+                WHERE id NOT IN (
+                    SELECT id
+                    FROM (
+                        SELECT id
+                        FROM noticias_site
+                        ORDER BY
+                            data_publicacao DESC,
+                            criada_em DESC,
+                            id DESC
+                        LIMIT 9
+                    ) AS recentes
+                )
+            """)
+
+            conexao.commit()
+
+        # Recupera as notícias salvas, mesmo se a API falhar
+        cursor.execute("""
+            SELECT
+                id,
+                titulo,
+                resumo,
+                introducao,
+                fonte,
+                imagem,
+                data_publicacao
+            FROM noticias_site
+            ORDER BY
+                data_publicacao DESC,
+                criada_em DESC,
+                id DESC
+            LIMIT 9
+        """)
+
+        noticias = cursor.fetchall()
+
+        # Atualiza o cache em memória
+        _cache_noticias["dados"] = noticias
+        _cache_noticias["atualizado_em"] = time.time()
+
+        print("Notícias carregadas do banco:", len(noticias))
+
+        return noticias
+
+    except Exception:
+        if conexao:
+            conexao.rollback()
+
+        traceback.print_exc()
+
+        # Se houver erro, tenta recuperar as notícias já salvas no banco
+        try:
+            if cursor:
+                cursor.execute("""
+                    SELECT
+                        id,
+                        titulo,
+                        resumo,
+                        introducao,
+                        fonte,
+                        imagem,
+                        data_publicacao
+                    FROM noticias_site
+                    ORDER BY
+                        data_publicacao DESC,
+                        criada_em DESC,
+                        id DESC
+                    LIMIT 9
+                """)
+
+                noticias = cursor.fetchall()
+                _cache_noticias["dados"] = noticias
+                _cache_noticias["atualizado_em"] = time.time()
+
+                return noticias
+        except Exception:
+            traceback.print_exc()
+
         return _cache_noticias["dados"]
 
-    for indice, noticia in enumerate(noticias_api, start=1):
-        noticia["id"] = indice
+    finally:
+        if cursor:
+            cursor.close()
 
-    _cache_noticias["dados"] = noticias_api
-    _cache_noticias["atualizado_em"] = agora
+        if conexao:
+            conexao.close()
 
-    return noticias_api
+
 
 def noticia_relevante(noticia):
     texto = " ".join([
