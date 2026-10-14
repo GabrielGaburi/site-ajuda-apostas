@@ -1,4 +1,4 @@
-import re, os, traceback, uuid, mysql.connector, requests, unicodedata, threading, time
+import re, os, traceback, uuid, mysql.connector, requests, unicodedata, threading, time,  hashlib, secrets
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session
 from datetime import datetime, date
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -1253,6 +1253,40 @@ def mensagens(atendimento_id):
         if conexao:
             conexao.close()
             
+
+def enviar_codigo_2fa(email, codigo):
+    try:
+        msg = Message(
+            subject="Código de verificação - Apoio & Consciência",
+            recipients=[email]
+        )
+
+        msg.body = f"""
+Olá!
+
+Recebemos uma tentativa de login na sua conta do Apoio & Consciência.
+
+Seu código de verificação é: {codigo}
+
+Esse código é temporário e deve ser utilizado somente por você.
+Se não foi você quem tentou entrar, ignore este e-mail.
+
+Atenciosamente,
+Equipe Apoio & Consciência
+"""
+
+        mail.send(msg)
+        return True
+
+    except Exception:
+        app.logger.exception("Erro ao enviar código de verificação 2FA.")
+        return False
+    
+    
+def gerar_codigo_2fa():
+    return f"{secrets.randbelow(1000000):06d}"
+
+            
             
 @app.route("/enviar_profissional/<int:atendimento_id>", methods=["POST"])
 def enviar_profissional(atendimento_id):
@@ -1349,6 +1383,320 @@ def enviar_profissional(atendimento_id):
 
         if conexao:
             conexao.close()
+            
+            
+
+def salvar_codigo_2fa(usuario_id, codigo):
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor()
+
+        codigo_hash = hashlib.sha256(codigo.encode("utf-8")).hexdigest()
+
+        cursor.execute("""
+            INSERT INTO codigos_2fa
+                (usuario_id, codigo_hash, expira_em, tentativas)
+            VALUES
+                (%s, %s, DATE_ADD(NOW(), INTERVAL 5 MINUTE), 0)
+            ON DUPLICATE KEY UPDATE
+                codigo_hash = VALUES(codigo_hash),
+                expira_em = DATE_ADD(NOW(), INTERVAL 5 MINUTE),
+                tentativas = 0,
+                criado_em = NOW()
+        """, (usuario_id, codigo_hash))
+
+        conexao.commit()
+        return True
+
+    except Exception:
+        if conexao:
+            conexao.rollback()
+
+        app.logger.exception("Erro ao salvar código 2FA.")
+        return False
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+            
+def preparar_codigo_2fa(usuario_id, email):
+    codigo = gerar_codigo_2fa()
+
+    if not salvar_codigo_2fa(usuario_id, codigo):
+        return False
+
+    if not enviar_codigo_2fa(email, codigo):
+        return False
+
+    return True
+
+def validar_codigo_2fa(usuario_id, codigo):
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT codigo_hash, expira_em, tentativas
+            FROM codigos_2fa
+            WHERE usuario_id = %s
+        """, (usuario_id,))
+
+        registro = cursor.fetchone()
+
+        if not registro:
+            return False
+
+        if registro["tentativas"] >= 5:
+            return False
+
+        cursor.execute("""
+            SELECT expira_em > NOW() AS valido
+            FROM codigos_2fa
+            WHERE usuario_id = %s
+        """, (usuario_id,))
+
+        validade = cursor.fetchone()
+
+        if not validade or not validade["valido"]:
+            return False
+
+        codigo_hash = hashlib.sha256(
+            codigo.strip().encode("utf-8")
+        ).hexdigest()
+
+        if not secrets.compare_digest(
+            codigo_hash, registro["codigo_hash"]
+        ):
+            cursor.execute("""
+                UPDATE codigos_2fa
+                SET tentativas = tentativas + 1
+                WHERE usuario_id = %s
+            """, (usuario_id,))
+
+            conexao.commit()
+            return False
+
+        cursor.execute("""
+            DELETE FROM codigos_2fa
+            WHERE usuario_id = %s
+        """, (usuario_id,))
+
+        conexao.commit()
+        return True
+
+    except Exception:
+        if conexao:
+            conexao.rollback()
+
+        app.logger.exception("Erro ao validar código 2FA.")
+        return False
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+            
+            
+
+@app.route("/verificar_2fa", methods=["GET", "POST"])
+def verificar_2fa():
+
+    usuario_id = session.get("2fa_usuario_id")
+
+    if not usuario_id:
+        flash("Faça login novamente.", "warning")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+
+        codigo = request.form.get("codigo", "").strip()
+
+        if not codigo.isdigit() or len(codigo) != 6:
+            flash("Digite um código válido de 6 dígitos.", "danger")
+            return render_template("verificar_2fa.html")
+
+        
+
+        conexao = None
+        cursor = None
+
+        try:
+            conexao = get_db_connection()
+            cursor = conexao.cursor(dictionary=True)
+
+            cursor.execute("""
+                SELECT id, nome, tipo, status
+                FROM usuarios
+                WHERE id = %s
+            """, (usuario_id,))
+
+            usuario = cursor.fetchone()
+
+            if not usuario or usuario["status"] == "banido":
+                session.clear()
+                flash("Não foi possível autenticar esta conta.", "danger")
+                return redirect(url_for("login"))
+
+            if usuario["tipo"] not in ("admin", "profissional"):
+                session.clear()
+                flash("Faça login novamente.", "warning")
+                return redirect(url_for("login"))
+
+            if usuario["tipo"] == "profissional":
+                cursor.execute("""
+                    SELECT status_aprovacao
+                    FROM profissionais
+                    WHERE usuario_id = %s
+                """, (usuario_id,))
+
+                profissional = cursor.fetchone()
+
+                if (
+                    not profissional
+                    or profissional["status_aprovacao"] != "aprovado"
+                ):
+                    session.clear()
+                    flash("A conta profissional não está aprovada.", "danger")
+                    return redirect(url_for("login"))
+                
+            if not validar_codigo_2fa(usuario_id, codigo):
+                flash(
+                    "Código inválido, expirado ou com tentativas esgotadas.",
+                    "danger"
+                )
+                return render_template("verificar_2fa.html")
+                
+
+            session.clear()
+            session["usuario_id"] = usuario["id"]
+            session["usuario_nome"] = usuario["nome"]
+            session["tipo_usuario"] = usuario["tipo"]
+
+            flash(
+                f"Bem-vindo(a), {usuario['nome']}!",
+                "success"
+            )
+
+            if usuario["tipo"] == "admin":
+                return redirect(url_for("dashboard_admin"))
+
+            return redirect(url_for("dashboard_profissional"))
+
+        except Exception:
+            if conexao:
+                conexao.rollback()
+
+            app.logger.exception("Erro ao concluir autenticação 2FA.")
+            flash("Ocorreu um erro na verificação. Tente novamente.", "danger")
+            return render_template("verificar_2fa.html")
+
+        finally:
+            if cursor:
+                cursor.close()
+
+            if conexao:
+                conexao.close()
+
+    return render_template("verificar_2fa.html")
+
+@app.route("/reenviar_codigo_2fa", methods=["POST"])
+def reenviar_codigo_2fa():
+
+    usuario_id = session.get("2fa_usuario_id")
+
+    if not usuario_id:
+        flash("Faça login novamente.", "warning")
+        return redirect(url_for("login"))
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT id, email, tipo, status
+            FROM usuarios
+            WHERE id = %s
+        """, (usuario_id,))
+
+        usuario = cursor.fetchone()
+
+        if (
+            not usuario
+            or usuario["status"] == "banido"
+            or usuario["tipo"] not in ("admin", "profissional")
+        ):
+            session.clear()
+            flash("Não foi possível validar sua conta.", "danger")
+            return redirect(url_for("login"))
+
+        if usuario["tipo"] == "profissional":
+            cursor.execute("""
+                SELECT status_aprovacao
+                FROM profissionais
+                WHERE usuario_id = %s
+            """, (usuario_id,))
+
+            profissional = cursor.fetchone()
+
+            if (
+                not profissional
+                or profissional["status_aprovacao"] != "aprovado"
+            ):
+                session.clear()
+                flash("A conta profissional não está aprovada.", "danger")
+                return redirect(url_for("login"))
+
+        cursor.execute("""
+            SELECT criado_em
+            FROM codigos_2fa
+            WHERE usuario_id = %s
+              AND criado_em > DATE_SUB(NOW(), INTERVAL 1 MINUTE)
+        """, (usuario_id,))
+
+        codigo_recente = cursor.fetchone()
+
+        if codigo_recente:
+            flash(
+                "Aguarde 1 minuto antes de solicitar outro código.",
+                "warning"
+            )
+            return redirect(url_for("verificar_2fa"))
+
+        email = usuario["email"]
+
+    except Exception:
+        app.logger.exception("Erro ao preparar reenvio do código 2FA.")
+        flash("Não foi possível reenviar o código. Tente novamente.", "danger")
+        return redirect(url_for("verificar_2fa"))
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
+    if preparar_codigo_2fa(usuario_id, email):
+        flash("Enviamos um novo código para seu e-mail.", "success")
+    else:
+        flash("Não foi possível enviar o código. Tente novamente.", "danger")
+
+    return redirect(url_for("verificar_2fa"))
 
 
 @app.route("/lista_sessoes")
@@ -1593,11 +1941,45 @@ def login():
                 )
 
             # =========================
-            # LOGIN REALIZADO
+            # VERIFICAÇÃO 2FA
+            # ADMINISTRADOR E PROFISSIONAL
             # =========================
-            
+
+            if usuario["tipo"] in ("admin", "profissional"):
+
+                session.clear()
+                session["2fa_usuario_id"] = usuario["id"]
+
+                if not preparar_codigo_2fa(
+                    usuario["id"],
+                    usuario["email"]
+                ):
+                    session.clear()
+
+                    flash(
+                        "Não foi possível enviar o código de verificação. Tente novamente.",
+                        "danger"
+                    )
+
+                    return render_template(
+                        "login.html",
+                        email=email
+                    )
+
+                flash(
+                    "Enviamos um código de verificação para seu e-mail.",
+                    "info"
+                )
+
+                return redirect(url_for("verificar_2fa"))
+
+
+            # =========================
+            # LOGIN DIRETO DO USUÁRIO COMUM
+            # =========================
+
             session.clear()
-          
+
             session["usuario_id"] = usuario["id"]
             session["usuario_nome"] = usuario["nome"]
             session["tipo_usuario"] = usuario["tipo"]
@@ -8902,6 +9284,9 @@ Equipe Apoio & Consciência
         traceback.print_exc()
 
         return False
+    
+    
+
 
 @app.route("/teste", methods=["GET", "POST"])
 def teste():
