@@ -90,13 +90,12 @@
 
         <!-- MENSAGEM + EXCLUIR -->
 
-        <div class="row align-items-center mt-2">
+        <div class="d-flex align-items-start gap-2 mt-2">
 
-            <div class="col">
+            <div class="flex-grow-1" style="min-width: 0;">
 
                 <p class="mb-0"
-                   style="white-space: pre-wrap; overflow-wrap: anywhere;">
-                    {{ msg.mensagem }}
+                   style="white-space: pre-wrap; overflow-wrap: anywhere;">{{ msg.mensagem }}</p>
                 </p>
 
             </div>
@@ -110,7 +109,7 @@
                 or session.get("tipo_usuario") == "admin"
             ) %}
 
-            <div class="col-auto">
+            <div class="flex-shrink-0">
 
                 <form method="POST"
                       action="{{ url_for(
