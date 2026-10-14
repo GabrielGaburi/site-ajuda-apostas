@@ -275,13 +275,40 @@
 @media (max-width: 500px) {
 
     #chatbot-container {
-        right: 15px;
-        bottom: 15px;
+        right: 15px !important;
+        left: auto !important;
+        bottom: 15px !important;
     }
 
     #chatbot-window {
+        position: fixed;
+
+        right: -15px;
+        bottom: 0;
+
         width: calc(100vw - 30px);
         height: 500px;
+
+        max-height: 70vh;
+        max-height: 70dvh;
+
+        display: none;
+        flex-direction: column;
+    }
+
+    #chatbot-header {
+        flex-shrink: 0;
+    }
+
+    #chatbot-messages {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #chatbot-input-area {
+        flex-shrink: 0;
     }
 
 }
