@@ -1,0 +1,140 @@
+
+    .verificacao-container {
+        min-height: 70vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 35px 15px;
+    }
+
+    .verificacao-card {
+        width: 100%;
+        max-width: 450px;
+        padding: 38px;
+        border: 1px solid #e8eaf0;
+        border-radius: 22px;
+        background: #fff;
+        box-shadow: 0 12px 40px rgba(20, 30, 60, 0.08);
+    }
+
+    .verificacao-icone {
+        width: 66px;
+        height: 66px;
+        margin: 0 auto 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 20px;
+        background: #edf3ff;
+        color: #2859b8;
+        font-size: 30px;
+    }
+
+    .verificacao-card h2 {
+        color: #202b3c;
+        font-size: 25px;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 12px;
+    }
+
+    .verificacao-descricao {
+        color: #697386;
+        font-size: 14px;
+        line-height: 1.7;
+        text-align: center;
+        margin-bottom: 28px;
+    }
+
+    .codigo-label {
+        display: block;
+        color: #344054;
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 9px;
+    }
+
+    .codigo-input {
+        width: 100%;
+        box-sizing: border-box;
+        height: 60px;
+        border: 1px solid #d9deea;
+        border-radius: 12px;
+        font-size: 25px;
+        font-weight: 600;
+        letter-spacing: 10px;
+        text-align: center;
+        color: #202b3c;
+        transition: border-color .2s, box-shadow .2s;
+    }
+
+    .codigo-input:focus {
+        outline: none;
+        border-color: #3569d4;
+        box-shadow: 0 0 0 4px rgba(53, 105, 212, 0.12);
+    }
+
+    .codigo-input::placeholder {
+        color: #c5cbd6;
+    }
+
+    .botao-verificar {
+        width: 100%;
+        min-height: 49px;
+        margin-top: 20px;
+        border: none;
+        border-radius: 12px;
+        background: #2859b8;
+        color: white;
+        font-size: 15px;
+        font-weight: 600;
+        transition: background .2s;
+    }
+
+    .botao-verificar:hover {
+        background: #204995;
+    }
+
+    .verificacao-validade {
+        text-align: center;
+        color: #7a8495;
+        font-size: 12px;
+        margin-top: 18px;
+    }
+
+    .verificacao-reenvio {
+        border-top: 1px solid #edf0f5;
+        margin-top: 24px;
+        padding-top: 22px;
+        text-align: center;
+        color: #697386;
+        font-size: 13px;
+    }
+
+    .link-reenvio {
+        display: inline-block;
+        margin-top: 8px;
+        padding: 5px;
+        border: none;
+        background: transparent;
+        color: #2859b8;
+        font-weight: 600;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    .link-reenvio:hover {
+        color: #204995;
+        text-decoration: underline;
+    }
+
+    @media (max-width: 480px) {
+        .verificacao-card {
+            padding: 28px 22px;
+            border-radius: 18px;
+        }
+
+        .verificacao-card h2 {
+            font-size: 23px;
+        }
+    }

@@ -12,7 +12,7 @@ from openai import OpenAI
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-load_dotenv()
+load_dotenv(override=True)
 
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
@@ -26,7 +26,29 @@ limiter = Limiter(
 )
 
 
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.getenv("HTTPS_ATIVO", "false").lower() == "true"
+
+
+
 client = OpenAI(api_key=OPENAI_API_KEY)
+
+print("CLIENTE CRIADO — chave definida:", bool(client.api_key))
+print("CLIENTE CRIADO — tamanho da chave:", len(client.api_key or ""))
+
+try:
+    teste = client.models.list()
+    print("TESTE DO CLIENTE DO APP: OK")
+    print("MODELOS DISPONÍVEIS:", len(teste.data))
+except Exception as e:
+    print("TESTE DO CLIENTE DO APP: FALHOU")
+    print("TIPO DO ERRO:", type(e).__name__)
+    print("DETALHE:", str(e))
+
+print("Caminho do .env:", os.path.abspath(".env"))
+print("Chave carregada:", bool(OPENAI_API_KEY))
+print("Prefixo da chave:", OPENAI_API_KEY[:7] if OPENAI_API_KEY else "NENHUMA")
 
 print("OPENAI_API_KEY carregada:", bool(OPENAI_API_KEY))
 
@@ -378,8 +400,12 @@ def processar_ia_em_background(atendimento_id):
                 conexao.close()
 
         # =====================================================
-        # CHAMADA DA IA
+        # CHAMADA DA IA — DIAGNÓSTICO
         # =====================================================
+
+        print("CLIENTE DA THREAD:", type(client).__name__)
+        print("CHAVE DEFINIDA:", bool(client.api_key))
+        print("TAMANHO DA CHAVE:", len(client.api_key or ""))
 
         resposta = client.responses.create(
             model="gpt-5.6-luna",
@@ -761,11 +787,12 @@ def chatbot():
                     status = 'aguardando',
                     motivo = %s
                 WHERE id = %s
+                AND usuario_id = %s
             """, (
                 motivo,
-                atendimento_id
+                atendimento_id,
+                usuario_id
             ))
-
             cursor.execute("""
                 INSERT INTO mensagens_atendimento
                     (atendimento_id, usuario_id, remetente, mensagem)
@@ -828,6 +855,7 @@ def chatbot():
         if conexao:
             conexao.close()
 
+
 @app.route("/chatbot/historico")
 def chatbot_historico():
 
@@ -840,7 +868,6 @@ def chatbot_historico():
     cursor = None
 
     try:
-
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
 
@@ -851,7 +878,10 @@ def chatbot_historico():
             FROM mensagens_atendimento m
             INNER JOIN atendimentos_chatbot a
                 ON m.atendimento_id = a.id
+            INNER JOIN usuarios u
+                ON u.id = a.usuario_id
             WHERE a.usuario_id = %s
+              AND u.status = 'ativo'
             ORDER BY m.id ASC
         """, (usuario_id,))
 
@@ -862,20 +892,18 @@ def chatbot_historico():
         }
 
     except Exception:
-
+        print("ERRO AO BUSCAR HISTÓRICO DO CHATBOT:")
         traceback.print_exc()
 
-        return {
-            "mensagens": []
-        }
+        return {"mensagens": []}
 
     finally:
-
         if cursor:
             cursor.close()
 
         if conexao:
-            conexao.close()       
+            conexao.close()
+      
         
 @app.route("/profissional/atendimentos")
 def profissional_atendimentos():
@@ -2159,14 +2187,19 @@ def perfil():
         # BUSCA O USUÁRIO
         # =========================
 
+        
         cursor.execute(
             """
             SELECT *
             FROM usuarios
             WHERE id = %s
+              AND status = 'ativo'
             """,
             (session["usuario_id"],)
         )
+
+        usuario = cursor.fetchone()
+
 
         usuario = cursor.fetchone()
 
@@ -2300,6 +2333,35 @@ def gerenciar_usuarios():
 
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
+        
+        
+        # =========================
+        # VALIDA SE O ADMIN ESTÁ ATIVO NO BANCO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE id = %s
+              AND tipo = 'admin'
+              AND status = 'ativo'
+            """,
+            (session["usuario_id"],)
+        )
+
+        administrador = cursor.fetchone()
+
+        if not administrador:
+            session.clear()
+
+            flash(
+                "Sua conta administrativa está inativa ou não possui autorização.",
+                "warning"
+            )
+
+            return redirect(url_for("login"))
+
 
         # =========================
         # BUSCA USUÁRIOS COMUNS
@@ -2404,6 +2466,35 @@ def detalhes_usuario(usuario_id):
 
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
+        
+        
+        # =========================
+        # VALIDA SE O ADMIN ESTÁ ATIVO NO BANCO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE id = %s
+              AND tipo = 'admin'
+              AND status = 'ativo'
+            """,
+            (session["usuario_id"],)
+        )
+
+        administrador = cursor.fetchone()
+
+        if not administrador:
+            session.clear()
+
+            flash(
+                "Sua conta administrativa está inativa ou não possui autorização.",
+                "warning"
+            )
+
+            return redirect(url_for("login"))
+
 
         # =========================
         # BUSCA O USUÁRIO
@@ -2545,6 +2636,35 @@ def reativar_usuario(usuario_id):
 
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
+        
+        
+        # =========================
+        # VALIDA SE O ADMIN ESTÁ ATIVO NO BANCO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE id = %s
+              AND tipo = 'admin'
+              AND status = 'ativo'
+            """,
+            (session["usuario_id"],)
+        )
+
+        administrador = cursor.fetchone()
+
+        if not administrador:
+            session.clear()
+
+            flash(
+                "Sua conta administrativa está inativa ou não possui autorização.",
+                "warning"
+            )
+
+            return redirect(url_for("login"))
+
 
         # =========================
         # BUSCA O USUÁRIO
@@ -2708,20 +2828,33 @@ def editar_meu_perfil():
         # BUSCA O USUÁRIO LOGADO
         # =========================
 
+        
         cursor.execute(
             """
             SELECT *
             FROM usuarios
             WHERE id = %s
+              AND status = 'ativo'
             """,
             (usuario_id,)
         )
 
         usuario = cursor.fetchone()
 
+
+        usuario = cursor.fetchone()
+
+        
         if not usuario:
-            flash("Usuário não encontrado.", "danger")
-            return redirect(url_for("index"))
+            session.clear()
+
+            flash(
+                "Sua sessão foi encerrada. Faça login novamente.",
+                "warning"
+            )
+
+            return redirect(url_for("login"))
+
 
         # =========================
         # POST
@@ -3085,6 +3218,35 @@ def editar_usuario(usuario_id):
 
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
+        
+        
+        # =========================
+        # VALIDA SE O ADMIN ESTÁ ATIVO NO BANCO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE id = %s
+              AND tipo = 'admin'
+              AND status = 'ativo'
+            """,
+            (session["usuario_id"],)
+        )
+
+        administrador = cursor.fetchone()
+
+        if not administrador:
+            session.clear()
+
+            flash(
+                "Sua conta administrativa está inativa ou não possui autorização.",
+                "warning"
+            )
+
+            return redirect(url_for("login"))
+
 
         # =========================
         # BUSCA O USUÁRIO
@@ -3121,6 +3283,7 @@ def editar_usuario(usuario_id):
             nome = request.form.get("nome", "").strip()
             sobrenome = request.form.get("sobrenome", "").strip()
             cpf = request.form.get("cpf", "").strip()
+            
             data_nascimento = request.form.get(
                 "data_nascimento",
                 ""
@@ -3134,6 +3297,42 @@ def editar_usuario(usuario_id):
             rua = request.form.get("rua", "").strip()
             numero = request.form.get("numero", "").strip()
             bairro = request.form.get("bairro","").strip()
+            
+            # =========================
+            # VALIDA CPF
+            # =========================
+ 
+            cpf_numeros = re.sub(r"\D", "", cpf)
+ 
+            if not validar_cpf(cpf_numeros):
+ 
+                flash(
+                    "Digite um CPF válido.",
+                    "danger"
+                )
+ 
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": request.form.get(
+                        "data_nascimento", ""
+                    ).strip(),
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+ 
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )           
             
             # =========================
             # VALIDA DATA DE NASCIMENTO
@@ -3284,6 +3483,24 @@ def editar_usuario(usuario_id):
                     "Nome, sobrenome e email são obrigatórios.",
                     "danger"
                 )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": request.form.get(
+                        "data_nascimento", ""
+                    ).strip(),
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
 
                 return render_template(
                     "editar_usuario.html",
@@ -3463,6 +3680,52 @@ def editar_usuario(usuario_id):
                     "sobrenome": sobrenome,
                     "cpf": cpf,
                     "data_nascimento": data_nascimento,
+                    "sexo": sexo,
+                    "email": email,
+                    "telefone": telefone,
+                    "cep": cep,
+                    "estado": estado,
+                    "cidade": cidade,
+                    "rua": rua,
+                    "numero": numero,
+                    "bairro": bairro
+                })
+
+                return render_template(
+                    "editar_usuario.html",
+                    usuario=usuario
+                )
+                
+            # =========================
+            # VERIFICA CPF DUPLICADO
+            # =========================
+
+            cursor.execute(
+                """
+                SELECT id
+                FROM usuarios
+                WHERE cpf = %s
+                AND id != %s
+                """,
+                (cpf, usuario_id)
+            )
+
+            cpf_existente = cursor.fetchone()
+
+            if cpf_existente:
+
+                flash(
+                    "Este CPF já está sendo utilizado por outro usuário.",
+                    "warning"
+                )
+
+                usuario.update({
+                    "nome": nome,
+                    "sobrenome": sobrenome,
+                    "cpf": cpf,
+                    "data_nascimento": request.form.get(
+                        "data_nascimento", ""
+                    ).strip(),
                     "sexo": sexo,
                     "email": email,
                     "telefone": telefone,
@@ -3850,6 +4113,35 @@ def desbanir_usuario(usuario_id):
 
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
+        
+        
+        # =========================
+        # VALIDA SE O ADMIN ESTÁ ATIVO NO BANCO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE id = %s
+              AND tipo = 'admin'
+              AND status = 'ativo'
+            """,
+            (session["usuario_id"],)
+        )
+
+        administrador = cursor.fetchone()
+
+        if not administrador:
+            session.clear()
+
+            flash(
+                "Sua conta administrativa está inativa ou não possui autorização.",
+                "warning"
+            )
+
+            return redirect(url_for("login"))
+
 
         # =========================
         # BUSCA USUÁRIO
@@ -4826,6 +5118,8 @@ def perfil_profissional():
 
             WHERE u.id = %s
             AND u.tipo = 'profissional'
+            AND u.status = 'ativo'
+            AND p.status_aprovacao = 'aprovado'
             """,
             (session["usuario_id"],)
         )
@@ -6997,17 +7291,64 @@ def verificar_conteudo_proibido(texto):
 # Página principal do fórum
 
 
+
 @app.route("/dashboard_admin")
 def dashboard_admin():
 
     if "usuario_id" not in session:
+        flash("Faça login para continuar.", "warning")
         return redirect(url_for("login"))
 
     if session.get("tipo_usuario") != "admin":
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("dashboard_usuario"))
 
-    return render_template("dashboard_admin.html")
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE id = %s
+              AND tipo = 'admin'
+              AND status = 'ativo'
+            """,
+            (session["usuario_id"],)
+        )
+
+        administrador = cursor.fetchone()
+
+        if not administrador:
+            session.clear()
+            flash(
+                "Sua conta administrativa está inativa ou não possui autorização.",
+                "warning"
+            )
+            return redirect(url_for("login"))
+
+        return render_template("dashboard_admin.html")
+
+    except Exception:
+        traceback.print_exc()
+
+        flash(
+            "Não foi possível carregar o painel administrativo.",
+            "danger"
+        )
+        return redirect(url_for("login"))
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
 
 @app.route("/admin/profissionais")
 def gerenciar_profissionais():
@@ -7158,17 +7499,67 @@ def gerenciar_profissionais():
 
 
 
+
 @app.route("/dashboard_profissional")
 def dashboard_profissional():
 
     if "usuario_id" not in session:
+        flash("Faça login para continuar.", "warning")
         return redirect(url_for("login"))
 
     if session.get("tipo_usuario") != "profissional":
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("dashboard_usuario"))
 
-    return render_template("dashboard_profissional.html")
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT u.id
+            FROM usuarios u
+            INNER JOIN profissionais p
+                ON p.usuario_id = u.id
+            WHERE u.id = %s
+              AND u.tipo = 'profissional'
+              AND u.status = 'ativo'
+              AND p.status_aprovacao = 'aprovado'
+            """,
+            (session["usuario_id"],)
+        )
+
+        profissional = cursor.fetchone()
+
+        if not profissional:
+            session.clear()
+            flash(
+                "Sua conta está inativa ou seu cadastro profissional não está aprovado.",
+                "warning"
+            )
+            return redirect(url_for("login"))
+
+        return render_template("dashboard_profissional.html")
+
+    except Exception:
+        traceback.print_exc()
+
+        flash(
+            "Não foi possível carregar o painel profissional.",
+            "danger"
+        )
+        return redirect(url_for("login"))
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
 
 
 @app.route("/admin/profissionais/<int:profissional_id>")
@@ -7902,6 +8293,35 @@ def banir_profissional(profissional_id):
 
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
+        
+        
+        # =========================
+        # VALIDA SE O ADMIN ESTÁ ATIVO NO BANCO
+        # =========================
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE id = %s
+              AND tipo = 'admin'
+              AND status = 'ativo'
+            """,
+            (session["usuario_id"],)
+        )
+
+        administrador = cursor.fetchone()
+
+        if not administrador:
+            session.clear()
+
+            flash(
+                "Sua conta administrativa está inativa ou não possui autorização.",
+                "warning"
+            )
+
+            return redirect(url_for("login"))
+
 
         # =========================
         # BUSCA O PROFISSIONAL
@@ -8481,14 +8901,63 @@ Se você não criou essa conta, ignore esta mensagem.
 
     
 def enviar_email_recuperacao(email):
+    
+    conexao = None
+    cursor = None
+
     try:
-        token = serializer.dumps(email, salt='recuperar-senha')
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT id, email, status
+            FROM usuarios
+            WHERE LOWER(email) = %s
+            """,
+            (email.lower(),)
+        )
+
+        usuario = cursor.fetchone()
+
+        if not usuario or usuario["status"] != "ativo":
+            return False
+        
+        # Invalida os tokens anteriores ainda não utilizados
+        cursor.execute(
+            """
+            DELETE FROM tokens_recuperacao_senha
+            WHERE usuario_id = %s
+            """,
+            (usuario["id"],)
+        )
+
+        # Gera um token aleatório e calcula seu hash
+        token = secrets.token_urlsafe(32)
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+
+        cursor.execute(
+            """
+            INSERT INTO tokens_recuperacao_senha
+                (usuario_id, token_hash, expira_em)
+            VALUES (
+                %s,
+                %s,
+                DATE_ADD(NOW(), INTERVAL 1 HOUR)
+            )
+            """,
+            (usuario["id"], token_hash)
+        )
+        
+        conexao.commit()
+
 
         link = url_for(
-            'redefinir_senha',
+            "redefinir_senha",
             token=token,
             _external=True
         )
+
 
         msg = Message(
             subject='Redefinição de senha - Apoio & Consciência',
@@ -8643,21 +9112,29 @@ Se você não solicitou essa alteração, ignore este email com segurança.
 </html>
         """
 
-        # DEBUG
-        print("MAIL_USERNAME:", app.config['MAIL_USERNAME'])
-        print("MAIL_DEFAULT_SENDER:", app.config['MAIL_DEFAULT_SENDER'])
-        print("DESTINATÁRIO:", email)
-        print("LINK RECUPERAÇÃO:", link)
-
         mail.send(msg)
 
         print("EMAIL DE RECUPERAÇÃO ENVIADO PARA:", email)
         return True
 
-    except Exception as e:
+    
+    except Exception:
+        if conexao:
+            conexao.rollback()
+
         print("ERRO AO ENVIAR EMAIL DE RECUPERAÇÃO:")
         traceback.print_exc()
         return False
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
+    
+    
     
 @app.route("/esqueci-senha", methods=["GET", "POST"])
 def esqueci_senha():
@@ -8685,22 +9162,19 @@ def esqueci_senha():
             usuario = cursor.fetchone()
 
             if not usuario:
-                flash("Email não encontrado.", "danger")
-                return render_template(
-                    "esqueci_senha.html",
-                    email=email
+                flash(
+                    "Se o e-mail estiver cadastrado e puder receber recuperação, você receberá as instruções.",
+                    "info"
                 )
+                return redirect(url_for("login"))
 
             # Usuário banido não pode recuperar a senha
             if usuario["status"] == "banido":
                 flash(
-                    "Não é possível recuperar a senha desta conta.",
-                    "danger"
+                    "Se o e-mail estiver cadastrado e puder receber recuperação, você receberá as instruções.",
+                    "info"
                 )
-                return render_template(
-                    "esqueci_senha.html",
-                    email=email
-                )
+                return redirect(url_for("login"))
 
             if enviar_email_recuperacao(email):
                 flash(
@@ -8745,53 +9219,53 @@ def esqueci_senha():
 
     return render_template("esqueci_senha.html")
 
+
 @app.route("/redefinir-senha/<token>", methods=["GET", "POST"])
 def redefinir_senha(token):
-
-    try:
-        email = serializer.loads(
-            token,
-            salt='recuperar-senha',
-            max_age=3600
-        )
-
-    except Exception:
-        flash("Link inválido ou expirado.", "danger")
-        return redirect(url_for("login"))
 
     conexao = None
     cursor = None
 
     try:
+        # Calcula o hash do token recebido pela URL
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
 
-        cursor.execute(
-            """
-            SELECT id, email, tipo, status
-            FROM usuarios
-            WHERE LOWER(email) = %s
-            """,
-            (email.lower(),)
-        )
+        # No POST, bloqueia o registro durante a validação
+        consulta = """
+            SELECT
+                u.id,
+                u.email,
+                u.tipo,
+                u.status,
+                t.id AS token_id
+            FROM tokens_recuperacao_senha t
+            JOIN usuarios u ON u.id = t.usuario_id
+            WHERE t.token_hash = %s
+              AND t.utilizado_em IS NULL
+              AND t.expira_em > NOW()
+              AND u.status = 'ativo'
+        """
 
+        if request.method == "POST":
+            consulta += " FOR UPDATE"
+
+        cursor.execute(consulta, (token_hash,))
         usuario = cursor.fetchone()
 
+        # Token inexistente, expirado, utilizado ou conta inativa
         if not usuario:
-            flash("Usuário não encontrado.", "danger")
-            return redirect(url_for("login"))
-
-        if usuario["status"] == "banido":
-            flash(
-                "Não é possível alterar a senha desta conta.",
-                "danger"
-            )
+            flash("Link inválido ou expirado.", "danger")
             return redirect(url_for("login"))
 
         if request.method == "POST":
 
             nova_senha = request.form.get("senha", "")
-            confirmar_senha = request.form.get("confirmar_senha", "")
+            confirmar_senha = request.form.get(
+                "confirmar_senha", ""
+            )
 
             if nova_senha != confirmar_senha:
                 flash(
@@ -8810,23 +9284,39 @@ def redefinir_senha(token):
 
             nova_senha_hash = generate_password_hash(nova_senha)
 
+            # Atualiza a senha da conta
             cursor.execute(
                 """
                 UPDATE usuarios
                 SET senha_hash = %s
                 WHERE id = %s
+                  AND status = 'ativo'
                 """,
                 (nova_senha_hash, usuario["id"])
             )
 
-            conexao.commit()
+            if cursor.rowcount != 1:
+                conexao.rollback()
+                flash(
+                    "Não foi possível redefinir a senha.",
+                    "danger"
+                )
+                return redirect(url_for("login"))
 
-            print("================================")
-            print("SENHA REDEFINIDA")
-            print("ID:", usuario["id"])
-            print("EMAIL:", usuario["email"])
-            print("TIPO:", usuario["tipo"])
-            print("================================")
+            # Invalida todos os tokens ainda não utilizados
+            # dessa conta, incluindo o token atual
+            cursor.execute(
+                """
+                UPDATE tokens_recuperacao_senha
+                SET utilizado_em = NOW()
+                WHERE usuario_id = %s
+                  AND utilizado_em IS NULL
+                """,
+                (usuario["id"],)
+            )
+
+            # Confirma senha e invalidação na mesma transação
+            conexao.commit()
 
             flash(
                 "Senha redefinida com sucesso! Faça login.",
@@ -8838,14 +9328,11 @@ def redefinir_senha(token):
         return render_template("redefinir_senha.html")
 
     except Exception:
-
         if conexao:
             conexao.rollback()
 
-        print("================================")
-        print("ERRO AO REDEFINIR SENHA")
+        print("ERRO AO REDEFINIR SENHA:")
         traceback.print_exc()
-        print("================================")
 
         flash(
             "Ocorreu um erro ao redefinir a senha.",
@@ -8855,12 +9342,12 @@ def redefinir_senha(token):
         return redirect(url_for("login"))
 
     finally:
-
         if cursor:
             cursor.close()
 
         if conexao:
             conexao.close()
+
 
 
 def enviar_email_aprovacao(email, nome):
