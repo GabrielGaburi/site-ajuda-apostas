@@ -320,12 +320,15 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
 
                     atendimentoId = null;
+
+                    sessionStorage.removeItem("atendimentoId");
+
                     mensagensExibidas.clear();
                     atendimentoInicializado = false;
 
                     return null;
                 }
-
+                
                 if (!resposta.ok) {
                     return null;
                 }
