@@ -41,9 +41,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const sessaoAtiva = sessionStorage.getItem(sessaoChatKey) === "true";
 
-    if (!sessaoAtiva) {
-        sessionStorage.setItem(sessaoChatKey, "true");
+    if (!usuarioAutenticado && sessaoAtiva) {
+        sessionStorage.removeItem("atendimentoId");
+        sessionStorage.removeItem("chatbotHistoricoSessao");
+        sessionStorage.removeItem("chatbotIAProcessando");
+        sessionStorage.removeItem("chatbotNovoAtendimento");
     }
+
+    sessionStorage.setItem(sessaoChatKey, "true");
 
     let atendimentoId = sessionStorage.getItem("atendimentoId");
     let pollingMensagens = null;
@@ -442,8 +447,10 @@ document.addEventListener("DOMContentLoaded", function () {
                                 "profissional"
                             );
 
-                        } else if (mensagem.sender === "bot" && dados.status === "aguardando") {
-
+                        } else if (
+                            mensagem.sender === "bot" &&
+                            dados.status === "aguardando"
+                        ) {
                             removerDigitando();
 
                             iaRespondendo = false;

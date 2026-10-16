@@ -339,9 +339,10 @@ def processar_ia_em_background(atendimento_id):
 
             # Verifica se o atendimento ainda está com a IA
             cursor.execute("""
-                SELECT status
+                SELECT status, usuario_id
                 FROM atendimentos_chatbot
                 WHERE id = %s
+                LIMIT 1
             """, (atendimento_id,))
 
             atendimento = cursor.fetchone()
@@ -351,6 +352,30 @@ def processar_ia_em_background(atendimento_id):
 
             if atendimento["status"] != "ia":
                 return
+
+            if atendimento["usuario_id"] is not None:
+                conexao_usuario = None
+                cursor_usuario = None
+
+                try:
+                    conexao_usuario = get_db_connection()
+                    cursor_usuario = conexao_usuario.cursor()
+                    cursor_usuario.execute("""
+                        SELECT id
+                        FROM usuarios
+                        WHERE id = %s
+                        AND status = 'ativo'
+                        LIMIT 1
+                    """, (atendimento["usuario_id"],))
+
+                    if not cursor_usuario.fetchone():
+                        return
+
+                finally:
+                    if cursor_usuario:
+                        cursor_usuario.close()
+                    if conexao_usuario:
+                        conexao_usuario.close()
 
             # Descobre a última resposta da IA
             cursor.execute("""
@@ -403,17 +428,71 @@ def processar_ia_em_background(atendimento_id):
         # CHAMADA DA IA — DIAGNÓSTICO
         # =====================================================
 
-        print("CLIENTE DA THREAD:", type(client).__name__)
-        print("CHAVE DEFINIDA:", bool(client.api_key))
-        print("TAMANHO DA CHAVE:", len(client.api_key or ""))
+        try:
+            resposta = client.responses.create(
+                model="gpt-5.6-luna",
+                instructions=SYSTEM_PROMPT,
+                input=texto_ia
+            )
+            texto_resposta = resposta.output_text
+            
+            print("DEBUG IA - resposta recebida:", repr(texto_resposta))
 
-        resposta = client.responses.create(
-            model="gpt-5.6-luna",
-            instructions=SYSTEM_PROMPT,
-            input=texto_ia
-        )
+            if not texto_resposta or not texto_resposta.strip():
+                print("A IA não retornou uma resposta em texto.")
 
-        texto_resposta = resposta.output_text
+                texto_resposta = (
+                    "Desculpe, não consegui responder agora. "
+                    "Tente enviar sua mensagem novamente em alguns instantes."
+                )
+            else:
+                texto_resposta = texto_resposta.strip() 
+        
+        except Exception:
+            print("ERRO NA CHAMADA À API DA OPENAI:")
+            traceback.print_exc()
+
+            conexao_erro = None
+            cursor_erro = None
+
+            try:
+                conexao_erro = get_db_connection()
+                cursor_erro = conexao_erro.cursor()
+
+                cursor_erro.execute("""
+                    INSERT INTO mensagens_atendimento
+                        (atendimento_id, usuario_id, remetente, mensagem)
+                    SELECT
+                        id,
+                        usuario_id,
+                        'bot',
+                        %s
+                    FROM atendimentos_chatbot
+                    WHERE id = %s
+                    AND status = 'ia'
+                """, (
+                    "Desculpe, não consegui responder agora. Tente enviar sua mensagem novamente em alguns instantes.",
+                    atendimento_id
+                ))
+
+                conexao_erro.commit()
+
+            except Exception:
+                if conexao_erro:
+                    conexao_erro.rollback()
+
+                print("ERRO AO REGISTRAR A FALHA DA IA:")
+                traceback.print_exc()
+
+            finally:
+                if cursor_erro:
+                    cursor_erro.close()
+
+                if conexao_erro:
+                    conexao_erro.close()
+
+            return
+      
 
         # =====================================================
         # SALVA A RESPOSTA DA IA
@@ -430,9 +509,10 @@ def processar_ia_em_background(atendimento_id):
             # Verifica novamente se um profissional assumiu
             # o atendimento enquanto a IA estava pensando
             cursor.execute("""
-                SELECT status
+                SELECT status, usuario_id
                 FROM atendimentos_chatbot
                 WHERE id = %s
+                LIMIT 1
             """, (atendimento_id,))
 
             atendimento = cursor.fetchone()
@@ -442,6 +522,18 @@ def processar_ia_em_background(atendimento_id):
 
             if atendimento["status"] != "ia":
                 return
+            
+            if atendimento["usuario_id"] is not None:
+                cursor.execute("""
+                    SELECT id
+                    FROM usuarios
+                    WHERE id = %s
+                    AND status = 'ativo'
+                    LIMIT 1
+                """, (atendimento["usuario_id"],))
+
+                if not cursor.fetchone():
+                    return
 
             cursor.execute("""
                 INSERT INTO mensagens_atendimento
@@ -496,13 +588,17 @@ def chatbot():
 
     try:
 
-        dados = request.get_json()
-    
+        dados = request.get_json(silent=True)
 
-        if not dados:
-            return {"erro": "Nenhum dado recebido."}, 400
+        if not isinstance(dados, dict):
+            return {"erro": "Dados inválidos. Envie uma mensagem válida."}, 400
 
-        mensagem = dados.get("mensagem", "").strip()
+        mensagem = dados.get("mensagem", "")
+
+        if not isinstance(mensagem, str):
+            return {"erro": "A mensagem deve ser um texto válido."}, 400
+
+        mensagem = mensagem.strip()
         
         
         if len(mensagem) > 2000:
@@ -514,6 +610,37 @@ def chatbot():
             return {"erro": "Digite uma mensagem."}, 400
 
         usuario_id = session.get("usuario_id")
+        
+        if usuario_id:
+            conexao_status = None
+            cursor_status = None
+
+            try:
+                conexao_status = get_db_connection()
+                cursor_status = conexao_status.cursor(dictionary=True)
+
+                cursor_status.execute("""
+                    SELECT status
+                    FROM usuarios
+                    WHERE id = %s
+                    LIMIT 1
+                """, (usuario_id,))
+
+                usuario_atual = cursor_status.fetchone()
+
+            finally:
+                if cursor_status:
+                    cursor_status.close()
+                if conexao_status:
+                    conexao_status.close()
+
+            if not usuario_atual or usuario_atual["status"] != "ativo":
+                session.clear()
+
+                return {
+                    "erro": "Sua sessão expirou ou sua conta não está ativa. Faça login novamente."
+                }, 401
+                
 
         # =========================================================
         # USUÁRIO DESLOGADO
@@ -540,10 +667,50 @@ def chatbot():
             
             novo_atendimento = dados.get("novo_atendimento", False)
 
+            if not isinstance(novo_atendimento, bool):
+                return {"erro": "Valor inválido para novo atendimento."}, 400
+
             if novo_atendimento:
                 session.pop("chatbot_atendimento_id", None)
 
             atendimento_id = session.get("chatbot_atendimento_id")
+            
+            #Descarta um identificador inválido da sessão.
+            if atendimento_id is not None:
+                if type(atendimento_id) is not int or atendimento_id <= 0:
+                    session.pop("chatbot_atendimento_id", None)
+                    atendimento_id = None   
+            
+            #Se não passar na validação, descarta o ID da sessão para que a rota crie um atendimento novo.
+            
+            if atendimento_id:
+                cursor_temp = None
+                conexao_temp = None
+
+                try:
+                    conexao_temp = get_db_connection()
+                    cursor_temp = conexao_temp.cursor()
+
+                    cursor_temp.execute("""
+                        SELECT id
+                        FROM atendimentos_chatbot
+                        WHERE id = %s
+                        AND usuario_id IS NULL
+                        AND status = 'ia'
+                        LIMIT 1
+                    """, (atendimento_id,))
+
+                    atendimento_valido = cursor_temp.fetchone()
+
+                    if not atendimento_valido:
+                        session.pop("chatbot_atendimento_id", None)
+                        atendimento_id = None
+
+                finally:
+                    if cursor_temp:
+                        cursor_temp.close()
+                    if conexao_temp:
+                        conexao_temp.close()
             
             
 
