@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from PIL import Image
 
 load_dotenv(override=True)
 
@@ -18,6 +19,8 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
+
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -33,24 +36,6 @@ app.config["SESSION_COOKIE_SECURE"] = os.getenv("HTTPS_ATIVO", "false").lower() 
 
 
 client = OpenAI(api_key=OPENAI_API_KEY)
-
-print("CLIENTE CRIADO — chave definida:", bool(client.api_key))
-print("CLIENTE CRIADO — tamanho da chave:", len(client.api_key or ""))
-
-try:
-    teste = client.models.list()
-    print("TESTE DO CLIENTE DO APP: OK")
-    print("MODELOS DISPONÍVEIS:", len(teste.data))
-except Exception as e:
-    print("TESTE DO CLIENTE DO APP: FALHOU")
-    print("TIPO DO ERRO:", type(e).__name__)
-    print("DETALHE:", str(e))
-
-print("Caminho do .env:", os.path.abspath(".env"))
-print("Chave carregada:", bool(OPENAI_API_KEY))
-print("Prefixo da chave:", OPENAI_API_KEY[:7] if OPENAI_API_KEY else "NENHUMA")
-
-print("OPENAI_API_KEY carregada:", bool(OPENAI_API_KEY))
 
 csrf = CSRFProtect(app)
 
@@ -71,30 +56,6 @@ def get_db_connection():
         password=os.getenv("DB_PASSWORD"),
         database=os.getenv("DB_NAME")
     )
-
-def testar_banco():
-    try:
-        conexao = get_db_connection()
-        cursor = conexao.cursor()
-
-        cursor.execute("SELECT DATABASE()")
-        banco = cursor.fetchone()
-
-        print("================================")
-        print("BANCO CONECTADO:", banco[0])
-        print("================================")
-
-        cursor.close()
-        conexao.close()
-
-    except Exception as erro:
-        print("================================")
-        print("ERRO AO CONECTAR AO MYSQL:")
-        print(erro)
-        print("================================")
-        
-
-       
         
 usuarios = []
 profissionais = []
@@ -116,8 +77,6 @@ app.config['MAIL_USE_SSL'] = False
 
 # CONTA GMAIL REMETENTE
 app.config['MAIL_USERNAME'] = os.getenv('MAIL_USERNAME')
-print("DEBUG MAIL_USERNAME:", os.getenv("MAIL_USERNAME"))
-
 
 # SENHA DE APP DO GMAIL (via terminal)
 app.config['MAIL_PASSWORD'] = os.getenv('MAIL_PASSWORD')
@@ -324,8 +283,6 @@ def processar_ia_em_background(atendimento_id):
 
     try:
         
-        print(">>> THREAD DA IA FOI INICIADA:", atendimento_id)
-
         # Pequena espera para juntar mensagens enviadas rapidamente
         time.sleep(1)
 
@@ -435,12 +392,9 @@ def processar_ia_em_background(atendimento_id):
                 input=texto_ia
             )
             texto_resposta = resposta.output_text
-            
-            print("DEBUG IA - resposta recebida:", repr(texto_resposta))
 
             if not texto_resposta or not texto_resposta.strip():
-                print("A IA não retornou uma resposta em texto.")
-
+                
                 texto_resposta = (
                     "Desculpe, não consegui responder agora. "
                     "Tente enviar sua mensagem novamente em alguns instantes."
@@ -449,8 +403,7 @@ def processar_ia_em_background(atendimento_id):
                 texto_resposta = texto_resposta.strip() 
         
         except Exception:
-            print("ERRO NA CHAMADA À API DA OPENAI:")
-            traceback.print_exc()
+            app.logger.exception("Erro na chamada à API da OpenAI.")
 
             conexao_erro = None
             cursor_erro = None
@@ -481,8 +434,7 @@ def processar_ia_em_background(atendimento_id):
                 if conexao_erro:
                     conexao_erro.rollback()
 
-                print("ERRO AO REGISTRAR A FALHA DA IA:")
-                traceback.print_exc()
+                app.logger.exception("Erro ao registrar a falha da IA.")
 
             finally:
                 if cursor_erro:
@@ -554,12 +506,10 @@ def processar_ia_em_background(atendimento_id):
             conexao.commit()
 
         except Exception:
-
             if conexao:
                 conexao.rollback()
 
-            print("ERRO AO SALVAR RESPOSTA DA IA:")
-            traceback.print_exc()
+            app.logger.exception("Erro ao salvar resposta da IA.")
 
         finally:
 
@@ -570,9 +520,7 @@ def processar_ia_em_background(atendimento_id):
                 conexao.close()
 
     except Exception:
-
-        print("ERRO NO PROCESSAMENTO DA IA:")
-        traceback.print_exc()
+        app.logger.exception("Erro no processamento da IA.")
 
     finally:
 
@@ -1000,12 +948,10 @@ def chatbot():
         }
 
     except Exception:
-
         if conexao:
             conexao.rollback()
 
-        print("ERRO NO CHATBOT:")
-        traceback.print_exc()
+        app.logger.exception("Erro no chatbot.")
 
         return {
             "erro": (
@@ -1059,8 +1005,7 @@ def chatbot_historico():
         }
 
     except Exception:
-        print("ERRO AO BUSCAR HISTÓRICO DO CHATBOT:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao buscar histórico do chatbot.")
 
         return {"mensagens": []}
 
@@ -1132,11 +1077,9 @@ def profissional_atendimentos():
         )
 
     except Exception:
-        print("ERRO AO BUSCAR ATENDIMENTOS:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao buscar atendimentos.")
         flash("Não foi possível carregar os atendimentos.", "danger")
         return redirect(url_for("dashboard"))
-    
     
 
 @app.route("/assumir_atendimento/<int:atendimento_id>", methods=["POST"])
@@ -1240,8 +1183,7 @@ def assumir_atendimento(atendimento_id):
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO ASSUMIR ATENDIMENTO:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao assumir atendimento.")
 
         return {
             "erro": "Não foi possível assumir o atendimento."
@@ -1314,8 +1256,7 @@ def encerrar_atendimento(atendimento_id):
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO ENCERRAR ATENDIMENTO:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao encerrar atendimento.")
 
         return {
             "erro": "Não foi possível encerrar o atendimento."
@@ -1434,9 +1375,8 @@ def mensagens(atendimento_id):
         }
 
     except Exception:
-
-        print("ERRO AO BUSCAR MENSAGENS:")
-        traceback.print_exc()
+        
+        app.logger.exception("Erro ao buscar mensagens.")
 
         return [], 500
 
@@ -1562,11 +1502,11 @@ def enviar_profissional(atendimento_id):
         }
 
     except Exception:
+        
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO ENVIAR MENSAGEM DO PROFISSIONAL:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao enviar mensagem do profissional.")
 
         return {
             "erro": "Não foi possível enviar a mensagem."
@@ -1706,6 +1646,7 @@ def validar_codigo_2fa(usuario_id, codigo):
             
 
 @app.route("/verificar_2fa", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def verificar_2fa():
 
     usuario_id = session.get("2fa_usuario_id")
@@ -1807,6 +1748,7 @@ def verificar_2fa():
     return render_template("verificar_2fa.html")
 
 @app.route("/reenviar_codigo_2fa", methods=["POST"])
+@limiter.limit("5 per minute")
 def reenviar_codigo_2fa():
 
     usuario_id = session.get("2fa_usuario_id")
@@ -1961,8 +1903,8 @@ def lista_sessoes():
         }
 
     except Exception:
-        print("ERRO AO LISTAR ATENDIMENTOS:")
-        traceback.print_exc()
+        
+        app.logger.exception("Erro ao listar atendimentos.")
 
         return {
             "aguardando": [],
@@ -1978,9 +1920,10 @@ def lista_sessoes():
 
 
 
+
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def login():
-    
 
     if request.method == "POST":
 
@@ -2009,7 +1952,7 @@ def login():
 
             cursor.execute(
                 """
-                SELECT 
+                SELECT
                     u.id,
                     u.nome,
                     u.sobrenome,
@@ -2034,106 +1977,62 @@ def login():
             # =========================
 
             if usuario is None:
-
-                flash(
-                    "E-mail ou senha incorretos.", "danger"
-                )
-
-                return render_template(
-                    "login.html",
-                    email=email
-                )
+                flash("E-mail ou senha incorretos.", "danger")
+                return render_template("login.html", email=email)
 
             # =========================
             # VERIFICA STATUS DA CONTA
             # =========================
 
             if usuario["status"] == "banido":
+                flash("Esta conta está bloqueada.", "danger")
+                return render_template("login.html", email=email)
 
-                flash(
-                    "Esta conta está bloqueada.",
-                    "danger"
-                )
-
-                return render_template(
-                    "login.html",
-                    email=email
-                )
-
-            #Somente usuários comuns precisam confirmar o email.
+            # Somente usuários comuns precisam confirmar o email.
             # Profissionais entram após aprovação do administrador.
-            if usuario["tipo"] == "usuario" and not usuario["email_confirmado"]:
 
+            if (
+                usuario["tipo"] == "usuario"
+                and not usuario["email_confirmado"]
+            ):
                 flash(
                     "Confirme seu email antes de fazer login.",
                     "warning"
                 )
+                return render_template("login.html", email=email)
 
-                return render_template(
-                    "login.html",
-                    email=email
-                )
             # =========================
             # VERIFICA APROVAÇÃO
             # SOMENTE PARA PROFISSIONAL
             # =========================
 
             if usuario["tipo"] == "profissional":
-                
-                if usuario["status_aprovacao"] is None:
-                    
-                    flash (
-                        "Cadastro não encontrado"
-                        )
-                    
-                    return render_template(
-                        "login.html",
-                        email=email
-                    )
-                    
-                    
-                if usuario["status_aprovacao"] == "pendente":
 
+                if usuario["status_aprovacao"] is None:
+                    flash("Cadastro não encontrado", "danger")
+                    return render_template("login.html", email=email)
+
+                if usuario["status_aprovacao"] == "pendente":
                     flash(
                         "Seu cadastro profissional ainda está aguardando aprovação do administrador.",
                         "warning"
                     )
-
-                    return render_template(
-                        "login.html",
-                        email=email
-                    )
+                    return render_template("login.html", email=email)
 
                 if usuario["status_aprovacao"] == "recusado":
-
                     flash(
                         "Seu cadastro profissional não foi aprovado pelo administrador.",
                         "danger"
                     )
-
-                    return render_template(
-                        "login.html",
-                        email=email
-                    )
+                    return render_template("login.html", email=email)
 
             # =========================
             # VERIFICA SENHA
             # =========================
 
-            if not check_password_hash(
-                usuario["senha_hash"],
-                senha
-            ):
-
-                flash(
-                    "E-mail ou senha incorretos.",
-                    "danger"
-                )
-
-                return render_template(
-                    "login.html",
-                    email=email
-                )
+            if not check_password_hash(usuario["senha_hash"], senha):
+                flash("E-mail ou senha incorretos.", "danger")
+                return render_template("login.html", email=email)
 
             # =========================
             # VERIFICAÇÃO 2FA
@@ -2150,42 +2049,26 @@ def login():
                     usuario["email"]
                 ):
                     session.clear()
-
                     flash(
                         "Não foi possível enviar o código de verificação. Tente novamente.",
                         "danger"
                     )
-
-                    return render_template(
-                        "login.html",
-                        email=email
-                    )
+                    return render_template("login.html", email=email)
 
                 flash(
                     "Enviamos um código de verificação para seu e-mail.",
                     "info"
                 )
-
                 return redirect(url_for("verificar_2fa"))
-
 
             # =========================
             # LOGIN DIRETO DO USUÁRIO COMUM
             # =========================
 
             session.clear()
-
             session["usuario_id"] = usuario["id"]
             session["usuario_nome"] = usuario["nome"]
             session["tipo_usuario"] = usuario["tipo"]
-
-            print("================================")
-            print("LOGIN REALIZADO")
-            print("ID:", usuario["id"])
-            print("NOME:", usuario["nome"])
-            print("EMAIL:", usuario["email"])
-            print("TIPO:", usuario["tipo"])
-            print("================================")
 
             flash(
                 f"Bem-vindo(a), {usuario['nome']}!",
@@ -2197,52 +2080,38 @@ def login():
             # =========================
 
             if usuario["tipo"] == "admin":
-
-                return redirect(
-                    url_for("dashboard_admin")
-                )
+                return redirect(url_for("dashboard_admin"))
 
             elif usuario["tipo"] == "profissional":
-
-                return redirect(
-                    url_for("dashboard_profissional")
-                )
+                return redirect(url_for("dashboard_profissional"))
 
             else:
-
-                return redirect(
-                    url_for("dashboard_usuario")
-                )
+                return redirect(url_for("dashboard_usuario"))
 
         except Exception:
-
             if conexao:
                 conexao.rollback()
 
-            print("ERRO AO REALIZAR LOGIN NO MYSQL:")
-            traceback.print_exc()
+            app.logger.exception(
+                "Erro ao realizar login no banco de dados."
+            )
 
             flash(
                 "Ocorreu um erro ao realizar o login. Tente novamente.",
                 "danger"
             )
 
-            return render_template(
-                "login.html",
-                email=email
-            )
+            return render_template("login.html", email=email)
 
         finally:
-
             if cursor:
                 cursor.close()
 
             if conexao:
                 conexao.close()
 
-   
-
     return render_template("login.html")
+
 
 # =========================
 # LOGOUT
@@ -2251,8 +2120,6 @@ def login():
 def logout():
 
     usuario_id = session.get("usuario_id")
-
-    print("LOGOUT - usuario_id:", usuario_id)
 
     conexao = None
     cursor = None
@@ -2281,15 +2148,15 @@ def logout():
 
             conexao.commit()
 
-            print("LOGOUT - atendimentos ativos finalizados.")
 
     except Exception:
 
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO FINALIZAR ATENDIMENTO NO LOGOUT:")
-        traceback.print_exc()
+        app.logger.exception(
+            "Erro ao finalizar atendimentos durante o logout."
+        )
 
     finally:
 
@@ -2318,7 +2185,6 @@ def logout():
 @app.route("/perfil")
 def perfil():
     
-    print("########## ENTREI NA FUNÇÃO PERFIL ##########")
 
     # =========================
     # VERIFICA LOGIN
@@ -2331,12 +2197,6 @@ def perfil():
         )
         return redirect(url_for("login"))
 
-    print("================================")
-    print("ACESSANDO PERFIL")
-    print("ID DA SESSÃO:", session.get("usuario_id"))
-    print("NOME DA SESSÃO:", session.get("usuario_nome"))
-    print("TIPO DA SESSÃO:", session.get("tipo_usuario"))
-    print("================================")
 
     conexao = None
     cursor = None
@@ -2430,8 +2290,6 @@ def perfil():
 
         else:
 
-            print("TIPO DE USUÁRIO INVÁLIDO:", tipo)
-
             session.clear()
 
             flash(
@@ -2442,12 +2300,8 @@ def perfil():
             return redirect(url_for("login"))
 
     except Exception:
-
-        print("================================")
-        print("ERRO AO CARREGAR PERFIL")
-        print("================================")
-
-        traceback.print_exc()
+        
+        app.logger.exception("Erro ao carregar perfil.")
 
         flash(
             "Ocorreu um erro ao carregar seu perfil.",
@@ -2562,11 +2416,7 @@ def gerenciar_usuarios():
 
         usuarios = cursor.fetchall()
 
-        print("================================")
-        print("GERENCIANDO USUÁRIOS")
-        print("TOTAL DE USUÁRIOS:", len(usuarios))
-        print("================================")
-
+       
         return render_template(
             "gerenciar_usuarios.html",
             usuarios=usuarios
@@ -2574,11 +2424,9 @@ def gerenciar_usuarios():
 
     except Exception:
 
-        print("================================")
-        print("ERRO AO BUSCAR USUÁRIOS")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception(
+            "Erro ao carregar a lista de usuários."
+        )
 
         flash(
             "Ocorreu um erro ao carregar os usuários.",
@@ -2706,11 +2554,6 @@ def detalhes_usuario(usuario_id):
 
         if usuario is None:
 
-            print("================================")
-            print("USUÁRIO NÃO ENCONTRADO")
-            print("ID PROCURADO:", usuario_id)
-            print("================================")
-
             flash(
                 "Usuário não encontrado.",
                 "danger"
@@ -2720,18 +2563,6 @@ def detalhes_usuario(usuario_id):
                 url_for("gerenciar_usuarios")
             )
 
-        # =========================
-        # DEBUG
-        # =========================
-
-        print("================================")
-        print("DETALHES DO USUÁRIO")
-        print("ID:", usuario["id"])
-        print("NOME:", usuario["nome"])
-        print("EMAIL:", usuario["email"])
-        print("STATUS:", usuario["status"])
-        print("TIPO: usuario")
-        print("================================")
 
         # =========================
         # ABRE O PERFIL
@@ -2742,13 +2573,11 @@ def detalhes_usuario(usuario_id):
             usuario=usuario
         )
 
-    except Exception as erro:
+    except Exception:
 
-        print("================================")
-        print("ERRO AO CARREGAR DETALHES DO USUÁRIO")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception(
+            "Erro ao carregar detalhes do usuário."
+        )
 
         flash(
             "Ocorreu um erro ao carregar os dados do usuário.",
@@ -2919,17 +2748,6 @@ def reativar_usuario(usuario_id):
 
         conexao.commit()
 
-        # =========================
-        # DEBUG
-        # =========================
-
-        print("================================")
-        print("USUÁRIO REATIVADO")
-        print("ID:", usuario_id)
-        print("NOME:", usuario["nome"])
-        print("EMAIL:", usuario["email"])
-        print("STATUS: ativo")
-        print("================================")
 
         flash(
             f"O usuário {usuario['nome']} foi reativado com sucesso.",
@@ -2944,15 +2762,11 @@ def reativar_usuario(usuario_id):
         )
 
     except Exception:
-
+        
         if conexao:
             conexao.rollback()
 
-        print("================================")
-        print("ERRO AO REATIVAR USUÁRIO")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception("Erro ao reativar usuário.")
 
         flash(
             "Ocorreu um erro ao reativar o usuário.",
@@ -3329,15 +3143,11 @@ def editar_meu_perfil():
         )
 
     except Exception:
-
+        
         if conexao:
             conexao.rollback()
 
-        print("================================")
-        print("ERRO AO EDITAR MEU PERFIL")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception("Erro ao editar o próprio perfil.")
 
         flash(
             "Ocorreu um erro ao atualizar seus dados.",
@@ -3393,13 +3203,28 @@ def editar_usuario(usuario_id):
 
         cursor.execute(
             """
-            SELECT id
+            SELECT
+                id,
+                nome,
+                sobrenome,
+                cpf,
+                data_nascimento,
+                sexo,
+                email,
+                telefone,
+                cep,
+                estado,
+                cidade,
+                rua,
+                numero,
+                bairro,
+                tipo,
+                status
             FROM usuarios
             WHERE id = %s
-              AND tipo = 'admin'
-              AND status = 'ativo'
+              AND tipo = 'usuario'
             """,
-            (session["usuario_id"],)
+            (usuario_id,)
         )
 
         administrador = cursor.fetchone()
@@ -3976,6 +3801,7 @@ def editar_usuario(usuario_id):
                     numero = %s,
                     bairro = %s
                 WHERE id = %s
+                    AND tipo = 'usuario'
                 """,
                 (
                     nome,
@@ -3997,11 +3823,6 @@ def editar_usuario(usuario_id):
 
             conexao.commit()
 
-            print("================================")
-            print("USUÁRIO EDITADO PELO ADMIN")
-            print("ID:", usuario_id)
-            print("EMAIL:", email)
-            print("================================")
 
             flash(
                 "Dados do usuário atualizados com sucesso.",
@@ -4029,11 +3850,7 @@ def editar_usuario(usuario_id):
         if conexao:
             conexao.rollback()
 
-        print("================================")
-        print("ERRO AO EDITAR USUÁRIO")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception("Erro ao editar usuário pelo administrador.")
 
         flash(
             "Ocorreu um erro ao editar o usuário.",
@@ -4109,6 +3926,29 @@ def banir_usuario(usuario_id):
 
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
+        
+        
+        cursor.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE id = %s
+            AND tipo = 'admin'
+            AND status = 'ativo'
+            """,
+            (session["usuario_id"],)
+        )
+
+        administrador = cursor.fetchone()
+
+        if not administrador:
+            session.clear()
+            flash(
+                "Sua conta administrativa está inativa ou não possui autorização.",
+                "warning"
+            )
+            return redirect(url_for("login"))
+
 
         # =========================
         # BUSCA USUÁRIO
@@ -4193,13 +4033,6 @@ def banir_usuario(usuario_id):
 
         conexao.commit()
 
-        print("================================")
-        print("USUÁRIO BANIDO")
-        print("ID:", usuario["id"])
-        print("NOME:", usuario["nome"])
-        print("EMAIL:", usuario["email"])
-        print("================================")
-
         flash(
             f"O usuário {usuario['nome']} foi banido.",
             "success"
@@ -4212,16 +4045,14 @@ def banir_usuario(usuario_id):
             )
         )
 
+    
     except Exception:
 
         if conexao:
             conexao.rollback()
 
-        print("================================")
-        print("ERRO AO BANIR USUÁRIO")
-        print("================================")
+        app.logger.exception("Erro ao banir usuário.")
 
-        traceback.print_exc()
 
         flash(
             "Ocorreu um erro ao banir o usuário.",
@@ -4393,12 +4224,6 @@ def desbanir_usuario(usuario_id):
 
         conexao.commit()
 
-        print("================================")
-        print("USUÁRIO DESBANIDO")
-        print("ID:", usuario["id"])
-        print("NOME:", usuario["nome"])
-        print("EMAIL:", usuario["email"])
-        print("================================")
 
         flash(
             f"O usuário {usuario['nome']} foi desbanido.",
@@ -4417,11 +4242,7 @@ def desbanir_usuario(usuario_id):
         if conexao:
             conexao.rollback()
 
-        print("================================")
-        print("ERRO AO DESBANIR USUÁRIO")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception("Erro ao desbanir usuário.")
 
         flash(
             "Ocorreu um erro ao desbanir o usuário.",
@@ -4454,7 +4275,52 @@ def dashboard_usuario():
         flash("Acesso não autorizado.", "danger")
         return redirect(url_for("login"))
 
-    return render_template("dashboard_usuario.html")
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT id
+            FROM usuarios
+            WHERE id = %s
+              AND tipo = 'usuario'
+              AND status = 'ativo'
+            """,
+            (session["usuario_id"],)
+        )
+
+        usuario = cursor.fetchone()
+
+        if not usuario:
+            session.clear()
+            flash(
+                "Sua conta está inativa ou não possui autorização.",
+                "warning"
+            )
+            return redirect(url_for("login"))
+
+        return render_template("dashboard_usuario.html")
+
+    except Exception:
+        app.logger.exception(
+            "Erro ao carregar o painel do usuário."
+        )
+        flash(
+            "Não foi possível carregar seu painel. Tente novamente.",
+            "danger"
+        )
+        return redirect(url_for("login"))
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
 
 
 
@@ -4571,18 +4437,7 @@ def aprovar_profissional(profissional_id):
             profissional["nome"]
         )
 
-        # =========================
-        # DEBUG
-        # =========================
-
-        print("================================")
-        print("PROFISSIONAL APROVADO")
-        print("ID PROFISSIONAL:", profissional_id)
-        print("USUARIO_ID:", profissional["usuario_id"])
-        print("EMAIL:", profissional["email"])
-        print("EMAIL ENVIADO:", email_enviado)
-        print("================================")
-
+    
         # =========================
         # MENSAGEM PARA O ADMIN
         # =========================
@@ -4834,6 +4689,7 @@ def recusar_profissional(profissional_id):
 # CADASTRO_USUÁRIO 
 # =========================
 @app.route('/cadastro_usuario', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def cadastro_usuario():
 
     # dicionário com TODOS os campos para manter o formulário preenchido
@@ -5016,12 +4872,7 @@ def cadastro_usuario():
             # =========================
             # INSERE O USUÁRIO NO MYSQL
             # =========================
-            
-            print("================================")
-            print("VALOR DO NUMERO:", repr(dados["numero"]))
-            print("TAMANHO DO NUMERO:", len(dados["numero"]))
-            print("================================")
-
+        
             cursor.execute(
                 """
                 INSERT INTO usuarios (
@@ -5074,16 +4925,15 @@ def cadastro_usuario():
 
             conexao.commit()
 
-            print("USUÁRIO INSERIDO NO MYSQL:", dados["email"])
 
         except Exception:
 
             if conexao:
                 conexao.rollback()
 
-            print("ERRO AO CADASTRAR USUÁRIO NO MYSQL:")
-            traceback.print_exc()
-
+            app.logger.exception(
+                "Erro ao cadastrar usuário."
+            )
             flash(
                 "Ocorreu um erro ao realizar o cadastro. Tente novamente.",
                 "danger"
@@ -6338,6 +6188,7 @@ def gerenciar_forum():
 
 
 @app.route('/cadastro_profissional', methods=['GET', 'POST'])
+@limiter.limit("5 per minute")
 def cadastro_profissional():
     
     limpar_fotos_temporarias()
@@ -6399,12 +6250,6 @@ def cadastro_profissional():
         foto = request.files.get("foto")
         foto_temporaria = session.get("foto_temporaria_profissional")
         
-        print("================================")
-        print("DEBUG FOTO")
-        print("FOTO RECEBIDA:", foto)
-        print("NOME DA FOTO:", foto.filename if foto else None)
-        print("FOTO TEMPORÁRIA NA SESSÃO:", foto_temporaria)
-        print("================================")
 
         senha = request.form.get("senha", "").strip()
         confirmar_senha = request.form.get("confirmar_senha", "").strip()
@@ -6436,10 +6281,31 @@ def cadastro_profissional():
                 nome_temporario
             )
 
-            foto.save(caminho_temporario)
             
-            print("ARQUIVO TEMPORÁRIO SALVO EM:", caminho_temporario)
-            print("ARQUIVO EXISTE APÓS SALVAR:", os.path.exists(caminho_temporario))
+            try:
+                foto.stream.seek(0)
+
+                imagem = Image.open(foto.stream)
+                imagem.verify()
+
+                foto.stream.seek(0)
+
+                imagem = Image.open(foto.stream)
+
+                if imagem.format not in {"JPEG", "PNG"}:
+                    raise ValueError("Formato de imagem inválido.")
+
+            except (ValueError, OSError, Image.DecompressionBombError):
+                return render_template(
+                    "cadastro_profissional.html",
+                    dados=dados,
+                    campo_erro="foto",
+                    mensagem_erro="A imagem é inválida ou está em um formato não permitido."
+                )
+
+            foto.stream.seek(0)
+            foto.save(caminho_temporario)
+
             
             session["foto_temporaria_profissional"] = nome_temporario
             foto_temporaria = nome_temporario
@@ -6654,12 +6520,6 @@ def cadastro_profissional():
             # CRIA O HASH DA SENHA
             # =========================
             
-            print("================================")
-            print("TESTE SENHA")
-            print("SENHA:", senha)
-            print("SENHA VÁLIDA:", senha_valida(senha))
-            print("================================")
-
             senha_hash = generate_password_hash(senha)
 
             # =========================
@@ -6741,11 +6601,6 @@ def cadastro_profissional():
             # ID do usuário recém-criado
             usuario_id = cursor.lastrowid
 
-            print("================================")
-            print("USUÁRIO PROFISSIONAL CRIADO")
-            print("ID:", usuario_id)
-            print("EMAIL:", dados["email"])
-            print("================================")
 
             # =========================
             # INSERE O PROFISSIONAL
@@ -6786,11 +6641,6 @@ def cadastro_profissional():
 
             conexao.commit()
 
-            print("================================")
-            print("PROFISSIONAL INSERIDO NO MYSQL")
-            print("USUARIO_ID:", usuario_id)
-            print("CRP:", dados["crp"])
-            print("================================")
 
         except Exception:
             if conexao:
@@ -6831,11 +6681,6 @@ def cadastro_profissional():
 
         return redirect(url_for("login"))
     
-    print("================================")
-    print("CHEGOU NO FINAL DA ROTA")
-    print("NÃO HOUVE REDIRECT")
-    print("================================")
-
     return render_template(
         "cadastro_profissional.html",
         dados=dados,
@@ -7501,7 +7346,9 @@ def dashboard_admin():
         return render_template("dashboard_admin.html")
 
     except Exception:
-        traceback.print_exc()
+        app.logger.exception(
+            "Erro ao carregar o painel administrativo."
+        )
 
         flash(
             "Não foi possível carregar o painel administrativo.",
@@ -7712,7 +7559,9 @@ def dashboard_profissional():
         return render_template("dashboard_profissional.html")
 
     except Exception:
-        traceback.print_exc()
+        app.logger.exception(
+            "Erro ao carregar o painel profissional."
+        )
 
         flash(
             "Não foi possível carregar o painel profissional.",
@@ -9388,6 +9237,7 @@ def esqueci_senha():
 
 
 @app.route("/redefinir-senha/<token>", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def redefinir_senha(token):
 
     conexao = None
@@ -10475,9 +10325,7 @@ def ajuda():
 
     return render_template("ajuda.html", locais=locais)
 
-testar_banco()
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=False)
     
 
