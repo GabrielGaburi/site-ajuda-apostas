@@ -59,6 +59,12 @@
                 <div class="col-md-6">
                     <strong>E-mail:</strong><br>
                     {{ profissional.email }}
+
+                    {% if profissional.email_confirmado %}
+                    <span class="badge text-bg-success ms-1">Confirmado</span>
+                    {% else %}
+                    <span class="badge text-bg-secondary ms-1">Não confirmado</span>
+                    {% endif %}
                 </div>
 
                 <div class="col-md-6">
@@ -221,6 +227,12 @@
                 Pendente
             </span>
 
+            {% if not profissional.email_confirmado %}
+            <div class="alert alert-secondary small mb-0">
+                O profissional ainda não confirmou o e-mail. A aprovação fica liberada depois da confirmação.
+            </div>
+            {% endif %}
+
             <div class="d-flex gap-2 mt-3">
 
                 <!-- APROVAR -->
@@ -232,7 +244,9 @@
 
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-                    <button type="submit" class="btn btn-success">
+                    {# Só aprova depois que o profissional confirmar o e-mail (verificado também em aprovar_profissional) #}
+                    <button type="submit" class="btn btn-success" {% if not profissional.email_confirmado %}disabled
+                        title="Aguardando o profissional confirmar o e-mail" {% endif %}>
                         Aprovar cadastro
                     </button>
 

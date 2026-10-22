@@ -51,7 +51,7 @@
                         <input type="password" name="senha" id="senha" class="form-control"
                             autocomplete="current-password" required>
 
-                        <button type="button" class="btn btn-outline-secondary" id="botaoMostrarSenha"
+                        <button type="button" class="btn btn-outline-secondary" data-mostrar-senha="senha"
                             aria-label="Mostrar senha" aria-controls="senha">
 
                             <i id="iconeSenha" class="bi bi-eye" aria-hidden="true"></i>
@@ -80,6 +80,14 @@
                     Não tem conta?
                     <a href="{{ url_for('escolher_cadastro') }}">
                         Cadastre-se
+                    </a>
+                </small>
+            </div>
+
+            <div class="text-center mt-2">
+                <small>
+                    <a href="{{ url_for('reenviar_confirmacao') }}">
+                        Reenviar e-mail de confirmação
                     </a>
                 </small>
             </div>

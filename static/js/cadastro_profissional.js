@@ -1,575 +1,685 @@
-window.toggleSenha = function (campoId, iconeId) {
-    const campo = document.getElementById(campoId);
-    const icone = document.getElementById(iconeId);
+// O botão de mostrar/ocultar senha é tratado pelo mostrar_senha.js (carregado no base.html)
 
-    if (!campo || !icone) {
-        return;
+const formCadastro = document.getElementById("formCadastroProfissional");
+const botaoCadastrar = document.getElementById("botaoCadastrar");
+
+
+// =========================
+// MENSAGENS DOS CAMPOS
+// =========================
+
+// Cada campo tem um <div id="aviso-<name>"> para as mensagens do JS
+function mostrarAviso(campo, texto, valido) {
+    const aviso = document.getElementById("aviso-" + campo.name);
+
+    campo.classList.toggle("is-invalid", valido === false);
+    campo.classList.toggle("is-valid", valido === true);
+
+    if (valido === false) {
+        campo.setAttribute("aria-invalid", "true");
+    } else {
+        campo.removeAttribute("aria-invalid");
     }
 
-    if (campo.type === "password") {
-        campo.type = "text";
-        icone.classList.remove("bi-eye");
-        icone.classList.add("bi-eye-slash");
-    } else {
-        campo.type = "password";
-        icone.classList.remove("bi-eye-slash");
-        icone.classList.add("bi-eye");
+    if (aviso) {
+        aviso.textContent = texto || "";
+        aviso.classList.toggle("text-danger", valido === false);
+        aviso.classList.toggle("text-success", valido === true);
+    }
+}
+
+function limparAviso(campo) {
+    mostrarAviso(campo, "", null);
+}
+
+// Remove a mensagem de erro vinda do servidor assim que o usuário mexe no campo
+document.querySelectorAll("#formCadastroProfissional [aria-invalid='true']").forEach(campo => {
+    const evento = campo.type === "checkbox" || campo.type === "file" || campo.tagName === "SELECT" ? "change" : "input";
+
+    campo.addEventListener(evento, function () {
+        campo.classList.remove("is-invalid");
+        campo.removeAttribute("aria-invalid");
+
+        const mensagem = document.getElementById("erro-" + campo.name);
+        if (mensagem) {
+            mensagem.remove();
+        }
+    }, { once: true });
+});
+
+
+// =========================
+// REGRAS DE VALIDAÇÃO
+// (as mesmas do servidor, em validar_dados_pessoais e cadastro_profissional no app.py)
+// =========================
+
+function validarCPF(cpf) {
+    if (cpf.length !== 11) return false;
+
+    // Verifica se todos os dígitos são iguais
+    if (/^(\d)\1{10}$/.test(cpf)) return false;
+
+    // Calcula primeiro dígito verificador
+    let soma = 0;
+    for (let i = 0; i < 9; i++) {
+        soma += parseInt(cpf.charAt(i)) * (10 - i);
+    }
+    let resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.charAt(9))) return false;
+
+    // Calcula segundo dígito verificador
+    soma = 0;
+    for (let i = 0; i < 10; i++) {
+        soma += parseInt(cpf.charAt(i)) * (11 - i);
+    }
+    resto = (soma * 10) % 11;
+    if (resto === 10 || resto === 11) resto = 0;
+    if (resto !== parseInt(cpf.charAt(10))) return false;
+
+    return true;
+}
+
+// Retorna a idade, ou null se a data não existir no calendário
+function calcularIdade(dia, mes, ano) {
+    const data = new Date(ano, mes - 1, dia);
+
+    if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
+        return null;
+    }
+
+    const hoje = new Date();
+    let idade = hoje.getFullYear() - ano;
+
+    if (hoje.getMonth() < mes - 1 || (hoje.getMonth() === mes - 1 && hoje.getDate() < dia)) {
+        idade--;
+    }
+
+    return idade;
+}
+
+function faltandoNaSenha(texto) {
+    const faltando = [];
+
+    if (texto.length < 8) faltando.push("8 caracteres");
+    if (!/[A-Z]/.test(texto)) faltando.push("uma letra maiúscula");
+    if (!/[0-9]/.test(texto)) faltando.push("um número");
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(texto)) faltando.push("um caractere especial");
+
+    return faltando;
+}
+
+// Região do CRP -> UFs atendidas. Vem do servidor (REGIOES_CRP no app.py)
+const ufCrp = document.getElementById("uf_crp");
+let regioesCRP = {};
+try {
+    regioesCRP = JSON.parse(ufCrp?.dataset.regioes || "{}");
+} catch (erro) {
+    regioesCRP = {};
+}
+
+const campoFoto = document.getElementById("foto");
+const LIMITE_FOTO_MB = parseInt(campoFoto?.dataset.limiteMb || "5", 10);
+
+// Cada função devolve a mensagem de erro, ou "" se o campo estiver correto
+const regras = {
+
+    nome: valor => {
+        if (!valor) return "Informe seu nome.";
+        if (!/^[\p{L}]+(?:[ '\-][\p{L}]+)*$/u.test(valor)) return "Use apenas letras.";
+        return "";
+    },
+
+    sobrenome: valor => {
+        if (!valor) return "Informe seu sobrenome.";
+        if (!/^[\p{L}]+(?:[ '\-][\p{L}]+)*$/u.test(valor)) return "Use apenas letras.";
+        return "";
+    },
+
+    cpf: valor => {
+        const digitos = valor.replace(/\D/g, "");
+        if (!digitos) return "Informe seu CPF.";
+        if (!validarCPF(digitos)) return "CPF inválido.";
+        return "";
+    },
+
+    data_de_nascimento: valor => {
+        if (!valor) return "Informe sua data de nascimento.";
+
+        const partes = valor.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (!partes) return "Use o formato dd/mm/aaaa.";
+
+        const idade = calcularIdade(parseInt(partes[1]), parseInt(partes[2]), parseInt(partes[3]));
+        if (idade === null) return "Data inválida.";
+        if (idade < 18 || idade > 100) return "É preciso ter entre 18 e 100 anos.";
+        return "";
+    },
+
+    sexo: valor => valor ? "" : "Selecione uma opção.",
+
+    email: valor => {
+        if (!valor) return "Informe seu e-mail.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) return "E-mail inválido.";
+        return "";
+    },
+
+    telefone: valor => {
+        const digitos = valor.replace(/\D/g, "");
+        if (!digitos) return "Informe seu telefone.";
+        if (digitos.length !== 10 && digitos.length !== 11) return "Telefone deve ter DDD e 8 ou 9 dígitos.";
+        if (digitos[0] === "0") return "DDD inválido.";
+        if (digitos.length === 11 && digitos[2] !== "9") return "Celular deve começar com 9.";
+        return "";
+    },
+
+    cep: valor => {
+        const digitos = valor.replace(/\D/g, "");
+        if (!digitos) return "Informe seu CEP.";
+        if (digitos.length !== 8) return "CEP deve ter 8 dígitos.";
+        return "";
+    },
+
+    estado: valor => {
+        if (!valor) return "Informe a UF.";
+        if (!/^[A-Za-z]{2}$/.test(valor)) return "UF inválida.";
+        return "";
+    },
+
+    cidade: valor => valor ? "" : "Informe a cidade.",
+    rua: valor => valor ? "" : "Informe a rua.",
+    numero: valor => valor ? "" : "Informe o número.",
+    bairro: valor => valor ? "" : "Informe o bairro.",
+
+    crp: valor => {
+        if (!valor) return "Informe o número do CRP.";
+
+        // A região (dois primeiros dígitos) é conferida antes do formato, para avisar logo
+        const digitos = valor.replace(/\D/g, "");
+        if (digitos.length >= 2 && !regioesCRP[digitos.substring(0, 2)]) return "Região do CRP inexistente.";
+        if (!/^\d{2}\/?\d{3,6}$/.test(valor)) return "Use o formato 00/000000.";
+        return "";
+    },
+
+    uf_crp: valor => valor ? "" : "Selecione a UF do CRP.",
+
+    experiencia: valor => {
+        if (valor === "") return "Informe a experiência em anos.";
+        if (!/^\d+$/.test(valor) || parseInt(valor, 10) > 60) return "Use um número de 0 a 60.";
+        return "";
+    },
+
+    especialidade: valor => valor ? "" : "Selecione uma especialidade.",
+    faculdade: valor => valor ? "" : "Informe a instituição de ensino.",
+    pos: valor => valor ? "" : "Informe a pós-graduação.",
+
+    biografia: valor => {
+        if (!valor) return "Escreva uma mini biografia.";
+        if (valor.length > 1000) return "A biografia deve ter no máximo 1000 caracteres.";
+        return "";
+    },
+
+    senha: valor => {
+        if (!valor) return "Informe uma senha.";
+        if (valor.length > 64) return "A senha deve ter no máximo 64 caracteres.";
+
+        const faltando = faltandoNaSenha(valor);
+        if (faltando.length === 0) return "";
+
+        if (faltando.length === 1) return "Precisa de " + faltando[0] + ".";
+        return "Precisa de " + faltando.slice(0, -1).join(", ") + " e " + faltando[faltando.length - 1] + ".";
+    },
+
+    confirmar_senha: valor => {
+        const senha = document.getElementById("senha");
+        if (!valor) return "Confirme sua senha.";
+        if (senha && valor !== senha.value) return "As senhas não coincidem.";
+        return "";
     }
 };
 
-function validarCpf(cpf) {
-    cpf = cpf.replace(/\D/g, "");
-    if (cpf.length !== 11) return false;
-    if (/^(\d)\1+$/.test(cpf)) return false;
+// Mensagem positiva exibida quando o campo está correto
+const mensagensOk = {
+    senha: "✓ Senha válida.",
+    confirmar_senha: "✓ As senhas coincidem."
+};
 
-    let soma = 0;
-    for (let i = 0; i < 9; i++) {
-        soma += parseInt(cpf.charAt(i), 10) * (10 - i);
-    }
+// A foto é obrigatória, a não ser que uma foto enviada antes tenha sido mantida
+function validarFoto(campo) {
+    const arquivo = campo.files && campo.files[0];
 
-    let resto = (soma * 10) % 11;
-    if (resto === 10) resto = 0;
-    if (resto !== parseInt(cpf.charAt(9), 10)) return false;
-
-    soma = 0;
-    for (let i = 0; i < 10; i++) {
-        soma += parseInt(cpf.charAt(i), 10) * (11 - i);
-    }
-
-    resto = (soma * 10) % 11;
-    if (resto === 10) resto = 0;
-    if (resto !== parseInt(cpf.charAt(10), 10)) return false;
-
-    return true;
-}
-
-function validarDataNascimento() {
-    const dataNascimento = document.getElementById("dataNascimento");
-    const erroNascimento = document.getElementById("erroNascimento");
-
-    if (!dataNascimento || !erroNascimento) {
-        return true;
-    }
-
-    const valor = dataNascimento.value.trim();
-    if (!valor) {
-        invalido("Data de nascimento obrigatória.");
-        return false;
-    }
-
-    const partes = valor.split("/");
-    if (partes.length !== 3) {
-        invalido("Formato inválido.");
-        return false;
-    }
-
-    const dia = parseInt(partes[0], 10);
-    const mes = parseInt(partes[1], 10);
-    const ano = parseInt(partes[2], 10);
-
-    if ([dia, mes, ano].some((valor) => Number.isNaN(valor))) {
-        invalido("Formato inválido.");
-        return false;
-    }
-
-    if (mes < 1 || mes > 12) {
-        invalido("Mês inválido.");
-        return false;
-    }
-
-    const dataInformada = new Date(ano, mes - 1, dia);
-    const hoje = new Date();
-    const diasMes = [31, (ano % 4 === 0 && (ano % 100 !== 0 || ano % 400 === 0)) ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-    if (dia < 1 || dia > diasMes[mes - 1]) {
-        invalido("Dia inválido.");
-        return false;
-    }
-
-    if (
-        dataInformada.getFullYear() !== ano ||
-        dataInformada.getMonth() !== mes - 1 ||
-        dataInformada.getDate() !== dia
-    ) {
-        invalido("Data de nascimento inválida.");
-        return false;
-    }
-
-    let idade = hoje.getFullYear() - dataInformada.getFullYear();
-    const mesAtual = hoje.getMonth() - dataInformada.getMonth();
-    const diaAtual = hoje.getDate() - dataInformada.getDate();
-
-    if (mesAtual < 0 || (mesAtual === 0 && diaAtual < 0)) {
-        idade -= 1;
-    }
-
-    if (idade < 18 || idade > 100) {
-        invalido("Idade deve estar entre 18 e 100 anos.");
-        return false;
-    }
-
-    valido();
-    return true;
-}
-
-function invalido(msg) {
-    const dataNascimento = document.getElementById("dataNascimento");
-    const erroNascimento = document.getElementById("erroNascimento");
-
-    if (!dataNascimento || !erroNascimento) {
-        return;
-    }
-
-    dataNascimento.classList.remove("is-valid");
-    dataNascimento.classList.add("is-invalid");
-    erroNascimento.textContent = msg;
-}
-
-function valido() {
-    const dataNascimento = document.getElementById("dataNascimento");
-    const erroNascimento = document.getElementById("erroNascimento");
-
-    if (!dataNascimento || !erroNascimento) {
-        return;
-    }
-
-    dataNascimento.classList.remove("is-invalid");
-    dataNascimento.classList.add("is-valid");
-}
-
-function buscarCEP() {
-    const cep = document.getElementById("cep");
-    const erroCep = document.getElementById("erroCep");
-
-    if (!cep || !erroCep) {
-        return;
-    }
-
-    const valor = cep.value.replace(/\D/g, "");
-    if (valor.length !== 8) {
-        limparEndereco();
-        erroCep.textContent = "Digite um CEP válido.";
-        cep.classList.remove("is-valid");
-        cep.classList.add("is-invalid");
-        return;
-    }
-
-    cep.classList.remove("is-invalid", "is-valid");
-    erroCep.textContent = "";
-
-    fetch(`https://viacep.com.br/ws/${valor}/json/`)
-    .then(response => response.json())
-    .then(dados => {
-
-        if (dados.erro) {
-            erroCep.textContent = "CEP não encontrado.";
-            cep.classList.add("is-invalid");
-            limparEndereco();
-            return;
+    if (!arquivo) {
+        if (campo.dataset.fotoMantida) {
+            limparAviso(campo);
+            return true;
         }
+        mostrarAviso(campo, "Selecione uma foto de perfil.", false);
+        return false;
+    }
 
-        const estado = document.getElementById("estado");
-        const cidade = document.getElementById("cidade");
-        const rua = document.getElementById("rua");
-        const bairro = document.getElementById("bairro");
+    if (!["image/jpeg", "image/png"].includes(arquivo.type)) {
+        mostrarAviso(campo, "Use uma imagem JPG ou PNG.", false);
+        return false;
+    }
 
-        if (estado) estado.value = dados.uf || "";
-        if (cidade) cidade.value = dados.localidade || "";
-        if (rua) rua.value = dados.logradouro || "";
-        if (bairro) bairro.value = dados.bairro || "";
+    // O limite vale para o envio inteiro; deixa uma folga para o restante do formulário
+    if (arquivo.size > LIMITE_FOTO_MB * 1024 * 1024 - 100 * 1024) {
+        mostrarAviso(campo, `A foto deve ter no máximo ${LIMITE_FOTO_MB} MB.`, false);
+        return false;
+    }
 
-        cep.classList.remove("is-invalid");
-        cep.classList.add("is-valid");
-        erroCep.textContent = "";
-    })
-    .catch(() => {
-        erroCep.textContent = "Não foi possível consultar o CEP. Tente novamente.";
-        cep.classList.add("is-invalid");
+    mostrarAviso(campo, "", true);
+    return true;
+}
+
+// Valida um campo e mostra o resultado; devolve true se estiver correto
+function validarCampo(campo) {
+    if (campo.type === "checkbox") {
+        const ok = campo.checked;
+        mostrarAviso(campo, ok ? "" : "Você precisa aceitar os termos para continuar.", ok ? null : false);
+        return ok;
+    }
+
+    if (campo.type === "file") {
+        return validarFoto(campo);
+    }
+
+    const regra = regras[campo.name];
+    if (!regra) return true;
+
+    // A senha é conferida como foi digitada (o servidor também não remove espaços dela)
+    const valor = campo.name === "senha" || campo.name === "confirmar_senha"
+        ? campo.value
+        : campo.value.trim();
+
+    const erro = regra(valor);
+
+    if (erro) {
+        mostrarAviso(campo, erro, false);
+        return false;
+    }
+
+    mostrarAviso(campo, mensagensOk[campo.name] || "", true);
+    return true;
+}
+
+
+// =========================
+// MÁSCARAS
+// =========================
+
+const cpf = document.getElementById("cpf");
+if (cpf) {
+    cpf.addEventListener("input", function () {
+        let valor = this.value.replace(/\D/g, "").substring(0, 11);
+        valor = valor.replace(/^(\d{3})(\d)/, "$1.$2");
+        valor = valor.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
+        valor = valor.replace(/\.(\d{3})(\d)/, ".$1-$2");
+        this.value = valor;
     });
 }
 
-function limparEndereco() {
-    const estado = document.getElementById("estado");
-    const cidade = document.getElementById("cidade");
-    const rua = document.getElementById("rua");
-    const bairro = document.getElementById("bairro");
+const dataNascimento = document.getElementById("dataNascimento");
+if (dataNascimento) {
+    dataNascimento.addEventListener("input", function (evento) {
+        // Ao apagar, não recoloca a barra (senão o usuário não consegue apagar)
+        if (evento.inputType && evento.inputType.startsWith("delete")) {
+            return;
+        }
 
-    if (estado) estado.value = "";
-    if (cidade) cidade.value = "";
-    if (rua) rua.value = "";
-    if (bairro) bairro.value = "";
+        let valor = this.value.replace(/\D/g, "").substring(0, 8);
+        if (valor.length >= 5) {
+            valor = valor.substring(0, 2) + "/" + valor.substring(2, 4) + "/" + valor.substring(4);
+        } else if (valor.length >= 3) {
+            valor = valor.substring(0, 2) + "/" + valor.substring(2);
+        }
+        this.value = valor;
+    });
 }
 
-function normalizarTexto(texto) {
-    return texto
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+// Fixo: (00) 0000-0000 | Celular: (00) 00000-0000
+const telefone = document.getElementById("telefone");
+if (telefone) {
+    telefone.addEventListener("input", function (evento) {
+        if (evento.inputType && evento.inputType.startsWith("delete")) {
+            return;
+        }
+
+        const digitos = this.value.replace(/\D/g, "").substring(0, 11);
+        let valor = digitos;
+
+        if (digitos.length > 10) {
+            valor = digitos.replace(/^(\d{2})(\d{5})(\d{0,4})$/, "($1) $2-$3");
+        } else if (digitos.length > 6) {
+            valor = digitos.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3");
+        } else if (digitos.length > 2) {
+            valor = digitos.replace(/^(\d{2})(\d{0,5})$/, "($1) $2");
+        }
+
+        this.value = valor;
+    });
 }
 
-(function () {
+const estado = document.getElementById("estado");
+if (estado) {
+    estado.addEventListener("input", function () {
+        this.value = this.value.replace(/[^A-Za-z]/g, "").toUpperCase();
+    });
+}
 
-    const formulario = document.getElementById("formCadastroProfissional");
-    const dataNascimento = document.getElementById("dataNascimento");
-    const telefone = document.getElementById("telefone");
 
-    // ==========================================
-    // TELEFONE
-    // ==========================================
+// =========================
+// CRP E UF DO CRP
+// =========================
 
-    if (telefone) {
+// Monta as opções de UF da região; regiões com uma UF só já vêm selecionadas
+function atualizarUfCrp(codigo) {
+    if (!ufCrp) return;
 
-        telefone.addEventListener("input", function () {
+    const ufs = regioesCRP[codigo] || [];
+    const atual = ufCrp.value;
 
-            let valor = this.value.replace(/\D/g, "");
+    ufCrp.innerHTML = "";
+    ufCrp.add(new Option(ufs.length ? "Selecione" : "Digite o CRP", ""));
+    ufs.forEach(uf => ufCrp.add(new Option(uf, uf)));
 
-            // Máximo de 11 números
-            valor = valor.substring(0, 11);
-
-            if (valor.length <= 2) {
-
-                this.value = valor;
-
-            } else if (valor.length <= 7) {
-
-                this.value =
-                    "(" + valor.substring(0, 2) + ") " +
-                    valor.substring(2);
-
-            } else if (valor.length <= 11) {
-
-                this.value =
-                    "(" + valor.substring(0, 2) + ") " +
-                    valor.substring(2, 7) + "-" +
-                    valor.substring(7);
-
-            }
-
-        });
-
+    if (ufs.length === 1) {
+        ufCrp.value = ufs[0];
+    } else if (ufs.includes(atual)) {
+        ufCrp.value = atual;
     }
 
-    if (formulario && telefone) {
+    if (ufCrp.value) limparAviso(ufCrp);
+}
 
-        formulario.addEventListener("submit", function (event) {
-
-            const numeros = telefone.value.replace(/\D/g, "");
-            const erroTelefone = document.getElementById("erroTelefone");
-
-            telefone.classList.remove("is-valid", "is-invalid");
-
-            if (/^(\d)\1+$/.test(numeros)) {
-
-    event.preventDefault();
-
-    telefone.classList.add("is-invalid");
-
-            if (erroTelefone) {
-                    erroTelefone.textContent =
-                        "Digite um número de telefone válido.";
-                }
-
-                telefone.focus();
-
-                return;
-            }
-
-            if (numeros.length !== 11) {
-
-                event.preventDefault();
-
-                telefone.classList.add("is-invalid");
-
-                if (erroTelefone) {
-                    erroTelefone.textContent =
-                        "Digite um telefone válido com DDD e 11 dígitos.";
-                }
-
-                telefone.focus();
-
-                return;
-            }
-
-            telefone.classList.add("is-valid");
-
-            if (erroTelefone) {
-                erroTelefone.textContent = "";
-            }
-
-        });
-
-    }
-
-    // ==========================================
-    // CPF
-    // ==========================================
-
-    const cpf = document.getElementById("cpf");
-    const erroCpf = document.getElementById("erroCpf");
-
-    if (cpf) {
-        cpf.addEventListener("input", function () {
-            let valor = this.value.replace(/\D/g, "");
-            valor = valor.substring(0, 11);
-            valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
-            valor = valor.replace(/(\d{3})(\d)/, "$1.$2");
-            valor = valor.replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-            this.value = valor;
-
-            const numeros = valor.replace(/\D/g, "");
-            cpf.classList.remove("is-valid", "is-invalid");
-            if (numeros.length === 0) {
-                cpf.classList.add("is-invalid");
-                if (erroCpf) erroCpf.textContent = "O CPF é obrigatório.";
-            } else if (numeros.length === 11) {
-                if (validarCpf(valor)) {
-                    cpf.classList.add("is-valid");
-                } else {
-                    cpf.classList.add("is-invalid");
-                    if (erroCpf) erroCpf.textContent = "CPF inválido.";
-                }
-            }
-        });
-    }
-
-    const crp = document.getElementById("crp");
-    const erroCrp = document.getElementById("erroCrp");
-    const ufCrp = document.getElementById("uf_crp");
-    const regioesCRP = {
-        "01": "DF", "02": "PE", "03": "CE", "04": "MG", "05": "BA", "06": "SP", "07": "RS", "08": "PR", "09": "GO", "10": "PA/AP", "11": "SC", "12": "RJ", "13": "PB", "14": "MS", "15": "AL", "16": "ES", "17": "RN", "18": "PI", "19": "SE", "20": "AM/RR", "21": "RO/AC", "22": "MA", "23": "TO"
-    };
-
-    if (crp) {
-        crp.addEventListener("input", function () {
-            let valor = this.value.replace(/\D/g, "");
-            valor = valor.substring(0, 8);
+const crp = document.getElementById("crp");
+if (crp) {
+    crp.addEventListener("input", function (evento) {
+        if (!(evento.inputType && evento.inputType.startsWith("delete"))) {
+            let valor = this.value.replace(/\D/g, "").substring(0, 8);
             if (valor.length > 2) {
                 valor = valor.replace(/^(\d{2})(\d+)/, "$1/$2");
             }
             this.value = valor;
-
-            const codigo = valor.replace(/\D/g, "").substring(0, 2);
-            crp.classList.remove("is-valid", "is-invalid");
-            if (erroCrp) {
-                erroCrp.classList.add("d-none");
-            }
-
-            if (ufCrp) {
-                if (codigo.length === 2) {
-                    if (regioesCRP[codigo]) {
-                        ufCrp.value = regioesCRP[codigo];
-                    } else {
-                        ufCrp.value = "";
-                        crp.classList.add("is-invalid");
-                        if (erroCrp) {
-                            erroCrp.textContent = "Código do CRP inexistente.";
-                            erroCrp.classList.remove("d-none");
-                        }
-                        return;
-                    }
-                } else {
-                    ufCrp.value = "";
-                }
-            }
-            if (valor.length === 9) {
-                crp.classList.add("is-valid");
-            }
-        });
-    }
-
-    const senha = document.getElementById("senha");
-    const confirmar = document.getElementById("confirmarSenha");
-
-if (senha) {
-    senha.addEventListener("keyup", function () {
-        const texto = this.value;
-        const forca = document.getElementById("forcaSenha");
-
-        if (!forca) {
-            return;
         }
 
-        // Senha vazia
-        if (texto.length === 0) {
-            forca.innerHTML = "";
-            return;
+        const codigo = this.value.replace(/\D/g, "").substring(0, 2);
+        atualizarUfCrp(codigo.length === 2 ? codigo : "");
+
+        // Avisa logo se a região não existir
+        if (codigo.length === 2 && !regioesCRP[codigo]) {
+            mostrarAviso(crp, "Região do CRP inexistente.", false);
         }
-
-        // Limite máximo
-        if (texto.length > 16) {
-            forca.innerHTML =
-                "<span class='text-danger'>A senha deve ter no máximo 16 caracteres.</span>";
-            return;
-        }
-
-        const faltando = [];
-
-        // Tamanho mínimo
-        if (texto.length < 8) {
-            faltando.push("8 caracteres");
-        }
-
-        // Letra maiúscula
-        if (!/[A-Z]/.test(texto)) {
-            faltando.push("uma letra maiúscula");
-        }
-
-        // Número
-        if (!/[0-9]/.test(texto)) {
-            faltando.push("um número");
-        }
-
-        // Caractere especial
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(texto)) {
-            faltando.push("um caractere especial");
-        }
-
-        // Todos os requisitos atendidos
-        if (faltando.length === 0) {
-            forca.innerHTML =
-                "<span class='text-success'>✓ Senha válida.</span>";
-            return;
-        }
-
-        // Monta a mensagem mostrando somente o que falta
-        let mensagem = "Precisa de ";
-
-        if (faltando.length === 1) {
-            mensagem += faltando[0] + ".";
-        } else if (faltando.length === 2) {
-            mensagem += faltando[0] + " e " + faltando[1] + ".";
-        } else {
-            mensagem +=
-                faltando.slice(0, -1).join(", ") +
-                " e " +
-                faltando[faltando.length - 1] +
-                ".";
-        }
-
-        forca.innerHTML =
-            "<span class='text-danger'>" + mensagem + "</span>";
     });
 }
 
 
+// =========================
+// BIOGRAFIA (CONTADOR)
+// =========================
 
-    if (confirmar && senha) {
-        confirmar.addEventListener("keyup", () => {
+const biografia = document.getElementById("biografia");
+const contadorBiografia = document.getElementById("contadorBiografia");
 
-            const mensagem = document.getElementById("erroConfirmarSenha");
+function atualizarContador() {
+    if (!biografia || !contadorBiografia) return;
 
-            if (!mensagem) {
-                return;
-            }
+    const restantes = 1000 - biografia.value.length;
+    contadorBiografia.textContent = `${biografia.value.length}/1000 caracteres. Aparece no seu perfil público.`;
+    contadorBiografia.classList.toggle("text-danger", restantes < 0);
+}
 
-            if (confirmar.value.length === 0) {
-                confirmar.classList.remove("is-valid", "is-invalid");
-                mensagem.innerHTML = "";
-                return;
-            }
+if (biografia) {
+    biografia.addEventListener("input", atualizarContador);
+    atualizarContador();
+}
 
-            if (confirmar.value === senha.value) {
 
-                confirmar.classList.remove("is-invalid");
-                confirmar.classList.add("is-valid");
+// =========================
+// FOTO (PRÉVIA)
+// =========================
 
-                mensagem.innerHTML =
-                    "<span class='text-success'>" +
-                    "✓ As senhas coincidem." +
-                    "</span>";
+const previaFoto = document.getElementById("previaFoto");
+let urlPrevia = null;
 
+if (campoFoto) {
+    campoFoto.addEventListener("change", function () {
+        if (urlPrevia) {
+            URL.revokeObjectURL(urlPrevia);
+            urlPrevia = null;
+        }
+
+        const valido = validarFoto(campoFoto);
+        const arquivo = campoFoto.files && campoFoto.files[0];
+
+        if (previaFoto) {
+            if (valido && arquivo) {
+                urlPrevia = URL.createObjectURL(arquivo);
+                previaFoto.src = urlPrevia;
+                previaFoto.classList.remove("d-none");
             } else {
-
-                confirmar.classList.remove("is-valid");
-                confirmar.classList.add("is-invalid");
-
-                mensagem.innerHTML =
-                    "<span class='text-danger'>" +
-                    "As senhas não coincidem." +
-                    "</span>";
+                previaFoto.removeAttribute("src");
+                previaFoto.classList.add("d-none");
             }
-        });
+        }
+    });
+}
+
+
+// =========================
+// CEP - BUSCA NO VIACEP
+// =========================
+
+const cep = document.getElementById("cep");
+const btnBuscarCep = document.getElementById("btnBuscarCep");
+const camposEndereco = ["rua", "bairro", "cidade", "estado"];
+let ultimoCepBuscado = "";
+
+// Campos preenchidos pelo ViaCEP ficam travados; os vazios são liberados
+// para o usuário digitar (CEP único da cidade, CEP não encontrado ou falha na busca)
+function ajustarCamposEndereco(liberarTodos) {
+    camposEndereco.forEach(id => {
+        const campo = document.getElementById(id);
+        if (campo) {
+            campo.readOnly = !liberarTodos && campo.value.trim() !== "";
+        }
+    });
+}
+
+function preencherEndereco(dados) {
+    const valores = {
+        rua: dados.logradouro,
+        bairro: dados.bairro,
+        cidade: dados.localidade,
+        estado: dados.uf
+    };
+
+    camposEndereco.forEach(id => {
+        const campo = document.getElementById(id);
+        if (campo) {
+            campo.value = valores[id] || "";
+            limparAviso(campo);
+        }
+    });
+}
+
+function carregandoCep(ativo) {
+    if (!btnBuscarCep) return;
+
+    btnBuscarCep.disabled = ativo;
+    btnBuscarCep.innerHTML = ativo
+        ? '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>'
+        : '<i class="bi bi-search" aria-hidden="true"></i>';
+    btnBuscarCep.setAttribute("aria-label", ativo ? "Buscando CEP" : "Buscar endereço pelo CEP");
+}
+
+function buscarCEP(forcar) {
+    if (!cep) {
+        return;
     }
 
+    const valor = cep.value.replace(/\D/g, "");
 
-
-    if (dataNascimento) {
-        dataNascimento.addEventListener("input", function () {
-            let valor = this.value.replace(/\D/g, "");
-            valor = valor.substring(0, 8);
-
-            if (valor.length >= 3) {
-                valor = valor.substring(0, 2) + "/" + valor.substring(2);
-            }
-
-            if (valor.length >= 6) {
-                valor = valor.substring(0, 5) + "/" + valor.substring(5);
-            }
-
-            this.value = valor;
-            this.classList.remove("is-valid", "is-invalid");
-
-            if (valor.length === 10) {
-                validarDataNascimento();
-            }
-        });
+    // CEP incompleto não apaga o endereço já preenchido
+    if (valor.length !== 8) {
+        if (forcar) validarCampo(cep);
+        return;
     }
 
-    const emailInput = document.getElementById("email");
-    const erroEmailInput = document.getElementById("erroEmail");
-    if (emailInput) {
-        emailInput.addEventListener("input", function () {
-            const valor = this.value.trim();
-            this.classList.remove("is-valid", "is-invalid");
-            if (erroEmailInput) {
-                erroEmailInput.textContent = "";
+    // Evita buscar de novo o mesmo CEP ao sair do campo
+    if (!forcar && valor === ultimoCepBuscado) {
+        return;
+    }
+
+    ultimoCepBuscado = valor;
+    limparAviso(cep);
+    carregandoCep(true);
+
+    fetch(`https://viacep.com.br/ws/${valor}/json/`)
+        .then(res => {
+            if (!res.ok) {
+                throw new Error("Falha na consulta do CEP");
             }
-            if (valor.length === 0) {
-                this.classList.add("is-invalid");
-                if (erroEmailInput) {
-                    erroEmailInput.textContent = "O e-mail é obrigatório.";
-                }
+            return res.json();
+        })
+        .then(dados => {
+            if (dados.erro) {
+                mostrarAviso(cep, "CEP não encontrado. Preencha o endereço manualmente.", false);
+                preencherEndereco({});
+                ajustarCamposEndereco(true);
                 return;
             }
-            const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (regex.test(valor)) {
-                this.classList.add("is-valid");
+
+            preencherEndereco(dados);
+            ajustarCamposEndereco(false);
+            mostrarAviso(cep, "", true);
+
+            // Leva o usuário direto para o próximo campo a preencher
+            const proximo = ["rua", "bairro"].map(id => document.getElementById(id)).find(c => c && !c.value);
+            const numero = document.getElementById("numero");
+            (proximo || numero)?.focus();
+        })
+        .catch(() => {
+            ultimoCepBuscado = "";
+            mostrarAviso(cep, "Não foi possível consultar o CEP. Preencha o endereço manualmente.", false);
+            ajustarCamposEndereco(true);
+        })
+        .finally(() => carregandoCep(false));
+}
+
+if (btnBuscarCep) {
+    btnBuscarCep.addEventListener("click", () => buscarCEP(true));
+}
+
+if (cep) {
+    cep.addEventListener("input", function () {
+        let valor = this.value.replace(/\D/g, "").substring(0, 8);
+        if (valor.length > 5) {
+            valor = valor.replace(/^(\d{5})(\d)/, "$1-$2");
+        }
+        this.value = valor;
+
+        // Busca sozinho quando o CEP fica completo
+        if (valor.replace(/\D/g, "").length === 8) {
+            buscarCEP(false);
+        }
+    });
+
+    cep.addEventListener("blur", () => buscarCEP(false));
+
+    // Ao voltar com erro do servidor, libera os campos de endereço que ficaram vazios
+    if (cep.value.replace(/\D/g, "").length === 8) {
+        ultimoCepBuscado = cep.value.replace(/\D/g, "");
+        ajustarCamposEndereco(false);
+    }
+}
+
+
+// =========================
+// VALIDAÇÃO AO DIGITAR / SAIR DO CAMPO
+// =========================
+
+if (formCadastro) {
+
+    const campos = Array.from(formCadastro.querySelectorAll("input, select, textarea"))
+        .filter(campo => campo.type !== "hidden" && campo.name);
+
+    campos.forEach(campo => {
+
+        // Valida ao sair do campo (o CEP é validado pela busca e a foto ao ser escolhida)
+        if (campo.name !== "cep" && campo.type !== "file") {
+            campo.addEventListener(campo.type === "checkbox" || campo.tagName === "SELECT" ? "change" : "blur", () => {
+                if (campo.value || campo.type === "checkbox") validarCampo(campo);
+            });
+        }
+
+        // Se o campo já está marcado com erro, revalida enquanto o usuário corrige
+        if (campo.type !== "file") {
+            campo.addEventListener("input", () => {
+                if (campo.classList.contains("is-invalid")) validarCampo(campo);
+            });
+        }
+    });
+
+    // Senha e confirmação: mostram o resultado enquanto digita
+    const senha = document.getElementById("senha");
+    const confirmar = document.getElementById("confirmarSenha");
+
+    if (senha) {
+        senha.addEventListener("input", () => {
+            if (senha.value) {
+                validarCampo(senha);
             } else {
-                this.classList.add("is-invalid");
-                if (erroEmailInput) {
-                    erroEmailInput.textContent = "Digite um e-mail válido.";
-                }
+                limparAviso(senha);
+            }
+
+            // A confirmação precisa ser conferida de novo quando a senha muda
+            if (confirmar && confirmar.value) validarCampo(confirmar);
+        });
+    }
+
+    if (confirmar) {
+        confirmar.addEventListener("input", () => {
+            if (confirmar.value) {
+                validarCampo(confirmar);
+            } else {
+                limparAviso(confirmar);
             }
         });
     }
 
-    const cepInput = document.getElementById("cep");
-    const btnBuscarCep = document.getElementById("btnBuscarCep");
-    if (cepInput) {
-        cepInput.addEventListener("input", function () {
-            let valor = this.value.replace(/\D/g, "");
-            valor = valor.substring(0, 8);
-            if (valor.length > 5) {
-                valor = valor.replace(/^(\d{5})(\d)/, "$1-$2");
-            }
-            this.value = valor;
-        });
-    }
 
-    if (btnBuscarCep) {
-        btnBuscarCep.addEventListener("click", buscarCEP);
-    }
+    // =========================
+    // ENVIO DO FORMULÁRIO
+    // =========================
 
+    formCadastro.addEventListener("submit", function (evento) {
 
-    // ==========================================
-    // LIMITES DOS CAMPOS DE ENDEREÇO
-    // ==========================================
+        const invalidos = campos.filter(campo => !validarCampo(campo));
 
-    
-    const numeroInput = document.getElementById("numero")
+        if (invalidos.length > 0) {
+            evento.preventDefault();
 
-    if (numeroInput) {
-        numeroInput.maxLength = 10;
-    }
+            // Se o erro está num campo travado, libera para o usuário corrigir
+            invalidos.forEach(campo => {
+                if (campo.readOnly) campo.readOnly = false;
+            });
 
-})();
+            invalidos[0].focus();
+            return;
+        }
+
+        // Evita envio duplo (o envio leva a foto e pode demorar)
+        if (botaoCadastrar) {
+            botaoCadastrar.disabled = true;
+            botaoCadastrar.textContent = "Enviando...";
+        }
+    });
+
+    // Reativa o botão se a página voltar pelo botão "voltar" do navegador
+    window.addEventListener("pageshow", function () {
+        if (botaoCadastrar) {
+            botaoCadastrar.disabled = false;
+            botaoCadastrar.textContent = "Solicitar Cadastro";
+        }
+    });
+}

@@ -1,28 +1,4 @@
-window.toggleSenha = function (campoId, iconeId) {
-
-    const campo = document.getElementById(campoId);
-    const icone = document.getElementById(iconeId);
-
-    if (!campo || !icone) {
-        return;
-    }
-
-    if (campo.type === "password") {
-
-        campo.type = "text";
-
-        icone.classList.remove("bi-eye");
-        icone.classList.add("bi-eye-slash");
-
-    } else {
-
-        campo.type = "password";
-
-        icone.classList.remove("bi-eye-slash");
-        icone.classList.add("bi-eye");
-    }
-};
-
+// O botão de mostrar/ocultar senha é tratado pelo mostrar_senha.js (carregado no base.html)
 
 const senha = document.getElementById("senha");
 const confirmar = document.getElementById("confirmarSenha");
@@ -48,11 +24,11 @@ if (senha) {
             return;
         }
 
-        if (texto.length > 16) {
+        if (texto.length > 64) {
 
             forca.innerHTML =
                 "<span class='text-danger'>" +
-                "A senha deve ter no máximo 16 caracteres." +
+                "A senha deve ter no máximo 64 caracteres." +
                 "</span>";
 
             return;

@@ -46,6 +46,10 @@ CREATE TABLE usuarios (
     termos_aceitos BOOLEAN
         NOT NULL DEFAULT FALSE,
 
+    -- Quando e qual versão dos Termos/Política foi aceita (LGPD)
+    termos_aceitos_em DATETIME NULL,
+    termos_versao VARCHAR(30) NULL,
+
     data_cadastro TIMESTAMP
         DEFAULT CURRENT_TIMESTAMP
 );
