@@ -5,6 +5,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.utils import secure_filename
+from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import send_from_directory
 from flask_wtf.csrf import CSRFProtect
 from dotenv import load_dotenv
@@ -22,11 +23,36 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
+# Quantidade de proxies na frente do app (cloudflared, Nginx, hospedagem...).
+# Com 0 (padrão), o IP usado é o da conexão direta.
+# Só use > 0 se o app estiver MESMO atrás de proxy: sem proxy,
+# qualquer pessoa poderia forjar o X-Forwarded-For e burlar o limite de tentativas.
+PROXIES_CONFIAVEIS = int(os.getenv("PROXIES_CONFIAVEIS", "0") or 0)
+
+if PROXIES_CONFIAVEIS > 0:
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=PROXIES_CONFIAVEIS)
+
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
     default_limits=[]
 )
+
+# Hash usado no login quando o e-mail não existe,
+# para igualar o tempo de resposta
+SENHA_HASH_FALSA = generate_password_hash(secrets.token_hex(16))
+
+
+@app.errorhandler(429)
+def limite_excedido(erro):
+
+    mensagem = "Muitas tentativas em pouco tempo. Aguarde um minuto e tente novamente."
+
+    # Rotas chamadas por fetch (ex.: chatbot) esperam JSON
+    if request.is_json or request.accept_mimetypes.best == "application/json":
+        return {"erro": mensagem}, 429
+
+    return render_template("erro_429.html", mensagem=mensagem), 429
 
 
 app.config["SESSION_COOKIE_HTTPONLY"] = True
@@ -1646,7 +1672,7 @@ def validar_codigo_2fa(usuario_id, codigo):
             
 
 @app.route("/verificar_2fa", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("5 per minute", methods=["POST"])
 def verificar_2fa():
 
     usuario_id = session.get("2fa_usuario_id")
@@ -1922,7 +1948,7 @@ def lista_sessoes():
 
 
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("5 per minute", methods=["POST"])
 def login():
 
     if request.method == "POST":
@@ -1977,6 +2003,20 @@ def login():
             # =========================
 
             if usuario is None:
+                # Calcula um hash mesmo sem usuário para a resposta
+                # levar o mesmo tempo de um e-mail cadastrado
+                check_password_hash(SENHA_HASH_FALSA, senha)
+
+                flash("E-mail ou senha incorretos.", "danger")
+                return render_template("login.html", email=email)
+
+            # =========================
+            # VERIFICA SENHA
+            # ANTES DE QUALQUER STATUS, PARA NÃO REVELAR
+            # SE O E-MAIL ESTÁ CADASTRADO
+            # =========================
+
+            if not check_password_hash(usuario["senha_hash"], senha):
                 flash("E-mail ou senha incorretos.", "danger")
                 return render_template("login.html", email=email)
 
@@ -2025,14 +2065,6 @@ def login():
                         "danger"
                     )
                     return render_template("login.html", email=email)
-
-            # =========================
-            # VERIFICA SENHA
-            # =========================
-
-            if not check_password_hash(usuario["senha_hash"], senha):
-                flash("E-mail ou senha incorretos.", "danger")
-                return render_template("login.html", email=email)
 
             # =========================
             # VERIFICAÇÃO 2FA
@@ -4461,12 +4493,10 @@ def aprovar_profissional(profissional_id):
         )
 
     except Exception:
-
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO APROVAR PROFISSIONAL:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao aprovar profissional.")
 
         flash(
             "Ocorreu um erro ao aprovar o cadastro.",
@@ -4481,13 +4511,10 @@ def aprovar_profissional(profissional_id):
         )
 
     finally:
-
         if cursor:
             cursor.close()
 
-        if conexao:
-            conexao.close()
-            
+       
 @app.route(
     "/admin/profissionais/<int:profissional_id>/recusar",
     methods=["POST"]
@@ -4616,14 +4643,6 @@ def recusar_profissional(profissional_id):
 
         conexao.commit()
 
-        print("================================")
-        print("PROFISSIONAL RECUSADO")
-        print("ID PROFISSIONAL:", profissional_id)
-        print("USUARIO_ID:", profissional["usuario_id"])
-        print("EMAIL:", profissional["email"])
-        print("MOTIVO:", motivo)
-        print("================================")
-
 
         # =========================
         # ENVIA EMAIL DE RECUSA
@@ -4656,12 +4675,10 @@ def recusar_profissional(profissional_id):
         )
 
     except Exception:
-
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO RECUSAR PROFISSIONAL:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao recusar profissional.")
 
         flash(
             "Ocorreu um erro ao recusar o cadastro.",
@@ -4681,7 +4698,7 @@ def recusar_profissional(profissional_id):
             cursor.close()
 
         if conexao:
-            conexao.close()
+            conexao.close() 
             
 
             
@@ -4689,7 +4706,7 @@ def recusar_profissional(profissional_id):
 # CADASTRO_USUÁRIO 
 # =========================
 @app.route('/cadastro_usuario', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("5 per minute", methods=["POST"])
 def cadastro_usuario():
 
     # dicionário com TODOS os campos para manter o formulário preenchido
@@ -5042,25 +5059,16 @@ def confirmar_email(token):
         )
 
         conexao.commit()
-
-        print("================================")
-        print("EMAIL CONFIRMADO")
-        print("ID:", usuario["id"])
-        print("EMAIL:", usuario["email"])
-        print("TIPO:", usuario["tipo"])
-        print("================================")
     
         flash("E-mail confirmado com sucesso! Agora você pode fazer login.", "success")
         
         return redirect(url_for("login"))
 
     except Exception:
-
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO CONFIRMAR EMAIL NO MYSQL:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao confirmar email no MySQL.")
 
         flash(
             "Ocorreu um erro ao confirmar o email.",
@@ -5068,7 +5076,6 @@ def confirmar_email(token):
         )
 
         return redirect(url_for("login"))
-
     finally:
 
         if cursor:
@@ -5153,9 +5160,7 @@ def perfil_profissional():
         )
 
     except Exception:
-
-        print("ERRO AO CARREGAR PERFIL PROFISSIONAL:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao carregar perfil profissional.")
 
         flash(
             "Ocorreu um erro ao carregar seu perfil.",
@@ -5493,12 +5498,10 @@ def editar_perfil_profissional():
         )
 
     except Exception:
-
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO EDITAR PERFIL PROFISSIONAL:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao editar perfil profissional.")
 
         flash(
             "Ocorreu um erro ao atualizar seu perfil.",
@@ -5565,8 +5568,7 @@ def forum_home():
         )
 
     except Exception:
-        print("ERRO AO CARREGAR FÓRUM:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao carregar fórum.")
 
         flash(
             "Ocorreu um erro ao carregar o fórum.",
@@ -5689,12 +5691,10 @@ def forum_novo():
             )
 
         except Exception:
-
             if conexao:
                 conexao.rollback()
 
-            print("ERRO AO CRIAR TÓPICO:")
-            traceback.print_exc()
+            app.logger.exception("Erro ao criar tópico.")
 
             flash(
                 "Ocorreu um erro ao criar o tópico.",
@@ -5858,12 +5858,13 @@ def forum_topico(topico_id):
         )
 
     except Exception:
-
+        
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO CARREGAR/ENVIAR MENSAGEM DO FÓRUM:")
-        traceback.print_exc()
+        app.logger.exception(
+            "Erro ao carregar ou enviar mensagem do fórum."
+        )
 
         flash(
             "Ocorreu um erro ao carregar o tópico.",
@@ -5953,12 +5954,11 @@ def excluir_topico(topico_id):
         return redirect(url_for("forum_home"))
 
     except Exception:
-
+        
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO EXCLUIR TÓPICO:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao excluir tópico.")
 
         flash(
             "Ocorreu um erro ao excluir o tópico.",
@@ -6082,12 +6082,11 @@ def excluir_mensagem(topico_id, mensagem_id):
         )
 
     except Exception:
-
+        
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO EXCLUIR MENSAGEM:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao excluir mensagem do fórum.")
 
         flash(
             "Ocorreu um erro ao excluir a mensagem.",
@@ -6165,9 +6164,8 @@ def gerenciar_forum():
         )
 
     except Exception:
-
-        print("ERRO AO CARREGAR GERENCIAMENTO DO FÓRUM:")
-        traceback.print_exc()
+        
+        app.logger.exception("Erro ao carregar gerenciamento do fórum.")
 
         flash(
             "Ocorreu um erro ao carregar o gerenciamento do fórum.",
@@ -6188,7 +6186,7 @@ def gerenciar_forum():
 
 
 @app.route('/cadastro_profissional', methods=['GET', 'POST'])
-@limiter.limit("5 per minute")
+@limiter.limit("5 per minute", methods=["POST"])
 def cadastro_profissional():
     
     limpar_fotos_temporarias()
@@ -6643,11 +6641,13 @@ def cadastro_profissional():
 
 
         except Exception:
+            
             if conexao:
                 conexao.rollback()
 
-            print("ERRO AO CADASTRAR PROFISSIONAL NO MYSQL:")
-            traceback.print_exc()
+            app.logger.exception(
+                "Erro ao cadastrar profissional no MySQL."
+            )
 
             flash(
                 "Ocorreu um erro ao realizar o cadastro. Tente novamente.",
@@ -6659,7 +6659,7 @@ def cadastro_profissional():
                 dados=dados,
                 campo_erro=None,
                 mensagem_erro=""
-            )
+            )   
 
         finally:
             if cursor:
@@ -6709,7 +6709,7 @@ def testar_api_noticias():
     chave = os.getenv("GNEWS_API_KEY")
 
     if not chave:
-        print("ERRO: GNEWS_API_KEY não encontrada no .env")
+        app.logger.error("GNEWS_API_KEY não encontrada na configuração.")
         return []
 
     try:
@@ -6725,10 +6725,11 @@ def testar_api_noticias():
             timeout=15
         )
 
-        print("Status da API:", resposta.status_code)
-
         if resposta.status_code != 200:
-            print("Resposta da API:", resposta.text[:500])
+            app.logger.warning(
+                "A API GNews retornou status HTTP %s.",
+                resposta.status_code
+            )
             return []
 
         dados = resposta.json()
@@ -6736,7 +6737,6 @@ def testar_api_noticias():
 
         for artigo in dados.get("articles", []):
             if not noticia_relevante(artigo):
-                print("[IGNORADA]", artigo.get("title"))
                 continue
             
             data_publicacao = artigo.get("publishedAt")
@@ -6761,16 +6761,19 @@ def testar_api_noticias():
 
 
             noticias_relevantes.append(noticia)
-            print("[RELEVANTE]", noticia["titulo"])
+            
 
-        print("Total de notícias relevantes:", len(noticias_relevantes))
+            app.logger.info(
+                    "Busca GNews concluída. Notícias relevantes encontradas: %s",
+                    len(noticias_relevantes)
+                )
 
         return noticias_relevantes
 
-    except requests.RequestException as erro:
-        print("Erro ao consultar a API:", erro)
+    except requests.RequestException:
+        app.logger.exception("Erro ao consultar a API GNews.")
         return []
-    
+        
 _cache_noticias = {
     "dados": [],
     "atualizado_em": 0
@@ -6798,9 +6801,6 @@ def carregar_noticias():
         # Busca notícias novas na API
         noticias_api = testar_api_noticias()
         
-        print("DEBUG - Notícias recebidas da API:", len(noticias_api))
-        print("DEBUG - Primeira notícia:", noticias_api[0] if noticias_api else "Nenhuma notícia")
-
         if noticias_api:
             for noticia in noticias_api:
                 fonte = noticia.get("fonte", "").strip()
@@ -6878,15 +6878,15 @@ def carregar_noticias():
         _cache_noticias["dados"] = noticias
         _cache_noticias["atualizado_em"] = time.time()
 
-        print("Notícias carregadas do banco:", len(noticias))
-
         return noticias
 
     except Exception:
         if conexao:
             conexao.rollback()
 
-        traceback.print_exc()
+        app.logger.exception(
+            "Erro ao atualizar as notícias; tentando recuperar as notícias salvas no banco."
+        )
 
         # Se houver erro, tenta recuperar as notícias já salvas no banco
         try:
@@ -6913,8 +6913,11 @@ def carregar_noticias():
                 _cache_noticias["atualizado_em"] = time.time()
 
                 return noticias
+
         except Exception:
-            traceback.print_exc()
+            app.logger.exception(
+                "Erro ao recuperar notícias salvas no banco."
+            )
 
         return _cache_noticias["dados"]
 
@@ -7471,12 +7474,6 @@ def gerenciar_profissionais():
 
         profissionais_aprovados = cursor.fetchall()
 
-        print("================================")
-        print("GERENCIANDO PROFISSIONAIS")
-        print("PENDENTES:", len(profissionais_pendentes))
-        print("APROVADOS:", len(profissionais_aprovados))
-        print("================================")
-
         return render_template(
             "admin_profissionais.html",
             profissionais=profissionais_pendentes,
@@ -7484,12 +7481,7 @@ def gerenciar_profissionais():
         )
 
     except Exception:
-
-        print("================================")
-        print("ERRO AO BUSCAR PROFISSIONAIS")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception("Erro ao buscar profissionais.")
 
         flash(
             "Ocorreu um erro ao carregar os profissionais.",
@@ -7499,7 +7491,6 @@ def gerenciar_profissionais():
         return redirect(
             url_for("dashboard_admin")
         )
-
     finally:
 
         if cursor:
@@ -7679,9 +7670,9 @@ def detalhes_profissional(profissional_id):
         )
 
     except Exception:
-
-        print("ERRO AO BUSCAR DETALHES DO PROFISSIONAL:")
-        traceback.print_exc()
+        app.logger.exception(
+            "Erro ao buscar detalhes do profissional."
+        )
 
         flash(
             "Ocorreu um erro ao carregar o cadastro.",
@@ -7776,23 +7767,15 @@ def gerenciar_profissionais_aprovados():
 
         profissionais = cursor.fetchall()
 
-        print("================================")
-        print("GERENCIANDO PROFISSIONAIS APROVADOS")
-        print("TOTAL:", len(profissionais))
-        print("================================")
-
         return render_template(
             "gerenciar_profissionais_aprovados.html",
             profissionais=profissionais
         )
 
     except Exception:
-
-        print("================================")
-        print("ERRO AO BUSCAR PROFISSIONAIS APROVADOS")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception(
+            "Erro ao buscar profissionais aprovados."
+        )
 
         flash(
             "Ocorreu um erro ao carregar os profissionais aprovados.",
@@ -7901,26 +7884,15 @@ def detalhes_profissional_aprovado(profissional_id):
                 url_for("gerenciar_profissionais_aprovados")
             )
 
-        print("================================")
-        print("DETALHES PROFISSIONAL APROVADO")
-        print("ID:", profissional["profissional_id"])
-        print("NOME:", profissional["nome"])
-        print("EMAIL:", profissional["email"])
-        print("STATUS:", profissional["status"])
-        print("================================")
-
         return render_template(
             "detalhes_profissional_aprovado.html",
             profissional=profissional
         )
 
     except Exception:
-
-        print("================================")
-        print("ERRO AO CARREGAR PROFISSIONAL APROVADO")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception(
+            "Erro ao carregar profissional aprovado."
+        )
 
         flash(
             "Ocorreu um erro ao carregar os dados do profissional.",
@@ -8248,15 +8220,10 @@ def editar_profissional_aprovados(profissional_id):
         )
 
     except Exception:
-
         if conexao:
             conexao.rollback()
 
-        print("================================")
-        print("ERRO AO EDITAR PROFISSIONAL")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception("Erro ao editar profissional.")
 
         flash(
             "Ocorreu um erro ao editar o profissional.",
@@ -8406,14 +8373,6 @@ def banir_profissional(profissional_id):
 
         conexao.commit()
 
-        print("================================")
-        print("PROFISSIONAL BANIDO")
-        print("ID PROFISSIONAL:", profissional_id)
-        print("USUARIO_ID:", profissional["usuario_id"])
-        print("NOME:", profissional["nome"])
-        print("EMAIL:", profissional["email"])
-        print("================================")
-
         flash(
             f"O profissional {profissional['nome']} foi banido com sucesso.",
             "success"
@@ -8424,15 +8383,10 @@ def banir_profissional(profissional_id):
         )
 
     except Exception:
-
         if conexao:
             conexao.rollback()
 
-        print("================================")
-        print("ERRO AO BANIR PROFISSIONAL")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception("Erro ao banir profissional.")
 
         flash(
             "Ocorreu um erro ao banir o profissional.",
@@ -8445,7 +8399,6 @@ def banir_profissional(profissional_id):
                 profissional_id=profissional_id
             )
         )
-
     finally:
 
         if cursor:
@@ -8550,14 +8503,6 @@ def reativar_profissional(profissional_id):
 
         conexao.commit()
 
-        print("================================")
-        print("PROFISSIONAL REATIVADO")
-        print("ID PROFISSIONAL:", profissional_id)
-        print("USUARIO_ID:", profissional["usuario_id"])
-        print("NOME:", profissional["nome"])
-        print("EMAIL:", profissional["email"])
-        print("================================")
-
         flash(
             f"O profissional {profissional['nome']} foi reativado com sucesso.",
             "success"
@@ -8568,15 +8513,10 @@ def reativar_profissional(profissional_id):
         )
 
     except Exception:
-
         if conexao:
             conexao.rollback()
 
-        print("================================")
-        print("ERRO AO REATIVAR PROFISSIONAL")
-        print("================================")
-
-        traceback.print_exc()
+        app.logger.exception("Erro ao reativar profissional.")
 
         flash(
             "Ocorreu um erro ao reativar o profissional.",
@@ -8730,18 +8670,10 @@ Equipe Apoio & Consciência
 
         mail.send(msg)
 
-        print("EMAIL DE CADASTRO PROFISSIONAL ENVIADO PARA:", email)
-
         return True
 
-    except Exception as e:
-
-        print("================================")
-        print("ERRO AO ENVIAR EMAIL DO PROFISSIONAL:")
-        print("TIPO:", type(e).__name__)
-        print("ERRO:", str(e))
-        print("================================")
-
+    except Exception:
+        app.logger.exception("Erro ao enviar email do profissional.")
         return False
 
 
@@ -8749,9 +8681,7 @@ def enviar_email_confirmacao_usuario(email):
     try:
         token = serializer.dumps(email, salt='confirmacao-email')
 
-        print("HOST:", request.host)
-        print("URL_ROOT:", request.url_root)
-
+    
         link = url_for(
             'confirmar_email',
             token=token,
@@ -8894,23 +8824,14 @@ Se você não criou essa conta, ignore esta mensagem.
 </html>
         """
 
-        print("MAIL_USERNAME:", app.config['MAIL_USERNAME'])
         app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
-        print("MAIL_DEFAULT_SENDER:", app.config['MAIL_DEFAULT_SENDER'])
-        print("DESTINATÁRIO:", email)
-        print("LINK:", link)
 
         mail.send(msg)
 
-        print("EMAIL ENVIADO PARA:", email)
         return True
 
-    except Exception as e:
-        print("================================")
-        print("ERRO AO ENVIAR EMAIL:")
-        print("TIPO:", type(e).__name__)
-        print("ERRO:", str(e))
-        print("================================")
+    except Exception:
+        app.logger.exception("Erro ao enviar email.")
         return False
 
 
@@ -9130,7 +9051,6 @@ Se você não solicitou essa alteração, ignore este email com segurança.
 
         mail.send(msg)
 
-        print("EMAIL DE RECUPERAÇÃO ENVIADO PARA:", email)
         return True
 
     
@@ -9138,8 +9058,7 @@ Se você não solicitou essa alteração, ignore este email com segurança.
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO ENVIAR EMAIL DE RECUPERAÇÃO:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao enviar email de recuperação.")
         return False
 
     finally:
@@ -9206,14 +9125,12 @@ def esqueci_senha():
             return redirect(url_for("login"))
 
         except Exception:
-
             if conexao:
                 conexao.rollback()
 
-            print("================================")
-            print("ERRO AO LOCALIZAR EMAIL PARA RECUPERAÇÃO")
-            traceback.print_exc()
-            print("================================")
+            app.logger.exception(
+                "Erro ao localizar email para recuperação de senha."
+            )
 
             flash(
                 "Ocorreu um erro ao processar a solicitação.",
@@ -9237,7 +9154,7 @@ def esqueci_senha():
 
 
 @app.route("/redefinir-senha/<token>", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("5 per minute", methods=["POST"])
 def redefinir_senha(token):
 
     conexao = None
@@ -9348,8 +9265,7 @@ def redefinir_senha(token):
         if conexao:
             conexao.rollback()
 
-        print("ERRO AO REDEFINIR SENHA:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao redefinir senha.")
 
         flash(
             "Ocorreu um erro ao redefinir a senha.",
@@ -9557,23 +9473,13 @@ Equipe Apoio & Consciência
         # DEBUG
         # =========================
 
-        print("================================")
-        print("ENVIANDO EMAIL DE APROVAÇÃO")
-        print("DESTINATÁRIO:", email)
-        print("NOME:", nome)
-        print("================================")
 
         mail.send(msg)
-
-        print("EMAIL DE APROVAÇÃO ENVIADO PARA:", email)
 
         return True
 
     except Exception:
-
-        print("ERRO AO ENVIAR EMAIL DE APROVAÇÃO:")
-        traceback.print_exc()
-
+        app.logger.exception("Erro ao enviar email de aprovação.")
         return False
 
 def enviar_email_recusa(email, nome, motivo):
@@ -9765,30 +9671,17 @@ Equipe Apoio & Consciência
 </html>
 """
 
-        # =========================
-        # DEBUG
-        # =========================
-
-        print("================================")
-        print("ENVIANDO EMAIL DE RECUSA")
-        print("DESTINATÁRIO:", email)
-        print("NOME:", nome)
-        print("MOTIVO:", motivo)
-        print("================================")
+        
 
         mail.send(msg)
 
-        print("EMAIL DE RECUSA ENVIADO PARA:", email)
 
         return True
 
     except Exception:
-
-        print("ERRO AO ENVIAR EMAIL DE RECUSA:")
-        traceback.print_exc()
-
+        app.logger.exception("Erro ao enviar email de recusa.")
         return False
-    
+        
     
 
 
@@ -9913,11 +9806,12 @@ def limpar_fotos_temporarias():
         if idade > 3600:
             try:
                 os.remove(caminho)
-                print("FOTO TEMPORÁRIA REMOVIDA:", arquivo)
 
-            except Exception:
-                print("ERRO AO REMOVER FOTO TEMPORÁRIA:", arquivo)
-                traceback.print_exc()
+            except OSError:
+                app.logger.exception(
+                    "Erro ao remover foto temporária: %s",
+                    caminho
+                )
                 
 def limpar_fotos_orfas():
     pasta = app.config["UPLOAD_FOLDER"]
@@ -9943,16 +9837,8 @@ def limpar_fotos_orfas():
             registro["foto"]
             for registro in cursor.fetchall()
         }
-        
-        extensoes_validas = {".jpg", ".jpeg", ".png"}
-
-        print("================================")
-        print("LIMPEZA DE FOTOS ÓRFÃS")
-        print("FOTOS REGISTRADAS NO BANCO:", len(fotos_banco))
-        print("================================")
 
         for arquivo in os.listdir(pasta):
-
             caminho = os.path.join(pasta, arquivo)
 
             if not os.path.isfile(caminho):
@@ -9961,35 +9847,26 @@ def limpar_fotos_orfas():
             # Não mexe nas fotos temporárias aqui
             if arquivo.startswith("temp_"):
                 continue
-            
 
             # Se não estiver registrado no banco, remove
             if arquivo not in fotos_banco:
-
                 try:
                     os.remove(caminho)
-
-                    print(
-                        "FOTO ÓRFÃ REMOVIDA:",
+                    app.logger.info(
+                        "Foto órfã removida: %s",
                         arquivo
                     )
 
-                except Exception:
-                    print(
-                        "ERRO AO REMOVER FOTO:",
+                except OSError:
+                    app.logger.exception(
+                        "Erro ao remover foto órfã: %s",
                         arquivo
                     )
-                    traceback.print_exc()
-
-        print("================================")
 
     except Exception:
-
-        print("ERRO AO LIMPAR FOTOS ÓRFÃS:")
-        traceback.print_exc()
+        app.logger.exception("Erro ao limpar fotos órfãs.")
 
     finally:
-
         if cursor:
             cursor.close()
 

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Muitas tentativas{% endblock %}
+{% block content %}
+
+<div class="container d-flex align-items-center justify-content-center px-3" style="min-height:60vh;">
+
+    <div class="text-center" style="max-width: 480px;">
+
+        <div class="display-4 text-warning mb-3" aria-hidden="true">
+            <i class="bi bi-hourglass-split"></i>
+        </div>
+
+        <h2 class="mb-3">Muitas tentativas</h2>
+
+        <p class="text-muted mb-4">
+            {{ mensagem }}
+        </p>
+
+        <a href="{{ url_for('index') }}" class="btn btn-dark">
+            Voltar ao início
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}
