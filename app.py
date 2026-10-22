@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from PIL import Image
+from PIL import Image, ImageOps
 
 load_dotenv(override=True)
 
@@ -55,6 +55,20 @@ def limite_excedido(erro):
     return render_template("erro_429.html", mensagem=mensagem), 429
 
 
+@app.errorhandler(413)
+def arquivo_grande_demais(erro):
+
+    limite_mb = app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024)
+    mensagem = f"O arquivo enviado é grande demais. O limite é de {limite_mb} MB."
+
+    if request.is_json or request.accept_mimetypes.best == "application/json":
+        return {"erro": mensagem}, 413
+
+    # O formulário não pode ser lido (o envio foi cortado), então volta para a mesma página
+    flash(mensagem, "danger")
+    return redirect(request.path)
+
+
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = os.getenv("HTTPS_ATIVO", "false").lower() == "true"
@@ -94,7 +108,23 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 # app.config['SERVER_NAME'] = '192.168.1.11:5000'
-app.config['PREFERRED_URL_SCHEME'] = 'http'
+app.config['PREFERRED_URL_SCHEME'] = "https" if app.config["SESSION_COOKIE_SECURE"] else "http"
+
+# Endereço público do site, usado nos links enviados por e-mail.
+# Não usamos o Host da requisição porque ele pode ser forjado
+# (um atacante faria o link de redefinição de senha apontar para o site dele).
+BASE_URL = (os.getenv("BASE_URL") or "").rstrip("/")
+
+# Versão dos Termos de Uso e da Política de Privacidade aceita no cadastro
+TERMOS_VERSAO = "provisoria-2026-10"
+
+
+def url_externa(endpoint, **valores):
+    if not BASE_URL:
+        app.logger.warning("BASE_URL não definida; usando o Host da requisição no link.")
+        return url_for(endpoint, _external=True, **valores)
+
+    return BASE_URL + url_for(endpoint, **valores)
 
 app.config['MAIL_SERVER'] = 'smtp.gmail.com'
 app.config['MAIL_PORT'] = 587
@@ -4403,7 +4433,8 @@ def aprovar_profissional(profissional_id):
                 p.usuario_id,
                 p.status_aprovacao,
                 u.nome,
-                u.email
+                u.email,
+                u.email_confirmado
             FROM profissionais p
             INNER JOIN usuarios u
                 ON u.id = p.usuario_id
@@ -4433,6 +4464,26 @@ def aprovar_profissional(profissional_id):
 
             flash(
                 "Este cadastro já foi analisado.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "detalhes_profissional",
+                    profissional_id=profissional_id
+                )
+            )
+
+        # =========================
+        # VERIFICA SE O EMAIL FOI CONFIRMADO
+        # =========================
+
+        # Garante que o email é mesmo do profissional antes de aprovar
+        if not profissional["email_confirmado"]:
+
+            flash(
+                "O profissional ainda não confirmou o e-mail. "
+                "Ele pode pedir um novo link em \"Reenviar e-mail de confirmação\" na tela de login.",
                 "warning"
             )
 
@@ -4513,6 +4564,9 @@ def aprovar_profissional(profissional_id):
     finally:
         if cursor:
             cursor.close()
+
+        if conexao:
+            conexao.close()
 
        
 @app.route(
@@ -4703,157 +4757,199 @@ def recusar_profissional(profissional_id):
 
             
 # =========================
-# CADASTRO_USUÁRIO 
+# CADASTRO_USUÁRIO
 # =========================
+
+# Campos do formulário, na ordem em que aparecem (a validação segue essa ordem)
+CAMPOS_CADASTRO_USUARIO = [
+    ("nome", "Nome"),
+    ("sobrenome", "Sobrenome"),
+    ("cpf", "CPF"),
+    ("data_de_nascimento", "Data de nascimento"),
+    ("sexo", "Sexo"),
+    ("email", "E-mail"),
+    ("telefone", "Telefone"),
+    ("cep", "CEP"),
+    ("estado", "UF"),
+    ("cidade", "Cidade"),
+    ("rua", "Rua"),
+    ("numero", "Número"),
+    ("bairro", "Bairro")
+]
+
+# Tamanho máximo de cada campo, igual às colunas das tabelas usuarios e profissionais
+# (a biografia é TEXT; o limite dela é só para manter o perfil curto)
+TAMANHO_MAXIMO_CAMPOS = {
+    "nome": 100,
+    "sobrenome": 100,
+    "email": 150,
+    "rua": 150,
+    "numero": 20,
+    "bairro": 100,
+    "cidade": 100,
+    "especialidade": 100,
+    "faculdade": 150,
+    "pos": 150,
+    "biografia": 1000
+}
+
+OPCOES_SEXO = {"Masculino", "Feminino", "Prefiro não informar"}
+
+UFS_VALIDAS = {
+    "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA",
+    "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"
+}
+
+class ErroCadastro(Exception):
+    # Erro de validação de um campo do formulário de cadastro
+    def __init__(self, campo, mensagem):
+        super().__init__(mensagem)
+        self.campo = campo
+        self.mensagem = mensagem
+
+
+def validar_dados_pessoais(dados, campos):
+    # Valida e padroniza os dados comuns aos cadastros de usuário e de profissional,
+    # na ordem do formulário. Levanta ErroCadastro no primeiro erro e
+    # devolve a data de nascimento já convertida.
+
+    # Campos obrigatórios e tamanho máximo
+    for campo, nome_campo in campos:
+        if not dados[campo]:
+            raise ErroCadastro(campo, f"O campo {nome_campo} é obrigatório.")
+
+        limite = TAMANHO_MAXIMO_CAMPOS.get(campo)
+        if limite and len(dados[campo]) > limite:
+            raise ErroCadastro(campo, f"O campo {nome_campo} deve ter no máximo {limite} caracteres.")
+
+    # Nome e sobrenome (letras, espaços, apóstrofo e hífen)
+    for campo, nome_campo in (("nome", "Nome"), ("sobrenome", "Sobrenome")):
+        if not re.fullmatch(r"[^\W\d_]+(?:[ '\-][^\W\d_]+)*", dados[campo]):
+            raise ErroCadastro(campo, f"O campo {nome_campo} deve conter apenas letras.")
+
+    # CPF, salvo sempre no mesmo formato para o UNIQUE do banco funcionar
+    if not validar_cpf(dados["cpf"]):
+        raise ErroCadastro("cpf", "CPF inválido.")
+
+    dados["cpf"] = formatar_cpf(dados["cpf"])
+
+    # Data de nascimento
+    try:
+        data_nascimento = datetime.strptime(dados["data_de_nascimento"], "%d/%m/%Y")
+    except ValueError:
+        raise ErroCadastro("data_de_nascimento", "Data de nascimento inválida.")
+
+    hoje = datetime.today()
+    idade = hoje.year - data_nascimento.year - ((hoje.month, hoje.day) < (data_nascimento.month, data_nascimento.day))
+    if idade < 18 or idade > 100:
+        raise ErroCadastro("data_de_nascimento", "Idade deve estar entre 18 e 100 anos.")
+
+    # Sexo (só as opções do formulário)
+    if dados["sexo"] not in OPCOES_SEXO:
+        raise ErroCadastro("sexo", "Selecione uma opção válida.")
+
+    # Email
+    if not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", dados["email"]):
+        raise ErroCadastro("email", "Digite um e-mail válido.")
+
+    # Telefone: DDD + 8 dígitos (fixo) ou 9 dígitos (celular), salvo sempre no mesmo formato
+    telefone_digitos = re.sub(r"\D", "", dados["telefone"])
+    if (
+        len(telefone_digitos) not in (10, 11)
+        or telefone_digitos[0] == "0"
+        or (len(telefone_digitos) == 11 and telefone_digitos[2] != "9")
+    ):
+        raise ErroCadastro("telefone", "Telefone inválido. Use o formato (00) 00000-0000.")
+
+    if len(telefone_digitos) == 11:
+        dados["telefone"] = f"({telefone_digitos[:2]}) {telefone_digitos[2:7]}-{telefone_digitos[7:]}"
+    else:
+        dados["telefone"] = f"({telefone_digitos[:2]}) {telefone_digitos[2:6]}-{telefone_digitos[6:]}"
+
+    # CEP no formato 00000-000
+    cep_digitos = re.sub(r"\D", "", dados["cep"])
+    if len(cep_digitos) != 8 or not re.fullmatch(r"[\d\-\s]+", dados["cep"]):
+        raise ErroCadastro("cep", "CEP inválido. Use o formato 00000-000.")
+
+    dados["cep"] = f"{cep_digitos[:5]}-{cep_digitos[5:]}"
+
+    # UF
+    dados["estado"] = dados["estado"].upper()
+    if dados["estado"] not in UFS_VALIDAS:
+        raise ErroCadastro("estado", "UF inválida.")
+
+    return data_nascimento
+
+
+def validar_senha_e_termos(senha, confirmar_senha, termos):
+    # Validações finais comuns aos dois cadastros
+    if not senha:
+        raise ErroCadastro("senha", "Informe uma senha.")
+
+    if not senha_valida(senha):
+        raise ErroCadastro("senha", "A senha deve ter entre 8 e 64 caracteres, conter letra maiúscula, número e caractere especial.")
+
+    if not confirmar_senha:
+        raise ErroCadastro("confirmar_senha", "Confirme sua senha.")
+
+    if senha != confirmar_senha:
+        raise ErroCadastro("confirmar_senha", "As senhas não coincidem.")
+
+    if termos != "aceito":
+        raise ErroCadastro("termos", "Você deve aceitar os Termos de Uso e a Política de Privacidade.")
+
+
+# Mesma mensagem para cadastro novo, email ou CPF já cadastrados,
+# para a tela não revelar quem tem conta no site
+MENSAGEM_CADASTRO_RECEBIDO = (
+    "Cadastro recebido! Se os dados estiverem corretos, enviamos um e-mail para "
+    "confirmar sua conta. Não recebeu? Use \"Reenviar e-mail de confirmação\" na tela de login."
+)
+
+
 @app.route('/cadastro_usuario', methods=['GET', 'POST'])
 @limiter.limit("5 per minute", methods=["POST"])
 def cadastro_usuario():
 
     # dicionário com TODOS os campos para manter o formulário preenchido
-    dados = {
-        "tipo": "usuario",
-        "nome": "",
-        "sobrenome": "",
-        "cpf": "",
-        "data_de_nascimento": "",
-        "sexo": "",
-        "email": "",
-        "telefone": "",
-        "cep": "",
-        "rua": "",
-        "numero": "",
-        "bairro": "",
-        "cidade": "",
-        "estado": ""
-    }
+    dados = {campo: "" for campo, _ in CAMPOS_CADASTRO_USUARIO}
+
+    # Mostra o formulário de novo, destacando o campo com erro
+    def erro(campo, mensagem):
+        return render_template(
+            "cadastro_usuario.html",
+            dados=dados,
+            campo_erro=campo,
+            mensagem_erro=mensagem
+        )
 
     if request.method == 'POST':
-        
 
         # captura TODOS os campos
         dados = {
-            "tipo": "usuario",
-            "nome": request.form.get("nome", "").strip(),
-            "sobrenome": request.form.get("sobrenome", "").strip(),
-            "cpf": request.form.get("cpf", "").strip(),
-            "data_de_nascimento": request.form.get("data_de_nascimento", "").strip(),
-            "sexo": request.form.get("sexo", "").strip(),
-            "email": request.form.get("email", "").strip().lower(),
-            "telefone": request.form.get("telefone", "").strip(),
-            "cep": request.form.get("cep", "").strip(),
-            "rua": request.form.get("rua", "").strip(),
-            "numero": request.form.get("numero", "").strip(),
-            "bairro": request.form.get("bairro", "").strip(),
-            "cidade": request.form.get("cidade", "").strip(),
-            "estado": request.form.get("estado", "").strip()
+            campo: request.form.get(campo, "").strip()
+            for campo, _ in CAMPOS_CADASTRO_USUARIO
         }
-        
-        senha = request.form.get('senha', '').strip()
-        confirmar_senha = request.form.get("confirmar_senha", "").strip()
+        dados["email"] = dados["email"].lower()
+
+        # A senha não passa por strip para ficar igual à digitada no login
+        senha = request.form.get('senha', '')
+        confirmar_senha = request.form.get("confirmar_senha", "")
         termos = request.form.get("termos")
 
         # Validação em ordem de cima para baixo conforme o formulário
-        campos_validacao = [
-            ("nome", "Nome"),
-            ("sobrenome", "Sobrenome"),
-            ("cpf", "CPF"),
-            ("data_de_nascimento", "Data de nascimento"),
-            ("sexo", "Sexo"),
-            ("email", "E-mail"),
-            ("telefone", "Telefone"),
-            ("cep", "CEP"),
-            ("rua", "Rua"),
-            ("numero", "Número"),
-            ("bairro", "Bairro"),
-            ("cidade", "Cidade"),
-            ("estado", "Estado")
-        ]
-
-        # Valida campos obrigatórios
-        for campo, nome_campo in campos_validacao:
-            if not dados[campo]:
-                return render_template(
-                    "cadastro_usuario.html",
-                    dados=dados,
-                    campo_erro=campo,
-                    mensagem_erro=f"O campo {nome_campo} é obrigatório."
-                )
-
-        # Valida CPF
-        if not validar_cpf(dados["cpf"]):
-            return render_template(
-                "cadastro_usuario.html",
-                dados=dados,
-                campo_erro="cpf",
-                mensagem_erro="CPF inválido."
-            )
-
-        # Valida data de nascimento
         try:
-            data_nascimento = datetime.strptime(dados["data_de_nascimento"], "%d/%m/%Y")
-        except ValueError:
-            return render_template(
-                "cadastro_usuario.html",
-                dados=dados,
-                campo_erro="data_de_nascimento",
-                mensagem_erro="Data de nascimento inválida."
-            )
+            data_nascimento = validar_dados_pessoais(dados, CAMPOS_CADASTRO_USUARIO)
+            validar_senha_e_termos(senha, confirmar_senha, termos)
+        except ErroCadastro as e:
+            return erro(e.campo, e.mensagem)
 
-        hoje = datetime.today()
-        idade = hoje.year - data_nascimento.year - ((hoje.month, hoje.day) < (data_nascimento.month, data_nascimento.day))
-        if idade < 18 or idade > 100:
-            return render_template(
-                "cadastro_usuario.html",
-                dados=dados,
-                campo_erro="data_de_nascimento",
-                mensagem_erro="Idade deve estar entre 18 e 100 anos."
-            )
+        # O hash é gerado antes de consultar o banco, para a resposta levar
+        # o mesmo tempo com ou sem conta existente (não revela quem tem conta)
+        senha_hash = generate_password_hash(senha)
 
-        # Valida email
-        padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
-        if not re.match(padrao, dados["email"]):
-            return render_template(
-                "cadastro_usuario.html",
-                dados=dados,
-                campo_erro="email",
-                mensagem_erro="Digite um e-mail válido."
-            )
-
-        # Valida senha
-        if not senha or not confirmar_senha:
-            return render_template(
-                "cadastro_usuario.html",
-                dados=dados,
-                campo_erro="senha",
-                mensagem_erro="Informe e confirme sua senha."
-            )
-
-        if senha != confirmar_senha:
-            return render_template(
-                "cadastro_usuario.html",
-                dados=dados,
-                campo_erro="senha",
-                mensagem_erro="As senhas não coincidem."
-            )
-
-        if not senha_valida(senha):
-            return render_template(
-                "cadastro_usuario.html",
-                dados=dados,
-                campo_erro="senha",
-                mensagem_erro="A senha deve ter entre 8 e 16 caracteres, conter letra maiúscula, número e caractere especial."
-            )
-
-        # Valida termos (por último)
-        if termos != "aceito":
-            return render_template(
-                "cadastro_usuario.html",
-                dados=dados,
-                campo_erro="termos",
-                mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
-            )
         # =========================
-        # VERIFICA SE O EMAIL JÁ EXISTE NO MYSQL
+        # VERIFICA SE O EMAIL OU O CPF JÁ EXISTEM
         # =========================
 
         conexao = None
@@ -4861,35 +4957,44 @@ def cadastro_usuario():
 
         try:
             conexao = get_db_connection()
-            cursor = conexao.cursor()
+            cursor = conexao.cursor(dictionary=True)
 
+            # O CPF é comparado só pelos dígitos, porque cadastros antigos podem estar sem máscara
             cursor.execute(
-                "SELECT id FROM usuarios WHERE email = %s",
-                (dados["email"],)
+                """
+                SELECT email, tipo, email_confirmado
+                FROM usuarios
+                WHERE email = %s
+                   OR REPLACE(REPLACE(cpf, '.', ''), '-', '') = %s
+                ORDER BY email = %s DESC
+                LIMIT 1
+                """,
+                (dados["email"], re.sub(r"\D", "", dados["cpf"]), dados["email"])
             )
 
-            usuario_existente = cursor.fetchone()
+            conta_existente = cursor.fetchone()
 
-            if usuario_existente:
-                flash("Este email já está cadastrado.", "warning")
+            # Conta já existe: mostra a mesma mensagem de um cadastro novo,
+            # sem revelar que a conta existe, e avisa o dono por email
+            if conta_existente:
 
-                return render_template(
-                    "cadastro_usuario.html",
-                    dados=dados,
-                    campo_erro=None,
-                    mensagem_erro=""
-                )
+                # Mesmo email, ainda não confirmado: reenvia a confirmação
+                if (
+                    conta_existente["email"] == dados["email"]
+                    and conta_existente["tipo"] == "usuario"
+                    and not conta_existente["email_confirmado"]
+                ):
+                    enviar_email_confirmacao_usuario(conta_existente["email"])
+                else:
+                    enviar_email_conta_existente(conta_existente["email"])
 
-            # =========================
-            # CRIA O HASH DA SENHA
-            # =========================
-
-            senha_hash = generate_password_hash(senha)
+                flash(MENSAGEM_CADASTRO_RECEBIDO, "success")
+                return redirect(url_for('login'))
 
             # =========================
             # INSERE O USUÁRIO NO MYSQL
             # =========================
-        
+
             cursor.execute(
                 """
                 INSERT INTO usuarios (
@@ -4910,12 +5015,14 @@ def cadastro_usuario():
                     tipo,
                     status,
                     email_confirmado,
-                    termos_aceitos
+                    termos_aceitos,
+                    termos_aceitos_em,
+                    termos_versao
                 )
                 VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s,
                     %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s
+                    %s, %s, NOW(), %s
                 )
                 """,
                 (
@@ -4936,32 +5043,35 @@ def cadastro_usuario():
                     "usuario",
                     "ativo",
                     False,
-                    True
+                    True,
+                    TERMOS_VERSAO
                 )
             )
 
             conexao.commit()
 
+        except mysql.connector.IntegrityError as erro_banco:
+
+            if conexao:
+                conexao.rollback()
+
+            # 1062 = email ou CPF duplicado (outra requisição cadastrou no mesmo instante)
+            if erro_banco.errno == 1062:
+                flash(MENSAGEM_CADASTRO_RECEBIDO, "success")
+                return redirect(url_for('login'))
+
+            app.logger.exception("Erro de integridade ao cadastrar usuário.")
+            flash("Ocorreu um erro ao realizar o cadastro. Tente novamente.", "danger")
+            return erro(None, "")
 
         except Exception:
 
             if conexao:
                 conexao.rollback()
 
-            app.logger.exception(
-                "Erro ao cadastrar usuário."
-            )
-            flash(
-                "Ocorreu um erro ao realizar o cadastro. Tente novamente.",
-                "danger"
-            )
-
-            return render_template(
-                "cadastro_usuario.html",
-                dados=dados,
-                campo_erro=None,
-                mensagem_erro=""
-            )
+            app.logger.exception("Erro ao cadastrar usuário.")
+            flash("Ocorreu um erro ao realizar o cadastro. Tente novamente.", "danger")
+            return erro(None, "")
 
         finally:
 
@@ -4975,32 +5085,18 @@ def cadastro_usuario():
         # EMAIL DE CONFIRMAÇÃO
         # =========================
 
-        if enviar_email_confirmacao_usuario(dados["email"]):
+        # Se o envio falhar, o usuário pode usar o reenvio na tela de login
+        if not enviar_email_confirmacao_usuario(dados["email"]):
+            app.logger.error("Falha ao enviar email de confirmação do cadastro.")
 
-            flash(
-                "Conta criada! Verifique seu email para confirmar o cadastro.",
-                "success"
-            )
-
-        else:
-
-            flash(
-                "Conta criada, mas houve erro ao enviar o email de confirmação.",
-                "warning"
-            )
-
+        flash(MENSAGEM_CADASTRO_RECEBIDO, "success")
         return redirect(url_for('login'))
 
     # =========================
     # GET
     # =========================
 
-    return render_template(
-        'cadastro_usuario.html',
-        dados=dados,
-        campo_erro=None,
-        mensagem_erro=""
-    )
+    return erro(None, "")
     
 @app.route('/confirmar_email/<token>')
 def confirmar_email(token):
@@ -5028,7 +5124,7 @@ def confirmar_email(token):
             """
             SELECT id, email, email_confirmado, tipo
             FROM usuarios
-            WHERE email = %s AND tipo = 'usuario'
+            WHERE email = %s AND tipo IN ('usuario', 'profissional')
             """,
             (email.lower(),)
         )
@@ -5053,13 +5149,20 @@ def confirmar_email(token):
             """
             UPDATE usuarios
             SET email_confirmado = TRUE
-            WHERE id = %s AND tipo = 'usuario'
+            WHERE id = %s AND tipo IN ('usuario', 'profissional')
             """,
             (usuario["id"],)
         )
 
         conexao.commit()
-    
+
+        if usuario["tipo"] == "profissional":
+            flash(
+                "E-mail confirmado! Seu cadastro agora será analisado por um administrador.",
+                "success"
+            )
+            return redirect(url_for("login"))
+
         flash("E-mail confirmado com sucesso! Agora você pode fazer login.", "success")
         
         return redirect(url_for("login"))
@@ -5083,6 +5186,78 @@ def confirmar_email(token):
 
         if conexao:
             conexao.close()
+
+
+@app.route("/reenviar_confirmacao", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"])
+def reenviar_confirmacao():
+
+    if request.method == "POST":
+
+        email = request.form.get("email", "").strip().lower()
+
+        # Mesma mensagem em todos os casos, para não revelar quais emails têm conta
+        mensagem_generica = (
+            "Se o e-mail estiver cadastrado e ainda não tiver sido confirmado, "
+            "você receberá um novo link de confirmação."
+        )
+
+        conexao = None
+        cursor = None
+
+        try:
+            conexao = get_db_connection()
+            cursor = conexao.cursor(dictionary=True)
+
+            cursor.execute(
+                """
+                SELECT id, tipo, email_confirmado, status
+                FROM usuarios
+                WHERE email = %s AND tipo IN ('usuario', 'profissional')
+                """,
+                (email,)
+            )
+
+            usuario = cursor.fetchone()
+
+            if (
+                usuario
+                and not usuario["email_confirmado"]
+                and usuario["status"] != "banido"
+            ):
+                if usuario["tipo"] == "profissional":
+                    enviado = enviar_email_cadastro_profissional(email)
+                else:
+                    enviado = enviar_email_confirmacao_usuario(email)
+
+                if not enviado:
+                    app.logger.error("Falha ao reenviar email de confirmação.")
+
+            flash(mensagem_generica, "info")
+            return redirect(url_for("login"))
+
+        except Exception:
+            app.logger.exception("Erro ao reenviar email de confirmação.")
+
+            flash(
+                "Ocorreu um erro ao processar a solicitação.",
+                "danger"
+            )
+
+            return render_template(
+                "reenviar_confirmacao.html",
+                email=email
+            )
+
+        finally:
+
+            if cursor:
+                cursor.close()
+
+            if conexao:
+                conexao.close()
+
+    return render_template("reenviar_confirmacao.html")
             
             
 @app.route("/perfil_profissional")
@@ -5522,7 +5697,7 @@ def editar_perfil_profissional():
 
         
 def senha_valida(senha):
-    if len(senha) < 8 or len(senha) > 16:
+    if len(senha) < 8 or len(senha) > 64:
         return False
     
     if not re.search(r"[A-Z]", senha):  # letra maiúscula
@@ -6185,312 +6360,279 @@ def gerenciar_forum():
 
 
 
+# Região do CRP (dois primeiros dígitos) -> UFs atendidas por ela
+REGIOES_CRP = {
+    "01": ["DF"], "02": ["PE"], "03": ["BA"], "04": ["MG"], "05": ["RJ"], "06": ["SP"],
+    "07": ["RS"], "08": ["PR"], "09": ["GO"], "10": ["PA", "AP"], "11": ["CE"], "12": ["SC"],
+    "13": ["PB"], "14": ["MS"], "15": ["AL"], "16": ["ES"], "17": ["RN"], "18": ["MT"],
+    "19": ["SE"], "20": ["AM", "RR"], "21": ["PI"], "22": ["MA"], "23": ["TO"], "24": ["RO", "AC"]
+}
+
+# Campos do formulário do profissional, na ordem em que aparecem
+CAMPOS_CADASTRO_PROFISSIONAL = CAMPOS_CADASTRO_USUARIO + [
+    ("crp", "CRP"),
+    ("uf_crp", "UF do CRP"),
+    ("experiencia", "Experiência"),
+    ("especialidade", "Especialidade"),
+    ("faculdade", "Instituição de ensino"),
+    ("pos", "Pós-graduação"),
+    ("biografia", "Biografia")
+]
+
+# Mesma mensagem para cadastro novo, email ou CPF já cadastrados,
+# para a tela não revelar quem tem conta no site
+MENSAGEM_CADASTRO_PROFISSIONAL_RECEBIDO = (
+    "Cadastro recebido! Se os dados estiverem corretos, seu perfil será analisado "
+    "por um administrador e você receberá um e-mail com a decisão."
+)
+
+
+OPCOES_ESPECIALIDADE = [
+    "Psicologia Clínica",
+    "Terapia Cognitivo-Comportamental",
+    "Dependência Química",
+    "Dependência em Jogos",
+    "Ansiedade",
+    "Depressão",
+    "Relacionamentos",
+    "Infantil",
+    "Casais",
+    "Outro"
+]
+
+# Tamanho máximo (em pixels) do maior lado da foto de perfil
+TAMANHO_MAXIMO_FOTO = 1024
+
+
+def salvar_foto_perfil(arquivo, pasta, prefixo=""):
+    # Valida a imagem enviada e grava uma cópia nova dela: isso remove os metadados
+    # (EXIF, que pode ter a localização GPS de onde a foto foi tirada) e qualquer
+    # conteúdo escondido no arquivo. Devolve o nome do arquivo salvo ou levanta ValueError.
+    extensao_enviada = os.path.splitext(secure_filename(arquivo.filename or ""))[1].lower()
+
+    if extensao_enviada not in extensoes_validas:
+        raise ValueError("Formato de imagem inválido. Use JPG ou PNG.")
+
+    try:
+        arquivo.stream.seek(0)
+        Image.open(arquivo.stream).verify()
+
+        arquivo.stream.seek(0)
+        imagem = Image.open(arquivo.stream)
+        formato = imagem.format
+
+        if formato not in {"JPEG", "PNG"}:
+            raise ValueError
+
+        # Aplica a rotação indicada no EXIF antes de descartá-lo
+        imagem = ImageOps.exif_transpose(imagem)
+        imagem.thumbnail((TAMANHO_MAXIMO_FOTO, TAMANHO_MAXIMO_FOTO))
+
+        if formato == "JPEG":
+            extensao = ".jpg"
+            imagem = imagem.convert("RGB")
+        else:
+            extensao = ".png"
+            if imagem.mode not in ("RGB", "RGBA"):
+                imagem = imagem.convert("RGBA")
+
+        nome = f"{prefixo}{uuid.uuid4().hex}{extensao}"
+        caminho = os.path.join(pasta, nome)
+
+        if formato == "JPEG":
+            imagem.save(caminho, "JPEG", quality=85, optimize=True)
+        else:
+            imagem.save(caminho, "PNG", optimize=True)
+
+        return nome
+
+    except (ValueError, OSError, SyntaxError, Image.DecompressionBombError):
+        raise ValueError("A imagem é inválida ou está em um formato não permitido.")
+
+
+def caminho_foto_temporaria(nome):
+    # Só aceita nomes gerados pelo próprio app (temp_<uuid>.<ext>)
+    if not nome or not re.fullmatch(r"temp_[0-9a-f]{32}\.(jpg|jpeg|png)", nome):
+        return None
+
+    caminho = os.path.join(app.config["UPLOAD_FOLDER"], nome)
+    return caminho if os.path.isfile(caminho) else None
+
+
+def descartar_foto_temporaria():
+    caminho = caminho_foto_temporaria(session.pop("foto_temporaria_profissional", None))
+
+    if caminho:
+        try:
+            os.remove(caminho)
+        except OSError:
+            app.logger.exception("Erro ao remover foto temporária: %s", caminho)
+
+
 @app.route('/cadastro_profissional', methods=['GET', 'POST'])
 @limiter.limit("5 per minute", methods=["POST"])
 def cadastro_profissional():
-    
-    limpar_fotos_temporarias()
-    
-    limpar_fotos_orfas()
 
+    limpar_fotos_periodicamente()
 
-    dados = {
-        "tipo": "profissional",
-        "nome": "",
-        "sobrenome": "",
-        "data_de_nascimento": "",
-        "sexo": "",
-        "email": "",
-        "telefone": "",
-        "cpf": "",
-        "cep": "",
-        "rua": "",
-        "numero": "",
-        "bairro": "",
-        "cidade": "",
-        "estado": "",
-        "crp": "",
-        "uf_crp": "",
-        "experiencia": "",
-        "especialidade": "",
-        "faculdade": "",
-        "pos": "",
-        "biografia": "",
-        "termos": ""
-    }
+    # A foto temporária pode ter sido apagada pela limpeza (mais de 1 hora);
+    # nesse caso esquece ela, para o formulário não dizer que a foto foi mantida
+    if (
+        session.get("foto_temporaria_profissional")
+        and not caminho_foto_temporaria(session["foto_temporaria_profissional"])
+    ):
+        session.pop("foto_temporaria_profissional", None)
+
+    dados = {campo: "" for campo, _ in CAMPOS_CADASTRO_PROFISSIONAL}
+
+    # Mostra o formulário de novo, destacando o campo com erro
+    def erro(campo, mensagem):
+        return render_template(
+            "cadastro_profissional.html",
+            dados=dados,
+            campo_erro=campo,
+            mensagem_erro=mensagem,
+            regioes_crp=REGIOES_CRP,
+            especialidades=OPCOES_ESPECIALIDADE,
+            limite_upload_mb=app.config["MAX_CONTENT_LENGTH"] // (1024 * 1024)
+        )
 
     if request.method == "POST":
+
         dados = {
-            "tipo": "profissional",
-            "nome": request.form.get("nome", "").strip(),
-            "sobrenome": request.form.get("sobrenome", "").strip(),
-            "data_de_nascimento": request.form.get("data_de_nascimento", "").strip(),
-            "sexo": request.form.get("sexo", "").strip(),
-            "email": request.form.get("email", "").strip().lower(),
-            "telefone": request.form.get("telefone", "").strip(),
-            "cpf": request.form.get("cpf", "").strip(),
-            "cep": request.form.get("cep", "").strip(),
-            "rua": request.form.get("rua", "").strip(),
-            "numero": request.form.get("numero", "").strip(),
-            "bairro": request.form.get("bairro", "").strip(),
-            "cidade": request.form.get("cidade", "").strip(),
-            "estado": request.form.get("estado", "").strip(),
-            "crp": request.form.get("crp", "").strip(),
-            "uf_crp": request.form.get("uf_crp", "").strip(),
-            "experiencia": request.form.get("experiencia", "").strip(),
-            "especialidade": request.form.get("especialidade", "").strip(),
-            "faculdade": request.form.get("faculdade", "").strip(),
-            "pos": request.form.get("pos", "").strip(),
-            "biografia": request.form.get("biografia", "").strip(),
-            "termos": request.form.get("termos", "").strip()
+            campo: request.form.get(campo, "").strip()
+            for campo, _ in CAMPOS_CADASTRO_PROFISSIONAL
         }
+        dados["email"] = dados["email"].lower()
 
         foto = request.files.get("foto")
-        foto_temporaria = session.get("foto_temporaria_profissional")
-        
 
-        senha = request.form.get("senha", "").strip()
-        confirmar_senha = request.form.get("confirmar_senha", "").strip()
+        # A senha não passa por strip para ficar igual à digitada no login
+        senha = request.form.get("senha", "")
+        confirmar_senha = request.form.get("confirmar_senha", "")
         termos = request.form.get("termos")
-        
-         # =========================
-         # SALVA FOTO TEMPORÁRIA
-         # =========================
 
+        # =========================
+        # SALVA FOTO TEMPORÁRIA
+        # =========================
+
+        # A foto é salva antes das validações, para não precisar ser enviada de novo se houver erro
         if foto and foto.filename:
-
-            nome_original = secure_filename(foto.filename)
-            extensao = os.path.splitext(nome_original)[1].lower()
-
-            extensoes_validas = {".jpg", ".jpeg", ".png"}
-
-            if extensao not in extensoes_validas:
-                return render_template(
-                    "cadastro_profissional.html",
-                    dados=dados,
-                    campo_erro="foto",
-                    mensagem_erro="Formato de imagem inválido. Use JPG ou PNG."
-                )
-
-            nome_temporario = f"temp_{uuid.uuid4().hex}{extensao}"
-
-            caminho_temporario = os.path.join(
-                app.config["UPLOAD_FOLDER"],
-                nome_temporario
-            )
-
-            
             try:
-                foto.stream.seek(0)
+                nome_temporario = salvar_foto_perfil(foto, app.config["UPLOAD_FOLDER"], prefixo="temp_")
+            except ValueError as e:
+                return erro("foto", str(e))
 
-                imagem = Image.open(foto.stream)
-                imagem.verify()
-
-                foto.stream.seek(0)
-
-                imagem = Image.open(foto.stream)
-
-                if imagem.format not in {"JPEG", "PNG"}:
-                    raise ValueError("Formato de imagem inválido.")
-
-            except (ValueError, OSError, Image.DecompressionBombError):
-                return render_template(
-                    "cadastro_profissional.html",
-                    dados=dados,
-                    campo_erro="foto",
-                    mensagem_erro="A imagem é inválida ou está em um formato não permitido."
-                )
-
-            foto.stream.seek(0)
-            foto.save(caminho_temporario)
-
-            
+            # Troca a foto anterior, se houver, pela nova
+            descartar_foto_temporaria()
             session["foto_temporaria_profissional"] = nome_temporario
-            foto_temporaria = nome_temporario
+
+        foto_temporaria = session.get("foto_temporaria_profissional")
 
         # Validação em ordem de cima para baixo conforme o formulário
-        campos_validacao = [
-            ("nome", "Nome"),
-            ("sobrenome", "Sobrenome"),
-            ("cpf", "CPF"),
-            ("data_de_nascimento", "Data de nascimento"),
-            ("sexo", "Sexo"),
-            ("email", "E-mail"),
-            ("telefone", "Telefone"),
-            ("cep", "CEP"),
-            ("rua", "Rua"),
-            ("numero", "Número"),
-            ("bairro", "Bairro"),
-            ("cidade", "Cidade"),
-            ("estado", "Estado"),
-            ("crp", "CRP"),
-            ("uf_crp", "UF do CRP"),
-            ("experiencia", "Experiência"),
-            ("especialidade", "Especialidade"),
-            ("faculdade", "Instituição de ensino"),
-            ("pos", "Pós-graduação"),
-            ("biografia", "Biografia")
-        ]
-
-        # Valida campos obrigatórios (de cima para baixo)
-        for campo, nome_campo in campos_validacao:
-            if not dados[campo]:
-                return render_template(
-                    "cadastro_profissional.html",
-                    dados=dados,
-                    campo_erro=campo,
-                    mensagem_erro=f"O campo {nome_campo} é obrigatório."
-                )
-
-        # Valida CPF
-        if not validar_cpf(dados["cpf"]):
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="cpf",
-                mensagem_erro="CPF inválido."
-            )
-
-        # Valida data de nascimento
         try:
-            data_nascimento = datetime.strptime(dados["data_de_nascimento"], "%d/%m/%Y")
-        except ValueError:
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="data_de_nascimento",
-                mensagem_erro="Data de nascimento inválida."
-            )
+            data_nascimento = validar_dados_pessoais(dados, CAMPOS_CADASTRO_PROFISSIONAL)
 
-        hoje = datetime.today()
-        idade = hoje.year - data_nascimento.year - ((hoje.month, hoje.day) < (data_nascimento.month, data_nascimento.day))
-        if idade < 18 or idade > 100:
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="data_de_nascimento",
-                mensagem_erro="Idade deve estar entre 18 e 100 anos."
-            )
+            # CRP (00/000000) e a UF, que depende da região do CRP.
+            # A UF é conferida aqui porque o campo do formulário pode ser alterado no navegador.
+            crp_partes = re.fullmatch(r"(\d{2})/?(\d{3,6})", dados["crp"])
+            if not crp_partes or crp_partes.group(1) not in REGIOES_CRP:
+                raise ErroCadastro("crp", "CRP inválido. Use o formato 00/000000, com uma região existente.")
 
-        # Valida email
-        padrao = r"^[^\s@]+@[^\s@]+\.[^\s@]+$"
-        if not re.match(padrao, dados["email"]):
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="email",
-                mensagem_erro="Digite um e-mail válido."
-            )
+            dados["crp"] = f"{crp_partes.group(1)}/{crp_partes.group(2)}"
 
+            dados["uf_crp"] = dados["uf_crp"].upper()
+            if dados["uf_crp"] not in REGIOES_CRP[crp_partes.group(1)]:
+                raise ErroCadastro("uf_crp", "Selecione a UF correspondente à região do CRP.")
 
+            # Experiência em anos (a coluna é INT)
+            if not dados["experiencia"].isdigit() or int(dados["experiencia"]) > 60:
+                raise ErroCadastro("experiencia", "Informe a experiência em anos, de 0 a 60.")
 
-        # Valida senha
-        if not senha or not confirmar_senha:
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="senha",
-                mensagem_erro="Informe e confirme sua senha."
-            )
+            if dados["especialidade"] not in OPCOES_ESPECIALIDADE:
+                raise ErroCadastro("especialidade", "Selecione uma especialidade da lista.")
 
-        if senha != confirmar_senha:
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="senha",
-                mensagem_erro="As senhas não coincidem."
-            )
+            # Formação e biografia aparecem no perfil público: passam pela mesma moderação do fórum
+            for campo, nome_campo in (("faculdade", "Instituição de ensino"), ("pos", "Pós-graduação"), ("biografia", "Biografia")):
+                if verificar_conteudo_proibido(dados[campo]):
+                    raise ErroCadastro(
+                        campo,
+                        f"O campo {nome_campo} contém linguagem ofensiva ou conteúdo que promove apostas."
+                    )
 
-        if not senha_valida(senha):
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="senha",
-                mensagem_erro="A senha deve ter entre 8 e 16 caracteres, conter letra maiúscula, número e caractere especial."
-            )
+            validar_senha_e_termos(senha, confirmar_senha, termos)
 
-        # Valida termos (por último)
-        if termos != "aceito":
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="termos",
-                mensagem_erro="Você deve aceitar os Termos de Uso e a Política de Privacidade."
-            )
-            
+        except ErroCadastro as e:
+            return erro(e.campo, e.mensagem)
+
         # =========================
         # VERIFICA FOTO
         # =========================
 
-        if not foto_temporaria:
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro="foto",
-                mensagem_erro="Selecione uma foto de perfil."
-            )
+        caminho_temporario = caminho_foto_temporaria(foto_temporaria)
 
-        # =========================
-        # VERIFICA SE O EMAIL JÁ EXISTE NO MYSQL
-        # =========================
+        if not caminho_temporario:
+            session.pop("foto_temporaria_profissional", None)
+            return erro("foto", "Selecione uma foto de perfil.")
+
+        # O hash é gerado antes de consultar o banco, para a resposta levar
+        # o mesmo tempo com ou sem conta existente (não revela quem tem conta)
+        senha_hash = generate_password_hash(senha)
+
+        extensao = os.path.splitext(foto_temporaria)[1].lower()
+        nome_foto = f"{uuid.uuid4().hex}{extensao}"
+        caminho_foto = os.path.join(app.config["UPLOAD_FOLDER"], nome_foto)
+        foto_movida = False
 
         conexao = None
         cursor = None
 
         try:
             conexao = get_db_connection()
-            cursor = conexao.cursor()
+            cursor = conexao.cursor(dictionary=True)
 
+            # =========================
+            # VERIFICA SE O EMAIL OU O CPF JÁ EXISTEM
+            # =========================
+
+            # O CPF é comparado só pelos dígitos, porque cadastros antigos podem estar sem máscara
             cursor.execute(
                 """
-                SELECT id
+                SELECT email, tipo, email_confirmado
                 FROM usuarios
                 WHERE email = %s
+                   OR REPLACE(REPLACE(cpf, '.', ''), '-', '') = %s
+                ORDER BY email = %s DESC
+                LIMIT 1
                 """,
-                (dados["email"],)
+                (dados["email"], re.sub(r"\D", "", dados["cpf"]), dados["email"])
             )
 
-            usuario_existente = cursor.fetchone()
+            conta_existente = cursor.fetchone()
 
-            if usuario_existente:
-                flash("Este email já está cadastrado.", "warning")
+            # Conta já existe: mostra a mesma mensagem de um cadastro novo,
+            # sem revelar que a conta existe, e avisa o dono por email
+            if conta_existente:
+                descartar_foto_temporaria()
 
-                return render_template(
-                    "cadastro_profissional.html",
-                    dados=dados,
-                    campo_erro="email",
-                    mensagem_erro="Este email já está cadastrado."
-                )
-                
-            # =========================
-            # VERIFICA SE O CPF JÁ EXISTE
-            # =========================
+                # Mesmo email, profissional que ainda não confirmou: reenvia a confirmação
+                if (
+                    conta_existente["email"] == dados["email"]
+                    and conta_existente["tipo"] == "profissional"
+                    and not conta_existente["email_confirmado"]
+                ):
+                    enviar_email_cadastro_profissional(conta_existente["email"])
+                else:
+                    enviar_email_conta_existente(conta_existente["email"])
 
-            cursor.execute(
-                """
-                SELECT id
-                FROM usuarios
-                WHERE cpf = %s
-                """,
-                (dados["cpf"],)
-            )
+                flash(MENSAGEM_CADASTRO_PROFISSIONAL_RECEBIDO, "success")
+                return redirect(url_for("login"))
 
-            cpf_existente = cursor.fetchone()
-
-            if cpf_existente:
-                flash("Este CPF já está cadastrado.", "warning")
-
-                return render_template(
-                    "cadastro_profissional.html",
-                    dados=dados,
-                    campo_erro="cpf",
-                    mensagem_erro="Este CPF já está cadastrado."
-                )
-                 
             # =========================
             # VERIFICA SE O CRP JÁ EXISTE
             # =========================
 
+            # O CRP é um registro público, então pode ser informado ao usuário
             cursor.execute(
                 """
                 SELECT id
@@ -6500,47 +6642,8 @@ def cadastro_profissional():
                 (dados["crp"],)
             )
 
-            crp_existente = cursor.fetchone()
-
-            if crp_existente:
-                flash("Este CRP já está cadastrado.", "warning")
-
-                return render_template(
-                    "cadastro_profissional.html",
-                    dados=dados,
-                    campo_erro="crp",
-                    mensagem_erro="Este CRP já está cadastrado."
-                )           
-            
-            
-
-            # =========================
-            # CRIA O HASH DA SENHA
-            # =========================
-            
-            senha_hash = generate_password_hash(senha)
-
-            # =========================
-            # SALVA A FOTO DEFINITIVA
-            # =========================
-
-            extensao = os.path.splitext(foto_temporaria)[1].lower()
-
-            nome_foto = f"{uuid.uuid4().hex}{extensao}"
-
-            caminho_temporario = os.path.join(
-                app.config["UPLOAD_FOLDER"],
-                foto_temporaria
-            )
-
-            caminho_foto = os.path.join(
-                app.config["UPLOAD_FOLDER"],
-                nome_foto
-            )
-
-            os.rename(caminho_temporario, caminho_foto)
-
-            session.pop("foto_temporaria_profissional", None)
+            if cursor.fetchone():
+                return erro("crp", "Este CRP já está cadastrado.")
 
             # =========================
             # INSERE O USUÁRIO
@@ -6566,12 +6669,14 @@ def cadastro_profissional():
                     tipo,
                     status,
                     email_confirmado,
-                    termos_aceitos
+                    termos_aceitos,
+                    termos_aceitos_em,
+                    termos_versao
                 )
                 VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s,
                     %s, %s, %s, %s, %s, %s, %s, %s,
-                    %s, %s
+                    %s, %s, NOW(), %s
                 )
                 """,
                 (
@@ -6592,13 +6697,13 @@ def cadastro_profissional():
                     "profissional",
                     "ativo",
                     False,
-                    True
+                    True,
+                    TERMOS_VERSAO
                 )
             )
 
             # ID do usuário recém-criado
             usuario_id = cursor.lastrowid
-
 
             # =========================
             # INSERE O PROFISSIONAL
@@ -6637,29 +6742,48 @@ def cadastro_profissional():
                 )
             )
 
+            # =========================
+            # SALVA A FOTO DEFINITIVA
+            # =========================
+
+            # A foto só é movida depois dos INSERTs e antes do commit:
+            # se algo falhar, ela volta a ser temporária e o profissional não precisa enviá-la de novo.
+            # O utime marca a foto como nova, para limpar_fotos_orfas não apagá-la antes do commit.
+            os.replace(caminho_temporario, caminho_foto)
+            os.utime(caminho_foto)
+            foto_movida = True
+
             conexao.commit()
 
+        except mysql.connector.IntegrityError as erro_banco:
 
-        except Exception:
-            
             if conexao:
                 conexao.rollback()
 
-            app.logger.exception(
-                "Erro ao cadastrar profissional no MySQL."
-            )
+            if foto_movida:
+                os.replace(caminho_foto, caminho_temporario)
 
-            flash(
-                "Ocorreu um erro ao realizar o cadastro. Tente novamente.",
-                "danger"
-            )
+            # 1062 = email, CPF ou CRP duplicado (outra requisição cadastrou no mesmo instante)
+            if erro_banco.errno == 1062:
+                descartar_foto_temporaria()
+                flash(MENSAGEM_CADASTRO_PROFISSIONAL_RECEBIDO, "success")
+                return redirect(url_for("login"))
 
-            return render_template(
-                "cadastro_profissional.html",
-                dados=dados,
-                campo_erro=None,
-                mensagem_erro=""
-            )   
+            app.logger.exception("Erro de integridade ao cadastrar profissional.")
+            flash("Ocorreu um erro ao realizar o cadastro. Tente novamente.", "danger")
+            return erro(None, "")
+
+        except Exception:
+
+            if conexao:
+                conexao.rollback()
+
+            if foto_movida:
+                os.replace(caminho_foto, caminho_temporario)
+
+            app.logger.exception("Erro ao cadastrar profissional no MySQL.")
+            flash("Ocorreu um erro ao realizar o cadastro. Tente novamente.", "danger")
+            return erro(None, "")
 
         finally:
             if cursor:
@@ -6668,26 +6792,20 @@ def cadastro_profissional():
             if conexao:
                 conexao.close()
 
+        # Só esquece a foto temporária depois que o cadastro foi salvo
+        session.pop("foto_temporaria_profissional", None)
+
         # =========================
         # ENVIA EMAIL DE CONFIRMAÇÃO
         # =========================
 
-        enviar_email_cadastro_profissional(dados["email"])
+        if not enviar_email_cadastro_profissional(dados["email"]):
+            app.logger.error("Falha ao enviar email de cadastro do profissional.")
 
-        flash(
-            "Cadastro realizado! Aguarde a aprovação do administrador.",
-            "success"
-        )
-
+        flash(MENSAGEM_CADASTRO_PROFISSIONAL_RECEBIDO, "success")
         return redirect(url_for("login"))
-    
-    return render_template(
-        "cadastro_profissional.html",
-        dados=dados,
-        campo_erro=None,
-        mensagem_erro=""
-    )
-   
+
+    return erro(None, "")
 
 
 @app.route("/")
@@ -6983,7 +7101,11 @@ def bloqueio_cpf():
 
 def validar_cpf(cpf):
 
-    cpf = cpf.replace(".", "").replace("-", "")
+    # Mantém só os dígitos; letras ou outros símbolos invalidam o CPF
+    if not re.fullmatch(r"[\d.\-\s]+", cpf or ""):
+        return False
+
+    cpf = re.sub(r"\D", "", cpf)
 
     if len(cpf) != 11:
         return False
@@ -7020,6 +7142,12 @@ def validar_cpf(cpf):
 
 
     return True
+
+
+def formatar_cpf(cpf):
+    # Padroniza o CPF como 000.000.000-00 antes de salvar ou comparar
+    digitos = re.sub(r"\D", "", cpf or "")
+    return f"{digitos[:3]}.{digitos[3:6]}.{digitos[6:9]}-{digitos[9:]}"
 
 
 
@@ -8546,6 +8674,11 @@ def escolher_cadastro():
 def enviar_email_cadastro_profissional(email):
     try:
 
+        # O profissional também confirma o email: o admin só consegue
+        # aprovar o cadastro depois disso (ver aprovar_profissional)
+        token = serializer.dumps(email, salt='confirmacao-email')
+        link = url_externa('confirmar_email', token=token)
+
         msg = Message(
             subject='Cadastro recebido - Apoio & Consciência',
             recipients=[email],
@@ -8557,15 +8690,20 @@ Olá!
 
 Seu cadastro profissional no Apoio & Consciência foi recebido com sucesso.
 
-Seu perfil será analisado por um administrador.
+Antes da análise, confirme seu e-mail acessando o link abaixo (válido por 1 hora):
 
+{link}
+
+Depois da confirmação, seu perfil será analisado por um administrador.
 Você receberá uma nova mensagem por e-mail quando houver uma decisão sobre o seu cadastro.
+
+Se você não fez este cadastro, ignore esta mensagem.
 
 Atenciosamente,
 Equipe Apoio & Consciência
         """
 
-        msg.html = """
+        msg.html = f"""
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -8637,7 +8775,33 @@ Equipe Apoio & Consciência
                 line-height:1.6;
                 color:#555;
             ">
-                Seu perfil será analisado por um administrador.
+                Antes da análise, confirme seu e-mail clicando no botão abaixo
+                (o link vale por 1 hora):
+            </p>
+
+            <div style="text-align:center; margin:30px 0;">
+                <a href="{link}" style="
+                    background:linear-gradient(135deg, #198754, #20c997);
+                    color:white;
+                    padding:14px 30px;
+                    text-decoration:none;
+                    border-radius:10px;
+                    display:inline-block;
+                    font-size:16px;
+                    font-weight:bold;
+                ">
+                    Confirmar e-mail
+                </a>
+            </div>
+
+            <p style="
+                font-size:14px;
+                color:#666;
+                text-align:center;
+                word-break:break-all;
+            ">
+                Se o botão não funcionar, copie e cole este link no navegador:<br>
+                {link}
             </p>
 
             <p style="
@@ -8645,6 +8809,7 @@ Equipe Apoio & Consciência
                 line-height:1.6;
                 color:#555;
             ">
+                Depois da confirmação, seu perfil será analisado por um administrador.
                 Você receberá uma nova mensagem por e-mail quando
                 houver uma decisão sobre o seu cadastro.
             </p>
@@ -8659,6 +8824,7 @@ Equipe Apoio & Consciência
             color:#6c757d;
             border-top:1px solid #e9ecef;
         ">
+            Se você não fez este cadastro, ignore esta mensagem.<br>
             Equipe Apoio &amp; Consciência
         </div>
 
@@ -8682,10 +8848,9 @@ def enviar_email_confirmacao_usuario(email):
         token = serializer.dumps(email, salt='confirmacao-email')
 
     
-        link = url_for(
+        link = url_externa(
             'confirmar_email',
-            token=token,
-            _external=True
+            token=token
         )
 
 
@@ -8835,8 +9000,92 @@ Se você não criou essa conta, ignore esta mensagem.
         return False
 
 
+def enviar_email_conta_existente(email):
+    # Enviado quando alguém tenta se cadastrar com o email ou CPF de uma conta que já existe.
+    # Assim a tela de cadastro não precisa revelar que a conta existe.
+    try:
+        link_login = url_externa("login")
+        link_senha = url_externa("esqueci_senha")
 
-    
+        msg = Message(
+            subject='Tentativa de cadastro - Apoio & Consciência',
+            recipients=[email],
+            sender=app.config['MAIL_DEFAULT_SENDER']
+        )
+
+        msg.body = f"""
+Recebemos uma tentativa de cadastro usando dados que já pertencem à sua conta.
+
+Se foi você, não é preciso criar outra conta. Faça login em:
+{link_login}
+
+Esqueceu a senha? Redefina em:
+{link_senha}
+
+Se não foi você, ignore esta mensagem. Nenhuma conta nova foi criada.
+        """
+
+        msg.html = f"""
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, Helvetica, sans-serif;">
+
+    <div style="max-width:600px; margin:40px auto; background:#ffffff; border-radius:16px;
+        overflow:hidden; box-shadow:0 8px 25px rgba(0,0,0,0.08);">
+
+        <div style="background:linear-gradient(135deg, #1d3557, #457b9d); padding:30px;
+            text-align:center; color:white;">
+            <h1 style="margin:0; font-size:28px;">Apoio & Consciência</h1>
+        </div>
+
+        <div style="padding:40px 30px; color:#333; text-align:center;">
+
+            <h2 style="color:#1d3557; margin-top:0;">Você já tem uma conta</h2>
+
+            <p style="font-size:16px; line-height:1.6; color:#555;">
+                Recebemos uma tentativa de cadastro usando dados que já pertencem à sua conta.<br>
+                Se foi você, não é preciso criar outra conta.
+            </p>
+
+            <div style="margin:30px 0;">
+                <a href="{link_login}" style="background:#0d6efd; color:white; padding:14px 30px;
+                    text-decoration:none; border-radius:10px; display:inline-block; font-weight:bold;">
+                    Fazer login
+                </a>
+            </div>
+
+            <p style="font-size:14px; color:#666;">
+                Esqueceu a senha? <a href="{link_senha}">Redefina aqui</a>.
+            </p>
+
+        </div>
+
+        <div style="background:#f8f9fa; padding:20px; text-align:center; font-size:13px;
+            color:#6c757d; border-top:1px solid #e9ecef;">
+            Se não foi você, ignore esta mensagem. Nenhuma conta nova foi criada.<br>
+            © Apoio & Consciência
+        </div>
+
+    </div>
+
+</body>
+</html>
+        """
+
+        mail.send(msg)
+
+        return True
+
+    except Exception:
+        app.logger.exception("Erro ao enviar email de conta existente.")
+        return False
+
+
+
+
 def enviar_email_recuperacao(email):
     
     conexao = None
@@ -8889,10 +9138,9 @@ def enviar_email_recuperacao(email):
         conexao.commit()
 
 
-        link = url_for(
+        link = url_externa(
             "redefinir_senha",
-            token=token,
-            _external=True
+            token=token
         )
 
 
@@ -9210,7 +9458,7 @@ def redefinir_senha(token):
 
             if not senha_valida(nova_senha):
                 flash(
-                    "Senha inválida. Use 8-16 caracteres, "
+                    "Senha inválida. Use 8-64 caracteres, "
                     "letra maiúscula, número e caractere especial.",
                     "danger"
                 )
@@ -9848,6 +10096,10 @@ def limpar_fotos_orfas():
             if arquivo.startswith("temp_"):
                 continue
 
+            # Fotos recentes podem ser de um cadastro que ainda não fez commit
+            if time.time() - os.path.getmtime(caminho) < 3600:
+                continue
+
             # Se não estiver registrado no banco, remove
             if arquivo not in fotos_banco:
                 try:
@@ -9873,8 +10125,71 @@ def limpar_fotos_orfas():
         if conexao:
             conexao.close()
 
+# A limpeza varre a pasta e consulta o banco; nas páginas abertas a visitantes
+# ela roda no máximo a cada 10 minutos
+INTERVALO_LIMPEZA_FOTOS = 600
+ultima_limpeza_fotos = 0
+limpeza_fotos_lock = threading.Lock()
+
+
+def limpar_fotos_periodicamente():
+    global ultima_limpeza_fotos
+
+    with limpeza_fotos_lock:
+        if time.time() - ultima_limpeza_fotos < INTERVALO_LIMPEZA_FOTOS:
+            return
+
+        ultima_limpeza_fotos = time.time()
+
+    limpar_fotos_temporarias()
+    limpar_fotos_orfas()
+
+
 @app.route("/uploads/<filename>")
 def uploaded_file(filename):
+
+    # Só serve fotos registradas em profissionais (nunca as temporárias).
+    # Fotos de cadastros pendentes, recusados ou banidos só aparecem para o admin e para o dono.
+    if secure_filename(filename) != filename:
+        abort(404)
+
+    conexao = None
+    cursor = None
+
+    try:
+        conexao = get_db_connection()
+        cursor = conexao.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT p.usuario_id, p.status_aprovacao, u.status
+            FROM profissionais p
+            INNER JOIN usuarios u ON u.id = p.usuario_id
+            WHERE p.foto = %s
+            """,
+            (filename,)
+        )
+
+        foto = cursor.fetchone()
+
+    finally:
+        if cursor:
+            cursor.close()
+
+        if conexao:
+            conexao.close()
+
+    if not foto:
+        abort(404)
+
+    publica = foto["status_aprovacao"] == "aprovado" and foto["status"] == "ativo"
+
+    if not (
+        publica
+        or session.get("tipo_usuario") == "admin"
+        or session.get("usuario_id") == foto["usuario_id"]
+    ):
+        abort(404)
 
     return send_from_directory(
         app.config["UPLOAD_FOLDER"],

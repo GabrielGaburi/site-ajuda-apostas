@@ -1,53 +1,58 @@
-window.toggleSenha = function (campoId, iconeId) {
-    const campo = document.getElementById(campoId);
-    const icone = document.getElementById(iconeId);
+// O botão de mostrar/ocultar senha é tratado pelo mostrar_senha.js (carregado no base.html)
 
-    if (!campo || !icone) {
-        return;
-    }
+const formCadastro = document.getElementById("formCadastro");
+const botaoCadastrar = document.getElementById("botaoCadastrar");
 
-    if (campo.type === "password") {
-        campo.type = "text";
-        icone.classList.remove("bi-eye");
-        icone.classList.add("bi-eye-slash");
+
+// =========================
+// MENSAGENS DOS CAMPOS
+// =========================
+
+// Cada campo tem um <div id="aviso-<name>"> para as mensagens do JS
+function mostrarAviso(campo, texto, valido) {
+    const aviso = document.getElementById("aviso-" + campo.name);
+
+    campo.classList.toggle("is-invalid", valido === false);
+    campo.classList.toggle("is-valid", valido === true);
+
+    if (valido === false) {
+        campo.setAttribute("aria-invalid", "true");
     } else {
-        campo.type = "password";
-        icone.classList.remove("bi-eye-slash");
-        icone.classList.add("bi-eye");
+        campo.removeAttribute("aria-invalid");
     }
-};
 
-// Validação e formatação de CPF
-const cpf = document.getElementById("cpf");
-if (cpf) {
-    cpf.addEventListener("input", function () {
-        let valor = this.value.replace(/\D/g, "");
-        valor = valor.substring(0, 11);
-        valor = valor.replace(/^(\d{3})(\d)/, "$1.$2");
-        valor = valor.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
-        valor = valor.replace(/\.(\d{3})(\d)/, ".$1-$2");
-        this.value = valor;
-    });
-
-    cpf.addEventListener("blur", function () {
-        const erroCpf = document.getElementById("erroCpf");
-        const valor = this.value.replace(/\D/g, "");
-
-        if (valor.length === 11 && validarCPF(valor)) {
-            this.classList.remove("is-invalid");
-            this.classList.add("is-valid");
-            if (erroCpf) erroCpf.textContent = "";
-        } else if (valor.length > 0) {
-            this.classList.add("is-invalid");
-            if (erroCpf) erroCpf.textContent = "CPF inválido.";
-        } else {
-            this.classList.remove("is-invalid", "is-valid");
-            if (erroCpf) erroCpf.textContent = "";
-        }
-    });
+    if (aviso) {
+        aviso.textContent = texto || "";
+        aviso.classList.toggle("text-danger", valido === false);
+        aviso.classList.toggle("text-success", valido === true);
+    }
 }
 
-// Função para validar CPF
+function limparAviso(campo) {
+    mostrarAviso(campo, "", null);
+}
+
+// Remove a mensagem de erro vinda do servidor assim que o usuário mexe no campo
+document.querySelectorAll("#formCadastro [aria-invalid='true']").forEach(campo => {
+    const evento = campo.type === "checkbox" || campo.tagName === "SELECT" ? "change" : "input";
+
+    campo.addEventListener(evento, function () {
+        campo.classList.remove("is-invalid");
+        campo.removeAttribute("aria-invalid");
+
+        const mensagem = document.getElementById("erro-" + campo.name);
+        if (mensagem) {
+            mensagem.remove();
+        }
+    }, { once: true });
+});
+
+
+// =========================
+// REGRAS DE VALIDAÇÃO
+// (as mesmas do servidor, em cadastro_usuario no app.py)
+// =========================
+
 function validarCPF(cpf) {
     if (cpf.length !== 11) return false;
 
@@ -75,281 +80,433 @@ function validarCPF(cpf) {
     return true;
 }
 
-// Validação de data de nascimento
-const dataNascimento = document.getElementById("dataNascimento");
-if (dataNascimento) {
-    dataNascimento.addEventListener("input", function () {
-        let valor = this.value.replace(/\D/g, "");
-        if (valor.length >= 2) {
-            valor = valor.substring(0, 2) + "/" + valor.substring(2);
-        }
-        if (valor.length >= 5) {
-            valor = valor.substring(0, 5) + "/" + valor.substring(5, 9);
-        }
-        this.value = valor;
-    });
+// Retorna a idade, ou null se a data não existir no calendário
+function calcularIdade(dia, mes, ano) {
+    const data = new Date(ano, mes - 1, dia);
 
-    dataNascimento.addEventListener("blur", function () {
-        const erroNascimento = document.getElementById("erroNascimento");
-        const valor = this.value;
-        const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-
-        if (!regex.test(valor) && valor.length > 0) {
-            this.classList.add("is-invalid");
-            if (erroNascimento) erroNascimento.textContent = "Formato deve ser dd/mm/aaaa.";
-        } else if (regex.test(valor)) {
-            const [, dia, mes, ano] = valor.match(regex);
-            if (!validarData(parseInt(dia), parseInt(mes), parseInt(ano))) {
-                this.classList.add("is-invalid");
-                if (erroNascimento) erroNascimento.textContent = "Data inválida.";
-            } else {
-                this.classList.remove("is-invalid");
-                this.classList.add("is-valid");
-                if (erroNascimento) erroNascimento.textContent = "";
-            }
-        } else {
-            this.classList.remove("is-invalid", "is-valid");
-            if (erroNascimento) erroNascimento.textContent = "";
-        }
-    });
-}
-
-// Função para validar data
-function validarData(dia, mes, ano) {
-    if (mes < 1 || mes > 12) return false;
-
-    const diasPorMes = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    if ((ano % 4 === 0 && ano % 100 !== 0) || ano % 400 === 0) {
-        diasPorMes[1] = 29;
+    if (data.getFullYear() !== ano || data.getMonth() !== mes - 1 || data.getDate() !== dia) {
+        return null;
     }
 
-    if (dia < 1 || dia > diasPorMes[mes - 1]) return false;
-
     const hoje = new Date();
-    const dataNasc = new Date(ano, mes - 1, dia);
-    if (dataNasc > hoje) return false;
+    let idade = hoje.getFullYear() - ano;
 
+    if (hoje.getMonth() < mes - 1 || (hoje.getMonth() === mes - 1 && hoje.getDate() < dia)) {
+        idade--;
+    }
+
+    return idade;
+}
+
+function faltandoNaSenha(texto) {
+    const faltando = [];
+
+    if (texto.length < 8) faltando.push("8 caracteres");
+    if (!/[A-Z]/.test(texto)) faltando.push("uma letra maiúscula");
+    if (!/[0-9]/.test(texto)) faltando.push("um número");
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(texto)) faltando.push("um caractere especial");
+
+    return faltando;
+}
+
+// Cada função devolve a mensagem de erro, ou "" se o campo estiver correto
+const regras = {
+
+    nome: valor => {
+        if (!valor) return "Informe seu nome.";
+        if (!/^[\p{L}]+(?:[ '\-][\p{L}]+)*$/u.test(valor)) return "Use apenas letras.";
+        return "";
+    },
+
+    sobrenome: valor => {
+        if (!valor) return "Informe seu sobrenome.";
+        if (!/^[\p{L}]+(?:[ '\-][\p{L}]+)*$/u.test(valor)) return "Use apenas letras.";
+        return "";
+    },
+
+    cpf: valor => {
+        const digitos = valor.replace(/\D/g, "");
+        if (!digitos) return "Informe seu CPF.";
+        if (!validarCPF(digitos)) return "CPF inválido.";
+        return "";
+    },
+
+    data_de_nascimento: valor => {
+        if (!valor) return "Informe sua data de nascimento.";
+
+        const partes = valor.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (!partes) return "Use o formato dd/mm/aaaa.";
+
+        const idade = calcularIdade(parseInt(partes[1]), parseInt(partes[2]), parseInt(partes[3]));
+        if (idade === null) return "Data inválida.";
+        if (idade < 18 || idade > 100) return "É preciso ter entre 18 e 100 anos.";
+        return "";
+    },
+
+    sexo: valor => valor ? "" : "Selecione uma opção.",
+
+    email: valor => {
+        if (!valor) return "Informe seu e-mail.";
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(valor)) return "E-mail inválido.";
+        return "";
+    },
+
+    telefone: valor => {
+        const digitos = valor.replace(/\D/g, "");
+        if (!digitos) return "Informe seu telefone.";
+        if (digitos.length !== 10 && digitos.length !== 11) return "Telefone deve ter DDD e 8 ou 9 dígitos.";
+        if (digitos[0] === "0") return "DDD inválido.";
+        if (digitos.length === 11 && digitos[2] !== "9") return "Celular deve começar com 9.";
+        return "";
+    },
+
+    cep: valor => {
+        const digitos = valor.replace(/\D/g, "");
+        if (!digitos) return "Informe seu CEP.";
+        if (digitos.length !== 8) return "CEP deve ter 8 dígitos.";
+        return "";
+    },
+
+    estado: valor => {
+        if (!valor) return "Informe a UF.";
+        if (!/^[A-Za-z]{2}$/.test(valor)) return "UF inválida.";
+        return "";
+    },
+
+    cidade: valor => valor ? "" : "Informe a cidade.",
+    rua: valor => valor ? "" : "Informe a rua.",
+    numero: valor => valor ? "" : "Informe o número.",
+    bairro: valor => valor ? "" : "Informe o bairro.",
+
+    senha: valor => {
+        if (!valor) return "Informe uma senha.";
+        if (valor.length > 64) return "A senha deve ter no máximo 64 caracteres.";
+
+        const faltando = faltandoNaSenha(valor);
+        if (faltando.length === 0) return "";
+
+        if (faltando.length === 1) return "Precisa de " + faltando[0] + ".";
+        return "Precisa de " + faltando.slice(0, -1).join(", ") + " e " + faltando[faltando.length - 1] + ".";
+    },
+
+    confirmar_senha: valor => {
+        const senha = document.getElementById("senha");
+        if (!valor) return "Confirme sua senha.";
+        if (senha && valor !== senha.value) return "As senhas não coincidem.";
+        return "";
+    }
+};
+
+// Mensagem positiva exibida quando o campo está correto
+const mensagensOk = {
+    senha: "✓ Senha válida.",
+    confirmar_senha: "✓ As senhas coincidem."
+};
+
+// Valida um campo e mostra o resultado; devolve true se estiver correto
+function validarCampo(campo) {
+    if (campo.type === "checkbox") {
+        const ok = campo.checked;
+        mostrarAviso(campo, ok ? "" : "Você precisa aceitar os termos para continuar.", ok ? null : false);
+        return ok;
+    }
+
+    const regra = regras[campo.name];
+    if (!regra) return true;
+
+    // A senha é conferida como foi digitada (o servidor também não remove espaços dela)
+    const valor = campo.name === "senha" || campo.name === "confirmar_senha"
+        ? campo.value
+        : campo.value.trim();
+
+    const erro = regra(valor);
+
+    if (erro) {
+        mostrarAviso(campo, erro, false);
+        return false;
+    }
+
+    mostrarAviso(campo, mensagensOk[campo.name] || "", true);
     return true;
 }
 
-// Validação de email
-const email = document.getElementById("email");
-if (email) {
-    email.addEventListener("blur", function () {
-        const erroEmail = document.getElementById("erroEmail");
-        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        if (!regex.test(this.value) && this.value.length > 0) {
-            this.classList.add("is-invalid");
-            if (erroEmail) erroEmail.textContent = "Email inválido.";
-        } else if (regex.test(this.value)) {
-            this.classList.remove("is-invalid");
-            this.classList.add("is-valid");
-            if (erroEmail) erroEmail.textContent = "";
-        } else {
-            this.classList.remove("is-invalid", "is-valid");
-            if (erroEmail) erroEmail.textContent = "";
-        }
-    });
-}
+// =========================
+// MÁSCARAS
+// =========================
 
-// Formatação de telefone
-const telefone = document.getElementById("telefone");
-if (telefone) {
-    telefone.addEventListener("input", function () {
-        let valor = this.value.replace(/\D/g, "");
-        valor = valor.replace(/^(\d{2})(\d)/, "($1) $2");
-        valor = valor.replace(/(\d{5})(\d)/, "$1-$2");
+const cpf = document.getElementById("cpf");
+if (cpf) {
+    cpf.addEventListener("input", function () {
+        let valor = this.value.replace(/\D/g, "").substring(0, 11);
+        valor = valor.replace(/^(\d{3})(\d)/, "$1.$2");
+        valor = valor.replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3");
+        valor = valor.replace(/\.(\d{3})(\d)/, ".$1-$2");
         this.value = valor;
     });
 }
 
-// CEP - Busca e validação
-const cep = document.getElementById("cep");
-const erroCep = document.getElementById("erroCep");
+const dataNascimento = document.getElementById("dataNascimento");
+if (dataNascimento) {
+    dataNascimento.addEventListener("input", function (evento) {
+        // Ao apagar, não recoloca a barra (senão o usuário não consegue apagar)
+        if (evento.inputType && evento.inputType.startsWith("delete")) {
+            return;
+        }
 
-function buscarCEP() {
+        let valor = this.value.replace(/\D/g, "").substring(0, 8);
+        if (valor.length >= 5) {
+            valor = valor.substring(0, 2) + "/" + valor.substring(2, 4) + "/" + valor.substring(4);
+        } else if (valor.length >= 3) {
+            valor = valor.substring(0, 2) + "/" + valor.substring(2);
+        }
+        this.value = valor;
+    });
+}
+
+// Fixo: (00) 0000-0000 | Celular: (00) 00000-0000
+const telefone = document.getElementById("telefone");
+if (telefone) {
+    telefone.addEventListener("input", function (evento) {
+        if (evento.inputType && evento.inputType.startsWith("delete")) {
+            return;
+        }
+
+        const digitos = this.value.replace(/\D/g, "").substring(0, 11);
+        let valor = digitos;
+
+        if (digitos.length > 10) {
+            valor = digitos.replace(/^(\d{2})(\d{5})(\d{0,4})$/, "($1) $2-$3");
+        } else if (digitos.length > 6) {
+            valor = digitos.replace(/^(\d{2})(\d{4})(\d{0,4})$/, "($1) $2-$3");
+        } else if (digitos.length > 2) {
+            valor = digitos.replace(/^(\d{2})(\d{0,5})$/, "($1) $2");
+        }
+
+        this.value = valor;
+    });
+}
+
+const estado = document.getElementById("estado");
+if (estado) {
+    estado.addEventListener("input", function () {
+        this.value = this.value.replace(/[^A-Za-z]/g, "").toUpperCase();
+    });
+}
+
+
+// =========================
+// CEP - BUSCA NO VIACEP
+// =========================
+
+const cep = document.getElementById("cep");
+const btnBuscarCep = document.getElementById("btnBuscarCep");
+const camposEndereco = ["rua", "bairro", "cidade", "estado"];
+let ultimoCepBuscado = "";
+
+// Campos preenchidos pelo ViaCEP ficam travados; os vazios são liberados
+// para o usuário digitar (CEP único da cidade, CEP não encontrado ou falha na busca)
+function ajustarCamposEndereco(liberarTodos) {
+    camposEndereco.forEach(id => {
+        const campo = document.getElementById(id);
+        if (campo) {
+            campo.readOnly = !liberarTodos && campo.value.trim() !== "";
+        }
+    });
+}
+
+function preencherEndereco(dados) {
+    const valores = {
+        rua: dados.logradouro,
+        bairro: dados.bairro,
+        cidade: dados.localidade,
+        estado: dados.uf
+    };
+
+    camposEndereco.forEach(id => {
+        const campo = document.getElementById(id);
+        if (campo) {
+            campo.value = valores[id] || "";
+            limparAviso(campo);
+        }
+    });
+}
+
+function carregandoCep(ativo) {
+    if (!btnBuscarCep) return;
+
+    btnBuscarCep.disabled = ativo;
+    btnBuscarCep.innerHTML = ativo
+        ? '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span>'
+        : '<i class="bi bi-search" aria-hidden="true"></i>';
+    btnBuscarCep.setAttribute("aria-label", ativo ? "Buscando CEP" : "Buscar endereço pelo CEP");
+}
+
+function buscarCEP(forcar) {
     if (!cep) {
         return;
     }
 
     const valor = cep.value.replace(/\D/g, "");
+
     if (valor.length !== 8) {
+        if (forcar) validarCampo(cep);
         return;
     }
 
-    cep.classList.remove("is-invalid", "is-valid");
-    if (erroCep) {
-        erroCep.textContent = "";
+    // Evita buscar de novo o mesmo CEP ao sair do campo
+    if (!forcar && valor === ultimoCepBuscado) {
+        return;
     }
 
+    ultimoCepBuscado = valor;
+    limparAviso(cep);
+    carregandoCep(true);
+
     fetch(`https://viacep.com.br/ws/${valor}/json/`)
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                throw new Error("Falha na consulta do CEP");
+            }
+            return res.json();
+        })
         .then(dados => {
             if (dados.erro) {
-                cep.classList.add("is-invalid");
-                if (erroCep) {
-                    erroCep.textContent = "CEP não encontrado.";
-                }
-                const rua = document.getElementById("rua");
-                const bairro = document.getElementById("bairro");
-                const cidade = document.getElementById("cidade");
-                const estado = document.getElementById("estado");
-
-                if (rua) rua.value = "";
-                if (bairro) bairro.value = "";
-                if (cidade) cidade.value = "";
-                if (estado) estado.value = "";
+                mostrarAviso(cep, "CEP não encontrado. Preencha o endereço manualmente.", false);
+                preencherEndereco({});
+                ajustarCamposEndereco(true);
                 return;
             }
 
-            const rua = document.getElementById("rua");
-            const bairro = document.getElementById("bairro");
-            const cidade = document.getElementById("cidade");
-            const estado = document.getElementById("estado");
+            preencherEndereco(dados);
+            ajustarCamposEndereco(false);
+            mostrarAviso(cep, "", true);
 
-            if (rua) rua.value = dados.logradouro || "";
-            if (bairro) bairro.value = dados.bairro || "";
-            if (cidade) cidade.value = dados.localidade || "";
-            if (estado) estado.value = dados.uf || "";
-
-            cep.classList.add("is-valid");
+            // Leva o usuário direto para o próximo campo a preencher
+            const proximo = ["rua", "bairro"].map(id => document.getElementById(id)).find(c => c && !c.value);
+            const numero = document.getElementById("numero");
+            (proximo || numero)?.focus();
         })
         .catch(() => {
-            cep.classList.add("is-invalid");
-            if (erroCep) {
-                erroCep.textContent = "Erro ao consultar o CEP.";
-            }
-        });
+            ultimoCepBuscado = "";
+            mostrarAviso(cep, "Não foi possível consultar o CEP. Preencha o endereço manualmente.", false);
+            ajustarCamposEndereco(true);
+        })
+        .finally(() => carregandoCep(false));
 }
 
-// Evento do botão de busca CEP
-const btnBuscarCep = document.getElementById("btnBuscarCep");
 if (btnBuscarCep) {
-    btnBuscarCep.addEventListener("click", buscarCEP);
+    btnBuscarCep.addEventListener("click", () => buscarCEP(true));
 }
 
-// Formatação de CEP ao digitar
 if (cep) {
     cep.addEventListener("input", function () {
-        let valor = this.value.replace(/\D/g, "");
-        valor = valor.substring(0, 8);
+        let valor = this.value.replace(/\D/g, "").substring(0, 8);
         if (valor.length > 5) {
             valor = valor.replace(/^(\d{5})(\d)/, "$1-$2");
         }
         this.value = valor;
-    });
-}
 
-// Validação dos requisitos da senha
-const senha = document.getElementById("senha");
-const confirmar = document.getElementById("confirmarSenha");
-
-if (senha) {
-    senha.addEventListener("keyup", () => {
-        const texto = senha.value;
-        const forca = document.getElementById("forcaSenha");
-
-        if (!forca) return;
-
-        // Se estiver vazia, não mostra mensagem
-        if (texto.length === 0) {
-            forca.innerHTML = "";
-            return;
-        }
-
-        // Limite de caracteres
-        if (texto.length > 16) {
-            forca.innerHTML =
-                "<span class='text-danger'>A senha deve ter no máximo 16 caracteres.</span>";
-            return;
-        }
-
-        const faltando = [];
-
-        // Tamanho mínimo
-        if (texto.length < 8) {
-            faltando.push("8 caracteres");
-        }
-
-        // Letra maiúscula
-        if (!/[A-Z]/.test(texto)) {
-            faltando.push("uma letra maiúscula");
-        }
-
-        // Número
-        if (!/[0-9]/.test(texto)) {
-            faltando.push("um número");
-        }
-
-        // Caractere especial
-        if (!/[!@#$%^&*(),.?":{}|<>]/.test(texto)) {
-            faltando.push("um caractere especial");
-        }
-
-        // Tudo correto
-        if (faltando.length === 0) {
-            forca.innerHTML =
-                "<span class='text-success'>✓ Senha válida.</span>";
-            return;
-        }
-
-        // Monta a mensagem com o que está faltando
-        let mensagem = "Precisa de ";
-
-        if (faltando.length === 1) {
-            mensagem += faltando[0] + ".";
-        } else if (faltando.length === 2) {
-            mensagem += faltando[0] + " e " + faltando[1] + ".";
-        } else {
-            mensagem +=
-                faltando.slice(0, -1).join(", ") +
-                " e " +
-                faltando[faltando.length - 1] +
-                ".";
-        }
-
-        forca.innerHTML =
-            "<span class='text-danger'>" + mensagem + "</span>";
-    });
-}
-
-if (confirmar && senha) {
-    confirmar.addEventListener("keyup", () => {
-
-        const mensagem = document.getElementById("erroConfirmarSenha");
-
-        if (!mensagem) {
-            return;
-        }
-
-        if (confirmar.value.length === 0) {
-            confirmar.classList.remove("is-valid", "is-invalid");
-            mensagem.innerHTML = "";
-            return;
-        }
-
-        if (confirmar.value === senha.value) {
-
-            confirmar.classList.remove("is-invalid");
-            confirmar.classList.add("is-valid");
-
-            mensagem.innerHTML =
-                "<span class='text-success'>" +
-                "✓ As senhas coincidem." +
-                "</span>";
-
-        } else {
-
-            confirmar.classList.remove("is-valid");
-            confirmar.classList.add("is-invalid");
-
-            mensagem.innerHTML =
-                "<span class='text-danger'>" +
-                "As senhas não coincidem." +
-                "</span>";
+        // Busca sozinho quando o CEP fica completo
+        if (valor.replace(/\D/g, "").length === 8) {
+            buscarCEP(false);
         }
     });
+
+    cep.addEventListener("blur", () => buscarCEP(false));
+
+    // Ao voltar com erro do servidor, libera os campos de endereço que ficaram vazios
+    if (cep.value.replace(/\D/g, "").length === 8) {
+        ultimoCepBuscado = cep.value.replace(/\D/g, "");
+        ajustarCamposEndereco(false);
+    }
 }
 
 
+// =========================
+// VALIDAÇÃO AO DIGITAR / SAIR DO CAMPO
+// =========================
+
+if (formCadastro) {
+
+    const campos = Array.from(formCadastro.querySelectorAll("input, select"))
+        .filter(campo => campo.type !== "hidden" && campo.name);
+
+    campos.forEach(campo => {
+
+        // Valida ao sair do campo (o CEP é validado pela busca)
+        if (campo.name !== "cep") {
+            campo.addEventListener(campo.type === "checkbox" || campo.tagName === "SELECT" ? "change" : "blur", () => {
+                if (campo.value || campo.type === "checkbox") validarCampo(campo);
+            });
+        }
+
+        // Se o campo já está marcado com erro, revalida enquanto o usuário corrige
+        campo.addEventListener("input", () => {
+            if (campo.classList.contains("is-invalid")) validarCampo(campo);
+        });
+    });
+
+    // Senha e confirmação: mostram o resultado enquanto digita
+    const senha = document.getElementById("senha");
+    const confirmar = document.getElementById("confirmarSenha");
+
+    if (senha) {
+        senha.addEventListener("input", () => {
+            if (senha.value) {
+                validarCampo(senha);
+            } else {
+                limparAviso(senha);
+            }
+
+            // A confirmação precisa ser conferida de novo quando a senha muda
+            if (confirmar && confirmar.value) validarCampo(confirmar);
+        });
+    }
+
+    if (confirmar) {
+        confirmar.addEventListener("input", () => {
+            if (confirmar.value) {
+                validarCampo(confirmar);
+            } else {
+                limparAviso(confirmar);
+            }
+        });
+    }
+
+
+    // =========================
+    // ENVIO DO FORMULÁRIO
+    // =========================
+
+    formCadastro.addEventListener("submit", function (evento) {
+
+        const invalidos = campos.filter(campo => !validarCampo(campo));
+
+        if (invalidos.length > 0) {
+            evento.preventDefault();
+
+            // Se o erro está num campo travado, libera para o usuário corrigir
+            invalidos.forEach(campo => {
+                if (campo.readOnly) campo.readOnly = false;
+            });
+
+            invalidos[0].focus();
+            return;
+        }
+
+        // Evita envio duplo
+        if (botaoCadastrar) {
+            botaoCadastrar.disabled = true;
+            botaoCadastrar.textContent = "Enviando...";
+        }
+    });
+
+    // Reativa o botão se a página voltar pelo botão "voltar" do navegador
+    window.addEventListener("pageshow", function () {
+        if (botaoCadastrar) {
+            botaoCadastrar.disabled = false;
+            botaoCadastrar.textContent = "Solicitar Cadastro";
+        }
+    });
+}

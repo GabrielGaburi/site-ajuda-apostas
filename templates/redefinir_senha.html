@@ -25,14 +25,16 @@
                         name="senha"
                         id="senha"
                         class="form-control"
-                        maxlength="16"
+                        maxlength="64"
                         required
                     >
 
                     <button
                         type="button"
                         class="btn btn-outline-secondary"
-                        onclick="toggleSenha('senha', 'iconeSenha')"
+                        data-mostrar-senha="senha"
+                        aria-label="Mostrar senha"
+                        aria-controls="senha"
                     >
                         <i id="iconeSenha" class="bi bi-eye"></i>
                     </button>
@@ -55,14 +57,16 @@
                         name="confirmar_senha"
                         id="confirmarSenha"
                         class="form-control"
-                        maxlength="16"
+                        maxlength="64"
                         required
                     >
 
                     <button
                         type="button"
                         class="btn btn-outline-secondary"
-                        onclick="toggleSenha('confirmarSenha', 'iconeConfirmar')"
+                        data-mostrar-senha="confirmarSenha"
+                        aria-label="Mostrar senha"
+                        aria-controls="confirmarSenha"
                     >
                         <i id="iconeConfirmar" class="bi bi-eye"></i>
                     </button>

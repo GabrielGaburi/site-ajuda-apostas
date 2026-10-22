@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Reenviar Confirmação{% endblock %}
+{% block content %}
+
+<div class="container-fluid d-flex align-items-center justify-content-center bg-light px-3"
+    style="min-height:80vh; padding:30px 0;">
+
+    <div class="card shadow-lg border-0 p-4 p-md-5" style="max-width: 500px; width:100%; border-radius:20px;">
+
+        <h3 class="text-center mb-3">Reenviar e-mail de confirmação</h3>
+
+        <p class="text-muted text-center mb-4">
+            Informe o e-mail usado no cadastro para receber um novo link de confirmação.
+        </p>
+
+        <form method="POST" action="{{ url_for('reenviar_confirmacao') }}">
+
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+                <label for="email" class="form-label">E-mail</label>
+                <div class="input-group">
+                    <span class="input-group-text">
+                        <i class="bi bi-envelope-fill" aria-hidden="true"></i>
+                    </span>
+                    <input type="email" name="email" id="email" class="form-control" value="{{ email or '' }}"
+                        placeholder="seu@email.com" autocomplete="email" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">
+                Reenviar link
+            </button>
+
+        </form>
+
+        <div class="text-center mt-3">
+            <a href="{{ url_for('login') }}" class="text-decoration-none">
+                Voltar para login
+            </a>
+        </div>
+
+    </div>
+
+</div>
+
+{% endblock %}
