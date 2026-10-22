@@ -247,7 +247,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function mostrarAtendimentoProfissional() {
 
         headerAvatar.src = "/static/img/imagens.png";
-        headerAvatar.alt = "Profissional";
+        headerAvatar.alt = "";
 
         headerTitle.textContent = "Atendimento profissional";
         headerStatus.textContent = "Profissional atendendo";
@@ -257,7 +257,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function mostrarApoioVirtual() {
 
         headerAvatar.src = "/static/img/caozinho.jpg";
-        headerAvatar.alt = "Apoio Virtual";
+        headerAvatar.alt = "";
 
         headerTitle.textContent = "Apoio Virtual";
         headerStatus.textContent = "Estou aqui para ouvir você";
@@ -266,7 +266,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function mostrarAguardandoProfissional() {
 
         headerAvatar.src = "/static/img/caozinho.jpg";
-        headerAvatar.alt = "Apoio Virtual";
+        headerAvatar.alt = "";
 
         headerTitle.textContent = "Atendimento profissional";
         headerStatus.textContent = "Aguardando profissional...";

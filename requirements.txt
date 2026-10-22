@@ -1,1 +1,11 @@
-flask
+Flask
+mysql-connector-python
+requests
+Flask-Mail
+Flask-WTF
+python-dotenv
+openai
+Flask-Limiter
+Pillow
+gunicorn
+
