@@ -236,7 +236,7 @@
                 {% if usuario.status == "ativo" %}
 
                 <form method="POST" action="{{ url_for('banir_usuario', usuario_id=usuario.id) }}"
-                    onsubmit="return confirm('Tem certeza que deseja banir este usuário?');">
+                    data-confirmar="Tem certeza que deseja banir este usuário?">
 
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -252,7 +252,7 @@
                 {% elif usuario.status == "banido" %}
 
                 <form method="POST" action="{{ url_for('reativar_usuario', usuario_id=usuario.id) }}"
-                    onsubmit="return confirm('Tem certeza que deseja reativar este usuário?');">
+                    data-confirmar="Tem certeza que deseja reativar este usuário?">
 
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 

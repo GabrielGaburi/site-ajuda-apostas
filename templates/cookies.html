@@ -1,0 +1,76 @@
+{% extends "legal.html" %}
+
+{% block title %}Política de Cookies{% endblock %}
+
+{% block titulo_legal %}Política de Cookies{% endblock %}
+
+{% block corpo %}
+
+<p>
+    A plataforma usa apenas cookies e armazenamento do navegador <strong>necessários para o
+    funcionamento do site</strong>. Não usamos cookies de publicidade, de rastreamento entre sites
+    nem ferramentas de análise de terceiros.
+</p>
+
+<div class="table-responsive">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Nome / tipo</th>
+                <th scope="col">Finalidade</th>
+                <th scope="col">Duração</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>session</code> (cookie)</td>
+                <td>
+                    Manter o login, proteger formulários contra falsificação (CSRF) e vincular o
+                    visitante sem cadastro à própria conversa com o chatbot.
+                </td>
+                <td>Até fechar o navegador ou sair da conta</td>
+            </tr>
+            <tr>
+                <td><code>sessionStorage</code> (navegador)</td>
+                <td>Lembrar o histórico da conversa do chat durante a sessão.</td>
+                <td>Até fechar a aba</td>
+            </tr>
+            <tr>
+                <td><code>localStorage</code> (navegador)</td>
+                <td>Lembrar se a janela do chat está aberta e como os botões estavam exibidos.</td>
+                <td>Até você limpar os dados do navegador</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<p>
+    Por serem estritamente necessários, esses itens não dependem de consentimento. Você pode
+    apagá-los nas configurações do navegador, mas partes do site (login, chat) deixarão de funcionar.
+</p>
+
+<h2 class="h5 mt-4">Serviços de terceiros</h2>
+
+<p>
+    O site carrega arquivos e dados de serviços externos: jsDelivr e unpkg (estilos e scripts),
+    OpenStreetMap (mapa da página de ajuda), ViaCEP (consulta de CEP no cadastro) e Unsplash (imagem da
+    página inicial). Nós não definimos cookies desses serviços, mas, ao carregá-los, o seu navegador envia
+    a eles o seu endereço IP, e cada um segue a própria política. Veja a
+    <a href="{{ url_for('politica_privacidade') }}">Política de Privacidade</a>.
+    <mark>[A DEFINIR COM O ADVOGADO: confirmar se algum desses serviços grava cookies próprios]</mark>
+</p>
+
+<h2 class="h5 mt-4">Mudanças futuras</h2>
+
+<p>
+    Se no futuro forem adicionadas ferramentas de análise, publicidade ou conteúdo de terceiros que
+    usem cookies próprios, esta Política será atualizada e um aviso de consentimento será exibido
+    antes do uso.
+</p>
+
+<p>
+    Dúvidas: <mark>{{ legal.email_privacidade }}</mark>. Veja também a
+    <a href="{{ url_for('politica_privacidade') }}">Política de Privacidade</a>.
+</p>
+
+{% endblock %}

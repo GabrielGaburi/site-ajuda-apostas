@@ -1,0 +1,202 @@
+{% extends "legal.html" %}
+
+{% block title %}Política de Privacidade{% endblock %}
+
+{% block titulo_legal %}Política de Privacidade{% endblock %}
+
+{% block corpo %}
+
+<p>
+    Esta Política explica como a plataforma <strong>Apoio &amp; Consciência</strong> trata dados
+    pessoais, em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018, LGPD).
+</p>
+
+<h2 class="h5 mt-4">1. Quem é o controlador</h2>
+
+<p>
+    <mark>{{ legal.controlador }}</mark>, documento <mark>{{ legal.documento }}</mark>,
+    endereço <mark>{{ legal.endereco }}</mark>.<br>
+    Encarregado pelo tratamento de dados (DPO): <mark>{{ legal.encarregado }}</mark>,
+    e-mail <mark>{{ legal.email_privacidade }}</mark>.
+</p>
+
+<h2 class="h5 mt-4">2. Dados que tratamos</h2>
+
+<div class="table-responsive">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th scope="col">Dado</th>
+                <th scope="col">Quando é coletado</th>
+                <th scope="col">Finalidade</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Nome, sobrenome, e-mail, telefone, data de nascimento, endereço</td>
+                <td>Cadastro e edição de perfil</td>
+                <td>Criar e manter a conta, comunicações sobre a conta</td>
+            </tr>
+            <tr>
+                <td>CPF</td>
+                <td>Cadastro</td>
+                <td>Evitar contas duplicadas e identificar o usuário</td>
+            </tr>
+            <tr>
+                <td>Senha (guardada apenas em forma criptografada)</td>
+                <td>Cadastro e alteração de senha</td>
+                <td>Autenticação</td>
+            </tr>
+            <tr>
+                <td>Dados profissionais e foto (profissionais)</td>
+                <td>Cadastro de profissional</td>
+                <td>Análise de aprovação e exibição do perfil</td>
+            </tr>
+            <tr>
+                <td>Mensagens do chatbot e do atendimento profissional</td>
+                <td>Uso do chat, inclusive sem cadastro</td>
+                <td>Responder ao usuário, encaminhar a profissionais, segurança</td>
+            </tr>
+            <tr>
+                <td>Mensagens do fórum</td>
+                <td>Publicação no fórum</td>
+                <td>Funcionamento e moderação do fórum</td>
+            </tr>
+            <tr>
+                <td>Endereço IP e dados técnicos de acesso</td>
+                <td>Qualquer acesso</td>
+                <td>Segurança, limite de requisições e cumprimento de obrigação legal</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<h2 class="h5 mt-4">3. Dados sensíveis (saúde)</h2>
+
+<p>
+    O que você escreve no chatbot, no atendimento profissional e no fórum pode revelar informações
+    sobre sua saúde (por exemplo, sofrimento emocional, vício em apostas ou risco de autolesão), que
+    a LGPD classifica como <strong>dados pessoais sensíveis</strong>. Tratamos esses dados apenas
+    para prestar o apoio solicitado e proteger sua vida e sua saúde, com base no seu
+    <strong>consentimento específico e destacado</strong>, que você pode retirar a qualquer momento.
+    <mark>[A DEFINIR COM O ADVOGADO: bases legais do art. 11 aplicáveis a cada tratamento]</mark>
+</p>
+
+<p>
+    As respostas do <strong>teste de autoavaliação</strong> não são armazenadas: o resultado é
+    calculado na hora e mostrado apenas para você.
+</p>
+
+<h2 class="h5 mt-4">4. Com quem compartilhamos</h2>
+
+<ul>
+    <li>
+        <strong>Profissionais aprovados:</strong> podem ler a conversa quando você pede atendimento
+        profissional ou quando o sistema identifica uma possível situação de risco.
+    </li>
+    <li>
+        <strong>OpenAI (inteligência artificial):</strong> o texto das mensagens do chatbot é enviado
+        para gerar as respostas. O processamento pode ocorrer fora do Brasil.
+        <mark>[A DEFINIR COM O ADVOGADO: mecanismo de transferência internacional (LGPD, art. 33) e
+        condições de retenção de dados da OpenAI para uso via API]</mark>
+    </li>
+    <li><strong>Google (envio de e-mails):</strong> usado para códigos de verificação e avisos da conta.</li>
+    <li><strong>Hospedagem e banco de dados:</strong> <mark>[PREENCHER: provedor e país]</mark>.</li>
+    <li>
+        <strong>Mapa e bibliotecas (OpenStreetMap, jsDelivr, unpkg):</strong> ao abrir a página de ajuda
+        ou qualquer página do site, seu navegador se conecta a esses serviços para carregar o mapa e os
+        arquivos de estilo e script, e eles recebem seu endereço IP.
+    </li>
+    <li>
+        <strong>ViaCEP:</strong> ao preencher o CEP no cadastro, o CEP digitado é consultado nesse serviço
+        para completar o endereço, e ele recebe seu endereço IP.
+    </li>
+    <li>
+        <strong>Unsplash:</strong> a página inicial exibe uma imagem hospedada nesse serviço, que recebe
+        seu endereço IP.
+    </li>
+    <li><strong>GNews:</strong> fornece as notícias; não recebe dados dos usuários.</li>
+    <li>
+        <strong>Autoridades:</strong> quando houver ordem judicial ou obrigação legal.
+    </li>
+</ul>
+
+<p>Não vendemos dados pessoais.</p>
+
+<h2 class="h5 mt-4">5. Por quanto tempo guardamos</h2>
+
+<ul>
+    <li>
+        <strong>Conversas do chatbot de usuários cadastrados:</strong> apagadas automaticamente após
+        {{ retencao_conversas_dias }} dias sem atividade, ou antes, se você apagá-las.
+    </li>
+    <li>
+        <strong>Conversas de visitantes sem cadastro:</strong> apagadas automaticamente após
+        {{ retencao_visitantes_dias }} dias sem atividade.
+    </li>
+    <li>
+        <strong>Dados da conta:</strong> mantidos enquanto a conta existir. Ao excluir a conta, os dados
+        pessoais são removidos e as mensagens do fórum ficam sem o conteúdo.
+    </li>
+    <li>
+        <strong>Códigos de verificação e links de redefinição de senha:</strong> apagados após expirarem.
+    </li>
+    <li>
+        <strong>Registros de acesso:</strong>
+        <mark>[A DEFINIR COM O ADVOGADO: prazo de guarda; o Marco Civil da Internet exige 6 meses dos
+        provedores de aplicação]</mark>
+    </li>
+</ul>
+
+<p>
+    <mark>[A DEFINIR COM O ADVOGADO: confirmar se estes prazos atendem à finalidade e às obrigações
+    legais aplicáveis]</mark>
+</p>
+
+<h2 class="h5 mt-4">6. Seus direitos</h2>
+
+<p>
+    Você pode pedir: confirmação de que tratamos seus dados, acesso, correção, anonimização,
+    bloqueio ou eliminação de dados desnecessários, portabilidade, informação sobre com quem os
+    compartilhamos, revogação do consentimento e eliminação dos dados tratados com consentimento.
+</p>
+
+<p>
+    Com a conta logada, em <a href="{{ url_for('minha_privacidade') }}">Privacidade e dados</a>, você
+    mesmo pode baixar seus dados, revogar o consentimento para dados de saúde, apagar suas conversas e
+    excluir a conta. Para os demais pedidos, escreva para <mark>{{ legal.email_privacidade }}</mark>.
+    <mark>[A DEFINIR: prazo de resposta]</mark> Você também pode reclamar à Autoridade Nacional de
+    Proteção de Dados (ANPD).
+</p>
+
+<h2 class="h5 mt-4">7. Segurança</h2>
+
+<p>
+    Adotamos medidas como senhas criptografadas, proteção contra ataques em formulários,
+    limitação de tentativas de login, verificação em duas etapas para administradores e
+    profissionais, e controle de acesso por perfil. Nenhum sistema é totalmente seguro. Em caso de
+    incidente que possa causar risco relevante, comunicaremos a ANPD e os titulares afetados, nos
+    termos da lei.
+</p>
+
+<h2 class="h5 mt-4">8. Crianças e adolescentes</h2>
+
+<p>
+    <mark>[A DEFINIR COM O ADVOGADO: idade mínima, consentimento dos responsáveis e tratamento de
+    dados de menores de 18 anos (LGPD, art. 14)]</mark>
+</p>
+
+<h2 class="h5 mt-4">9. Cookies</h2>
+
+<p>
+    Veja a <a href="{{ url_for('politica_cookies') }}">Política de Cookies</a>.
+</p>
+
+<h2 class="h5 mt-4">10. Alterações desta Política</h2>
+
+<p>
+    Podemos atualizar esta Política. Mudanças relevantes serão informadas na plataforma e, quando
+    exigido, pediremos um novo consentimento.
+</p>
+
+{% endblock %}

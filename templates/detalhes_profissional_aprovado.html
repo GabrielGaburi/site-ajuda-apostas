@@ -323,7 +323,7 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <button type="submit" class="btn btn-danger"
-                        onclick="return confirm('Tem certeza que deseja banir este profissional?');">
+                        data-confirmar="Tem certeza que deseja banir este profissional?">
 
                         Banir profissional
 
@@ -344,7 +344,7 @@
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                     <button type="submit" class="btn btn-success"
-                        onclick="return confirm('Deseja reativar este profissional?');">
+                        data-confirmar="Deseja reativar este profissional?">
 
                         Reativar profissional
 

@@ -96,6 +96,12 @@
                             </li>
 
                             <li>
+                                <a class="dropdown-item" href="{{ url_for('minha_privacidade') }}">
+                                    <i class="bi bi-shield-lock" aria-hidden="true"></i> Privacidade e dados
+                                </a>
+                            </li>
+
+                            <li>
                                 <hr class="dropdown-divider">
                             </li>
 
@@ -146,6 +152,26 @@
     <!-- CONTEÚDO -->
     {% block content %}{% endblock %}
 
+    <!-- RODAPÉ -->
+    <footer class="bg-dark text-light py-4 mt-5">
+        <div class="container small">
+            <div class="d-flex flex-column flex-md-row justify-content-between gap-2">
+                <span>&copy; Apoio &amp; Consciência</span>
+
+                <nav aria-label="Documentos legais">
+                    <a class="link-light me-3" href="{{ url_for('termos_de_uso') }}">Termos de Uso</a>
+                    <a class="link-light me-3" href="{{ url_for('politica_privacidade') }}">Privacidade</a>
+                    <a class="link-light" href="{{ url_for('politica_cookies') }}">Cookies</a>
+                </nav>
+            </div>
+
+            <p class="mb-0 mt-2 text-secondary">
+                Este site não substitui atendimento médico ou psicológico. Em risco imediato,
+                ligue 188 (CVV) ou 192 (SAMU).
+            </p>
+        </div>
+    </footer>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
         integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
@@ -153,11 +179,14 @@
 
     <script src="{{ url_for('static', filename='js/mostrar_senha.js') }}"></script>
 
+    <script src="{{ url_for('static', filename='js/confirmar.js') }}"></script>
+
     {% block scripts %}{% endblock %}
 
         <!-- CHATBOT -->
     {% if session.get("tipo_usuario") != "profissional" and session.get("tipo_usuario") != "admin" %}
-    <div id="chatbot-container" data-chatbot-authenticated="{{ 'true' if session.get('usuario_id') else 'false' }}">
+    <div id="chatbot-container" data-chatbot-authenticated="{{ 'true' if session.get('usuario_id') else 'false' }}"
+        data-chatbot-consentimento="{{ 'true' if consentimento_chat_ok else 'false' }}">
 
         <!-- Botão flutuante -->
         <button id="chatbot-toggle" type="button">
@@ -199,6 +228,16 @@
 
             </div>
 
+            <div id="chatbot-consentimento"{% if consentimento_chat_ok %} hidden{% endif %}>
+                <p>
+                    Antes de conversar: o que você escrever aqui é guardado, pode revelar informações sobre
+                    sua saúde e é enviado a um serviço de inteligência artificial (OpenAI). Se pedir ajuda
+                    profissional ou houver sinal de risco, profissionais aprovados poderão ler a conversa.
+                    Veja a <a href="{{ url_for('politica_privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>.
+                </p>
+                <button id="chatbot-consentir" type="button">Concordo e quero conversar</button>
+            </div>
+
             <div id="chatbot-quick-replies">
 
 
@@ -210,6 +249,15 @@
                 </button>
 
             </div>
+
+            <button id="chatbot-encerrar" type="button" hidden>
+                Encerrar atendimento e voltar ao Apoio Virtual
+            </button>
+
+            <p id="chatbot-aviso">
+                As conversas são guardadas e processadas por uma IA externa. Evite
+                informar dados pessoais. Em risco imediato, ligue 188 (CVV) ou 192 (SAMU).
+            </p>
 
             <div id="chatbot-input-area">
 

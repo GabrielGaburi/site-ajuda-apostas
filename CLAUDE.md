@@ -16,6 +16,9 @@ python -m venv .venv
 
 - A configuração de debug do VS Code (`.vscode/launch.json`) roda o `app.py` com `.venv\Scripts\python.exe`. Existe também um diretório `venv/` versionado no git, mas o ambiente realmente usado é o `.venv/`.
 - O `gunicorn` está no requirements para deploy (`gunicorn app:app`).
+- Antes de usar os recursos de LGPD, rode uma vez `.venv\Scripts\python migrar_lgpd.py` (cria as colunas de consentimento e exclusão em `usuarios`). Sem isso, o chat e o fórum ficam bloqueados por falta de consentimento.
+- Retenção de dados: agende `.venv\Scripts\flask --app app aplicar-retencao` para rodar uma vez por dia. Os prazos vêm de `RETENCAO_CONVERSAS_DIAS` (padrão 365) e `RETENCAO_CONVERSAS_VISITANTES_DIAS` (padrão 30) no `.env`.
+- Páginas legais (`/termos`, `/privacidade`, `/cookies`): os dados do controlador vêm das variáveis `LEGAL_*` do `.env`; enquanto faltarem, as páginas mostram o aviso de rascunho. Ao mudar o texto jurídico, atualize `TERMOS_VERSAO` em `app.py`: todos os usuários precisarão aceitar de novo e consentir novamente para dados de saúde.
 - Não há testes automatizados, linter nem etapa de build. As mudanças são verificadas manualmente no navegador, inclusive no celular.
 
 A configuração vem do `.env`, carregado com `override=True`. As variáveis são `SECRET_KEY`, `BASE_URL`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `MAIL_USERNAME`, `MAIL_PASSWORD` (senha de app do Gmail), `OPENAI_API_KEY` e `GNEWS_API_KEY`. `HTTPS_ATIVO=true` é opcional e ativa cookies de sessão seguros. `PROXIES_CONFIAVEIS` (padrão `0`) é o número de proxies na frente do app (ex.: `1` com o túnel `cloudflared` ou um Nginx); quando é maior que zero, o `ProxyFix` faz o Flask e o `Flask-Limiter` usarem o IP real do visitante.

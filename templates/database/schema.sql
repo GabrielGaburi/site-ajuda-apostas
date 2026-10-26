@@ -50,6 +50,13 @@ CREATE TABLE usuarios (
     termos_aceitos_em DATETIME NULL,
     termos_versao VARCHAR(30) NULL,
 
+    -- Consentimento específico para dados de saúde (chatbot, atendimento e fórum)
+    consentimento_saude_em DATETIME NULL,
+    consentimento_saude_versao VARCHAR(30) NULL,
+
+    -- Preenchida quando a conta é excluída (dados pessoais anonimizados)
+    excluido_em DATETIME NULL,
+
     data_cadastro TIMESTAMP
         DEFAULT CURRENT_TIMESTAMP
 );

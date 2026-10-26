@@ -246,13 +246,12 @@
                 <!-- BOTÕES -->
                 <div class="d-flex justify-content-between mt-5">
 
-                    <button type="button" class="btn btn-outline-secondary px-4" id="btnAnterior"
-                        onclick="anteriorPergunta()" disabled>
+                    <button type="button" class="btn btn-outline-secondary px-4" id="btnAnterior" disabled>
                         ← Anterior
                     </button>
 
 
-                    <button type="button" class="btn btn-dark px-4" id="btnProxima" onclick="proximaPergunta()">
+                    <button type="button" class="btn btn-dark px-4" id="btnProxima">
                         Próxima →
                     </button>
 
@@ -336,121 +335,6 @@
 </style>
 
 
-<script>
-
-    let perguntaAtual = 1;
-
-    const totalPerguntas = 4;
-
-
-    function mostrarPergunta(numero) {
-
-        // Esconde todas
-        for (let i = 1; i <= totalPerguntas; i++) {
-
-            document
-                .getElementById("pergunta" + i)
-                .classList.add("d-none");
-
-        }
-
-
-        // Mostra a atual
-        document
-            .getElementById("pergunta" + numero)
-            .classList.remove("d-none");
-
-
-        // Atualiza contador
-        document.getElementById("contador").textContent =
-            "Pergunta " + numero + " de " + totalPerguntas;
-
-
-        // Atualiza barra
-        const porcentagem =
-            (numero / totalPerguntas) * 100;
-
-        document.getElementById("barraProgresso").style.width =
-            porcentagem + "%";
-
-
-        // Botão anterior
-        document.getElementById("btnAnterior").disabled =
-            numero === 1;
-
-
-        // Botões finais
-        if (numero === totalPerguntas) {
-
-            document
-                .getElementById("btnProxima")
-                .classList.add("d-none");
-
-            document
-                .getElementById("btnFinalizar")
-                .classList.remove("d-none");
-
-        } else {
-
-            document
-                .getElementById("btnProxima")
-                .classList.remove("d-none");
-
-            document
-                .getElementById("btnFinalizar")
-                .classList.add("d-none");
-
-        }
-
-    }
-
-
-    function proximaPergunta() {
-
-        const pergunta =
-            document.getElementById(
-                "pergunta" + perguntaAtual
-            );
-
-
-        const resposta =
-            pergunta.querySelector(
-                'input[type="radio"]:checked'
-            );
-
-
-        if (!resposta) {
-
-            alert("Selecione uma resposta antes de continuar.");
-
-            return;
-
-        }
-
-
-        if (perguntaAtual < totalPerguntas) {
-
-            perguntaAtual++;
-
-            mostrarPergunta(perguntaAtual);
-
-        }
-
-    }
-
-
-    function anteriorPergunta() {
-
-        if (perguntaAtual > 1) {
-
-            perguntaAtual--;
-
-            mostrarPergunta(perguntaAtual);
-
-        }
-
-    }
-
-</script>
+<script src="{{ url_for('static', filename='js/teste.js') }}"></script>
 
 {% endblock %}

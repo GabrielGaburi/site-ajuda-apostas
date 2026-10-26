@@ -42,9 +42,23 @@
         </h2>
 
         <p class="text-muted">
-            Encontre serviços de saúde e apoio próximos a você.
+            Serviços gratuitos de saúde e apoio. Há {{ locais | length }} locais na lista, a maior parte
+            na capital; fora dela, procure o CAPS da sua cidade pela Unidade Básica de Saúde (UBS) mais
+            próxima ou pelo Disque Saúde 136.
         </p>
 
+    </div>
+
+    <!-- AVISO SOBRE AS INFORMAÇÕES -->
+    <div class="alert alert-warning small" role="note">
+        <strong>Antes de ir:</strong> esta lista é apenas informativa. O Apoio &amp; Consciência não é
+        vinculado a estes serviços, <strong>não indica nem garante atendimento, vagas ou
+        horários</strong>, e endereços, telefones e regras de acesso podem mudar. Ligue antes para
+        confirmar se o serviço atende o seu caso e se há cobrança.
+        {% if revisado_em %}Dados revisados em {{ revisado_em }}.{% endif %}
+        Encontrou algo errado? Avise em {{ legal.email_contato }}.
+        <br>
+        <strong>Em risco imediato:</strong> ligue 188 (CVV), 192 (SAMU) ou vá a uma UPA ou pronto-socorro.
     </div>
 
 
@@ -84,14 +98,22 @@
                         📍 {{ item.endereco }}
                     </p>
 
-                    <p class="mb-3">
+                    {% if item.telefone %}
+                    <p class="mb-1">
                         📞 {{ item.telefone }}
+                    </p>
+                    {% endif %}
+
+                    <p class="small text-muted mb-3">
+                        {% if item.observacao %}{{ item.observacao }}{% endif %}
+                        Ligue antes para confirmar o atendimento.
                     </p>
 
                     <button type="button" class="btn btn-primary btn-sm btn-ver-local" data-lat="{{ item.lat }}"
                         data-lng="{{ item.lng }}" data-nome="{{ item.nome | escape }}"
                         data-cidade="{{ item.cidade | escape }}" data-tipo="{{ item.tipo | escape }}"
-                        data-endereco="{{ item.endereco | escape }}" data-telefone="{{ item.telefone | escape }}">
+                        data-endereco="{{ item.endereco | escape }}" data-telefone="{{ item.telefone | escape }}"
+                        data-observacao="{{ item.observacao | default('') | escape }}">
 
                         Ver no mapa 📍
 
@@ -114,9 +136,11 @@
 
 {% block scripts %}
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
 <script src="{{ url_for('static', filename='js/ajuda.js') }}"></script>
 
