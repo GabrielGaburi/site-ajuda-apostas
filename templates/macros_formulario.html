@@ -1,0 +1,17 @@
+{# Macros dos formulários validados pelo validacao_cadastro.js.
+   Importar com: {% from "macros_formulario.html" import classe_erro, aria_erro, mensagens_campo with context %}
+   Destacam o campo com erro vindo do servidor (campo_erro / mensagem_erro) e ligam as mensagens ao campo
+   (leitores de tela). "aviso-<campo>" recebe as mensagens do JS; "erro-<campo>" é a mensagem do servidor. #}
+
+{% macro classe_erro(campo) %}{% if campo_erro == campo %} is-invalid{% endif %}{% endmacro %}
+
+{% macro aria_erro(campo, ajuda="") %} aria-describedby="{{ (ajuda ~ ' aviso-' ~ campo ~ (' erro-' ~ campo if campo_erro == campo else '')) | trim }}"{% if campo_erro == campo %} aria-invalid="true"{% endif %}{% endmacro %}
+
+{% macro mensagens_campo(campo) %}
+<div id="aviso-{{ campo }}" class="small mt-1" aria-live="polite"></div>
+{% if campo_erro == campo %}
+<div id="erro-{{ campo }}" class="text-danger small mt-1" role="alert">
+    {{ mensagem_erro }}
+</div>
+{% endif %}
+{% endmacro %}

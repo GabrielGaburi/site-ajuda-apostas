@@ -21,8 +21,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const botoesContexto = document.querySelectorAll(".chatbot-context-button");
 
     const botaoProfissional = document.querySelector(".chatbot-profissional-button");
+    const botaoEncerrar = document.getElementById("chatbot-encerrar");
+    const painelConsentimento = document.getElementById("chatbot-consentimento");
+    const botaoConsentir = document.getElementById("chatbot-consentir");
     const chatbotContainer = document.getElementById("chatbot-container");
     const usuarioAutenticado = chatbotContainer && chatbotContainer.dataset.chatbotAuthenticated === "true";
+    let consentimentoOk = !chatbotContainer || chatbotContainer.dataset.chatbotConsentimento === "true";
     const botoesOcultosKey = "chatbotBotoesOcultos";
     const janelaAbertaKey = "chatbotJanelaAberta";
 
@@ -53,6 +57,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let atendimentoId = sessionStorage.getItem("atendimentoId");
     let pollingMensagens = null;
     let mensagensExibidas = new Set();
+    let ultimoIdMensagem = 0;
     let profissionalAtendendo = false;
     let atendimentoInicializado = false;
     let statusAtendimentoAnterior = null;
@@ -151,14 +156,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function adicionarMensagem(texto, tipo) {
 
-        console.log("ADICIONAR MENSAGEM:", {
-            texto: texto,
-            tipo: tipo
-        });
-
-        console.trace("QUEM CHAMOU adicionarMensagem");
-
-
         const mensagem = document.createElement("div");
 
         mensagem.classList.add("chatbot-message");
@@ -244,6 +241,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
     }
 
+    // Sem consentimento, o campo de texto fica bloqueado e o aviso aparece
+    function aplicarConsentimento() {
+
+        input.disabled = !consentimentoOk;
+        send.disabled = !consentimentoOk;
+
+        if (painelConsentimento) {
+            painelConsentimento.hidden = consentimentoOk;
+        }
+    }
+
+    function mostrarBotaoEncerrar(visivel) {
+
+        if (botaoEncerrar) {
+            botaoEncerrar.hidden = !visivel;
+        }
+    }
+
     function mostrarAtendimentoProfissional() {
 
         headerAvatar.src = "/static/img/imagens.png";
@@ -309,11 +324,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function verificarMensagensProfissional() {
 
-        if (!atendimentoId) {
+        if (!atendimentoId || document.hidden) {
             return;
         }
 
-        fetch("/mensagens/" + atendimentoId)
+        const consulta = atendimentoInicializado && ultimoIdMensagem > 0
+            ? "?depois=" + ultimoIdMensagem
+            : "";
+
+        fetch("/mensagens/" + atendimentoId + consulta)
 
             .then(function (resposta) {
 
@@ -329,6 +348,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     sessionStorage.removeItem("atendimentoId");
 
                     mensagensExibidas.clear();
+                    ultimoIdMensagem = 0;
                     atendimentoInicializado = false;
 
                     return null;
@@ -356,6 +376,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     profissionalAtendendo = true;
 
                     mostrarAtendimentoProfissional();
+                    mostrarBotaoEncerrar(true);
 
                     botoesContexto.forEach(function (botao) {
                         botao.style.display = "none";
@@ -396,6 +417,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     iaRespondendo = false;
                     sessionStorage.removeItem("chatbotIAProcessando");
                     statusAtendimentoAnterior = "finalizado";
+                    mostrarBotaoEncerrar(false);
 
                     mostrarApoioVirtual();
                     
@@ -414,6 +436,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     profissionalAtendendo = false;
 
                     mostrarAguardandoProfissional();
+                    mostrarBotaoEncerrar(true);
 
                     if (botaoProfissional) {
                         botaoProfissional.style.display = "none";
@@ -439,6 +462,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         }
 
                         mensagensExibidas.add(mensagem.id);
+                        ultimoIdMensagem = Math.max(ultimoIdMensagem, mensagem.id);
 
                         if (mensagem.sender === "human") {
 
@@ -484,6 +508,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
 
                     mensagensExibidas.add(mensagem.id);
+                    ultimoIdMensagem = Math.max(ultimoIdMensagem, mensagem.id);
 
                     // Só mensagens do profissional
                     // são adicionadas pelo polling.
@@ -546,7 +571,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         console.log("1 - função enviarMensagem iniciou");
 
-        if (iaRespondendo) {
+        if (iaRespondendo || !consentimentoOk) {
             return;
         }
 
@@ -568,8 +593,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
         }
-
-        console.log("2 - mensagem:", texto);
 
         adicionarMensagem(texto, "usuario");
 
@@ -621,14 +644,35 @@ document.addEventListener("DOMContentLoaded", function () {
 
         .then(function (dados) {
 
-            console.log("5 - dados:", dados);
-
             if (dados.profissional_atendendo) {
                 profissionalAtendendo = true;
                 iaRespondendo = false;
                 sessionStorage.removeItem("chatbotIAProcessando");
             }
 
+
+            if (dados.consentimento_necessario) {
+
+                removerDigitando();
+                iaRespondendo = false;
+                sessionStorage.removeItem("chatbotIAProcessando");
+
+                consentimentoOk = false;
+                aplicarConsentimento();
+
+                input.value = texto;
+
+                return;
+            }
+
+            if (dados.exibir_direto && dados.resposta) {
+
+                removerDigitando();
+                iaRespondendo = false;
+                sessionStorage.removeItem("chatbotIAProcessando");
+
+                adicionarMensagem(dados.resposta, "bot");
+            }
 
             if (dados.erro) {
 
@@ -664,6 +708,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (novoAtendimento) {
 
                     mensagensExibidas.clear();
+                    ultimoIdMensagem = 0;
 
                     atendimentoInicializado = false;
 
@@ -729,6 +774,95 @@ document.addEventListener("DOMContentLoaded", function () {
             requestAnimationFrame(function () {
                 messages.scrollTop = messages.scrollHeight;
             });
+        });
+    }
+
+
+    // ========================================
+    // CONSENTIMENTO PARA USAR O CHAT
+    // ========================================
+
+    if (botaoConsentir) {
+
+        botaoConsentir.addEventListener("click", function () {
+
+            botaoConsentir.disabled = true;
+
+            fetch("/chatbot/consentimento", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": document.querySelector(
+                        'meta[name="csrf-token"]'
+                    ).getAttribute("content")
+                }
+            })
+                .then(function (resposta) {
+                    return resposta.json();
+                })
+                .then(function (dados) {
+                    if (dados.sucesso) {
+                        consentimentoOk = true;
+                        aplicarConsentimento();
+                        input.focus();
+                    }
+                })
+                .catch(function () {
+                    // O painel continua visível para a pessoa tentar de novo
+                })
+                .finally(function () {
+                    botaoConsentir.disabled = false;
+                });
+        });
+    }
+
+    aplicarConsentimento();
+
+
+    // ========================================
+    // ENCERRAR ATENDIMENTO PROFISSIONAL
+    // ========================================
+
+    if (botaoEncerrar) {
+
+        botaoEncerrar.addEventListener("click", function () {
+
+            if (!confirm("Encerrar o atendimento profissional e voltar a conversar com o Apoio Virtual?")) {
+                return;
+            }
+
+            botaoEncerrar.disabled = true;
+
+            fetch("/chatbot/voltar_para_ia", {
+                method: "POST",
+                headers: {
+                    "X-CSRFToken": document.querySelector(
+                        'meta[name="csrf-token"]'
+                    ).getAttribute("content")
+                }
+            })
+                .then(function (resposta) {
+                    return resposta.json();
+                })
+                .then(function (dados) {
+                    if (dados.sucesso) {
+                        // O polling recebe o status "finalizado" e volta para a IA
+                        verificarMensagensProfissional();
+                    } else {
+                        adicionarMensagem(
+                            dados.erro || "Não foi possível encerrar o atendimento.",
+                            "bot"
+                        );
+                    }
+                })
+                .catch(function () {
+                    adicionarMensagem(
+                        "Não foi possível encerrar o atendimento.",
+                        "bot"
+                    );
+                })
+                .finally(function () {
+                    botaoEncerrar.disabled = false;
+                });
         });
     }
 

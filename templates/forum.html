@@ -24,11 +24,9 @@
                 {{ topico.titulo }}
             </h5>
 
-            {% if topico.mensagens %}
             <p class="card-text text-muted">
-                Criado por {{ topico.mensagens[0].autor }}
+                Criado por {{ topico.autor }}
             </p>
-            {% endif %}
 
             <div class="d-flex gap-2">
 
@@ -36,12 +34,12 @@
                     Ver tópico
                 </a>
 
-                {% if topico.mensagens and
-                (topico.mensagens[0].usuario_id == session.get("usuario_id")
+                {% if session.get("usuario_id") and
+                (topico.usuario_id == session.get("usuario_id")
                 or session.get("tipo_usuario") == "admin") %}
 
                 <form method="POST" action="{{ url_for('excluir_topico', topico_id=topico.id) }}"
-                    onsubmit="return confirm('Tem certeza que deseja excluir este tópico?')">
+                    data-confirmar="Tem certeza que deseja excluir este tópico?">
 
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 

@@ -1,0 +1,166 @@
+{% extends "legal.html" %}
+
+{% block title %}Termos de Uso{% endblock %}
+
+{% block titulo_legal %}Termos de Uso{% endblock %}
+
+{% block corpo %}
+
+<p>
+    Estes Termos de Uso regulam o uso da plataforma <strong>Apoio &amp; Consciência</strong>,
+    mantida por <mark>{{ legal.controlador }}</mark> (documento: <mark>{{ legal.documento }}</mark>),
+    com endereço em <mark>{{ legal.endereco }}</mark>. Ao criar uma conta ou usar a plataforma,
+    você declara que leu e concorda com estes Termos e com a
+    <a href="{{ url_for('politica_privacidade') }}">Política de Privacidade</a>.
+</p>
+
+<h2 class="h5 mt-4">1. O que é a plataforma</h2>
+
+<p>
+    A plataforma oferece informação e apoio a pessoas afetadas por apostas e a seus familiares:
+    chatbot de apoio (Apoio Virtual), fórum moderado, notícias, teste de autoavaliação, mapa de
+    locais de ajuda e contato com profissionais cadastrados.
+</p>
+
+<h2 class="h5 mt-4">2. O que a plataforma não é</h2>
+
+<p>
+    A plataforma <strong>não presta atendimento médico, psicológico ou de emergência</strong>, não
+    faz diagnósticos e não substitui o acompanhamento de um profissional de saúde. O Apoio Virtual
+    é um recurso automatizado de inteligência artificial e pode errar.
+</p>
+
+<p>
+    <strong>Em risco imediato à sua vida ou à de outra pessoa, procure ajuda agora:</strong>
+    CVV, telefone 188 (gratuito, 24 horas), ou SAMU, telefone 192.
+</p>
+
+<h2 class="h5 mt-4">3. Cadastro e conta</h2>
+
+<ul>
+    <li>
+        Idade mínima: <mark>[A DEFINIR COM O ADVOGADO: idade mínima e tratamento de menores de 18 anos]</mark>.
+    </li>
+    <li>Você deve fornecer informações verdadeiras e mantê-las atualizadas.</li>
+    <li>Você é responsável pela segurança da sua senha e por tudo o que ocorrer na sua conta.</li>
+    <li>
+        Contas de profissionais passam por análise e aprovação antes de acessar os recursos de
+        atendimento, e a aprovação pode ser recusada ou revogada.
+    </li>
+    <li>O acesso de administradores e profissionais exige verificação em duas etapas por e-mail.</li>
+</ul>
+
+<h2 class="h5 mt-4">4. Chatbot e inteligência artificial</h2>
+
+<p>
+    As mensagens enviadas ao Apoio Virtual são registradas e transmitidas a um provedor de
+    inteligência artificial (OpenAI) para gerar as respostas. Não informe dados pessoais sensíveis
+    (CPF, endereço, senhas, dados bancários). Os detalhes estão na
+    <a href="{{ url_for('politica_privacidade') }}">Política de Privacidade</a>.
+</p>
+
+<p>
+    Quando você pede um profissional, ou quando o sistema identifica uma possível situação de risco,
+    a conversa pode ser encaminhada a um profissional aprovado, que passa a ter acesso a ela.
+    Você pode encerrar o atendimento profissional a qualquer momento pelo próprio chat.
+</p>
+
+<h2 class="h5 mt-4">5. Fórum e conteúdo dos usuários</h2>
+
+<ul>
+    <li>Você é responsável pelo que publica e concede à plataforma licença para exibir esse conteúdo no fórum.</li>
+    <li>
+        É proibido: divulgar ou incentivar apostas, oferecer dicas para recuperar perdas, assediar,
+        discriminar, publicar dados de terceiros sem autorização e qualquer conteúdo ilegal.
+    </li>
+    <li>
+        O conteúdo é moderado automaticamente e por administradores. Conteúdos podem ser removidos e
+        contas podem ser suspensas ou banidas, sem aviso prévio em caso de violação grave.
+    </li>
+    <li>
+        Para denunciar um conteúdo ou uma conta: <mark>{{ legal.email_contato }}</mark>.
+    </li>
+</ul>
+
+<h2 class="h5 mt-4">6. Profissionais cadastrados</h2>
+
+<p>
+    Os profissionais são responsáveis pela conduta profissional, pelo sigilo e pelo cumprimento das
+    normas de seu conselho de classe. A plataforma apenas facilita o contato e não garante
+    resultados de qualquer atendimento.
+    <mark>[A DEFINIR COM O ADVOGADO: natureza da relação com os profissionais, responsabilidades e
+    regras do conselho de classe aplicáveis ao atendimento online]</mark>
+</p>
+
+<h2 class="h5 mt-4">7. Locais de ajuda e conteúdo informativo</h2>
+
+<p>
+    A página de ajuda reúne serviços gratuitos de saúde e apoio (como CAPS, ambulatórios, clínicas-escola
+    públicas e grupos de ajuda mútua), a partir de fontes públicas. Essa lista é apenas informativa:
+</p>
+
+<ul>
+    <li>a plataforma <strong>não tem vínculo, parceria ou representação</strong> com esses serviços e não os
+        indica, recomenda nem avalia;</li>
+    <li>a plataforma <strong>não garante atendimento, vagas, horários ou gratuidade</strong>, e a forma de
+        acesso (por exemplo, com encaminhamento) pode mudar;</li>
+    <li>endereços, telefones e regras podem estar desatualizados, e você deve confirmar com o serviço antes de ir;</li>
+    <li>nomes e marcas citados pertencem a seus titulares e são usados apenas para identificar o serviço.</li>
+</ul>
+
+<p>
+    Para corrigir uma informação ou pedir a retirada de um local da lista, escreva para
+    <mark>{{ legal.email_contato }}</mark>.
+    <mark>[A DEFINIR COM O ADVOGADO: prazo de resposta e eventual responsabilidade por informações de terceiros]</mark>
+</p>
+
+<h2 class="h5 mt-4">8. Uso permitido</h2>
+
+<p>
+    É proibido tentar acessar áreas ou dados sem autorização, burlar limites de segurança,
+    sobrecarregar a plataforma, usar robôs ou coletar dados em massa, e usar a plataforma para
+    qualquer finalidade ilícita.
+</p>
+
+<h2 class="h5 mt-4">9. Disponibilidade e limitação de responsabilidade</h2>
+
+<p>
+    A plataforma é oferecida como está, pode ficar indisponível por manutenção ou falhas técnicas e
+    pode conter erros. <mark>[A DEFINIR COM O ADVOGADO: limitação de responsabilidade, respeitando o
+    Código de Defesa do Consumidor, quando aplicável]</mark>
+</p>
+
+<h2 class="h5 mt-4">10. Propriedade intelectual</h2>
+
+<p>
+    Marca, textos, layout e código da plataforma pertencem a <mark>{{ legal.controlador }}</mark> ou a
+    seus licenciantes. Notícias exibidas pertencem às fontes indicadas.
+</p>
+
+<h2 class="h5 mt-4">11. Encerramento da conta</h2>
+
+<p>
+    Você pode deixar de usar a plataforma a qualquer momento. A plataforma pode suspender ou
+    encerrar contas que violem estes Termos. Pedidos de exclusão de dados seguem a
+    <a href="{{ url_for('politica_privacidade') }}">Política de Privacidade</a>.
+</p>
+
+<h2 class="h5 mt-4">12. Alterações destes Termos</h2>
+
+<p>
+    Estes Termos podem ser atualizados. Mudanças relevantes serão informadas na plataforma e, quando
+    exigido, será pedido um novo aceite.
+</p>
+
+<h2 class="h5 mt-4">13. Lei aplicável e foro</h2>
+
+<p>
+    Estes Termos são regidos pelas leis do Brasil.
+    <mark>[A DEFINIR COM O ADVOGADO: foro competente]</mark>
+</p>
+
+<h2 class="h5 mt-4">14. Contato</h2>
+
+<p>Dúvidas sobre estes Termos: <mark>{{ legal.email_contato }}</mark>.</p>
+
+{% endblock %}

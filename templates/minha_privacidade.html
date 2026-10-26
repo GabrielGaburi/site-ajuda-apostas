@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Privacidade e dados{% endblock %}
+
+{% block content %}
+
+<div class="container my-5" style="max-width: 820px;">
+
+    <h1 class="h3 mb-1">Privacidade e dados</h1>
+
+    <p class="text-muted">Veja o que você aceitou e exerça seus direitos sobre seus dados pessoais.</p>
+
+    <!-- SITUAÇÃO -->
+    <div class="card mb-4">
+        <div class="card-body">
+
+            <h2 class="h6">Situação atual</h2>
+
+            <ul class="mb-0">
+                <li>
+                    Termos e Política:
+                    {% if usuario.termos_versao == termos_versao %}
+                    aceitos na versão atual ({{ termos_versao }}).
+                    {% else %}
+                    <strong>pendente.</strong> <a href="{{ url_for('aceitar_termos') }}">Revisar e aceitar</a>.
+                    {% endif %}
+                </li>
+                <li>
+                    Dados de saúde (chat, atendimento e fórum):
+                    {% if usuario.consentimento_saude_versao == termos_versao %}
+                    consentimento dado em {{ usuario.consentimento_saude_em.strftime('%d/%m/%Y %H:%M') }}.
+                    {% else %}
+                    <strong>sem consentimento.</strong> <a href="{{ url_for('aceitar_termos') }}">Consentir</a>.
+                    {% endif %}
+                </li>
+            </ul>
+
+        </div>
+    </div>
+
+    <!-- EXPORTAR -->
+    <div class="card mb-4">
+        <div class="card-body">
+
+            <h2 class="h6">Baixar meus dados</h2>
+
+            <p class="small text-muted">
+                Gera um arquivo com seus dados de cadastro, conversas com o Apoio Virtual e mensagens do fórum.
+            </p>
+
+            <form method="POST" action="{{ url_for('exportar_meus_dados') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline-primary">Baixar arquivo (JSON)</button>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- REVOGAR -->
+    {% if usuario.consentimento_saude_versao %}
+    <div class="card mb-4">
+        <div class="card-body">
+
+            <h2 class="h6">Revogar consentimento para dados de saúde</h2>
+
+            <p class="small text-muted">
+                O chat e o fórum ficam bloqueados até você consentir de novo. As conversas já feitas continuam
+                guardadas até você apagá-las abaixo.
+            </p>
+
+            <form method="POST" action="{{ url_for('revogar_consentimento_saude') }}"
+                data-confirmar="Revogar o consentimento? O chat e o fórum serão bloqueados.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline-secondary">Revogar consentimento</button>
+            </form>
+
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- APAGAR CONVERSAS -->
+    <div class="card mb-4">
+        <div class="card-body">
+
+            <h2 class="h6">Apagar minhas conversas com o Apoio Virtual</h2>
+
+            <p class="small text-muted">
+                Remove definitivamente todas as suas conversas e atendimentos do chat. Não é possível desfazer.
+                Conversas sem atividade por {{ retencao_conversas_dias }} dias também são apagadas automaticamente.
+            </p>
+
+            <form method="POST" action="{{ url_for('apagar_minhas_conversas') }}"
+                data-confirmar="Apagar todas as suas conversas? Isso não pode ser desfeito.">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-outline-danger">Apagar conversas</button>
+            </form>
+
+        </div>
+    </div>
+
+    <!-- EXCLUIR CONTA -->
+    <div class="card border-danger mb-4">
+        <div class="card-body">
+
+            <h2 class="h6 text-danger">Excluir minha conta</h2>
+
+            {% if usuario.tipo == 'usuario' %}
+
+            <p class="small text-muted">
+                Apaga suas conversas e remove seus dados pessoais (nome, CPF, e-mail, telefone e endereço).
+                Suas mensagens no fórum permanecem, mas sem o conteúdo. Não é possível desfazer.
+            </p>
+
+            <form method="POST" action="{{ url_for('excluir_minha_conta') }}">
+
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="mb-2">
+                    <label class="form-label small" for="senha">Sua senha</label>
+                    <input type="password" class="form-control" id="senha" name="senha"
+                        autocomplete="current-password" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small" for="confirmacao">Digite EXCLUIR para confirmar</label>
+                    <input type="text" class="form-control" id="confirmacao" name="confirmacao"
+                        autocomplete="off" required>
+                </div>
+
+                <button type="submit" class="btn btn-danger">Excluir minha conta</button>
+
+            </form>
+
+            {% else %}
+
+            <p class="small text-muted mb-0">
+                Contas de profissionais e administradores são excluídas a pedido. Escreva para
+                <mark>{{ legal.email_privacidade }}</mark>.
+            </p>
+
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}

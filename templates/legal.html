@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container my-5" style="max-width: 860px;">
+
+    {% if legal.pendente %}
+    <div class="alert alert-warning" role="alert">
+        <strong>Rascunho.</strong> Este texto ainda não foi revisado por um advogado e há dados
+        a preencher (destacados em amarelo). Preencha as variáveis <code>LEGAL_*</code> no
+        <code>.env</code> e revise o conteúdo antes de publicar o site.
+    </div>
+    {% endif %}
+
+    <h1 class="h2 mb-1">{% block titulo_legal %}{% endblock %}</h1>
+
+    <p class="text-muted">
+        Versão {{ termos_versao }} · Última atualização: {{ legal.atualizacao }}
+    </p>
+
+    {% block corpo %}{% endblock %}
+
+    <hr class="my-4">
+
+    <p class="small text-muted mb-0">
+        <a href="{{ url_for('termos_de_uso') }}">Termos de Uso</a> ·
+        <a href="{{ url_for('politica_privacidade') }}">Política de Privacidade</a> ·
+        <a href="{{ url_for('politica_cookies') }}">Política de Cookies</a>
+    </p>
+
+</div>
+
+{% endblock %}

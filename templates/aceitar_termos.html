@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block title %}Termos e consentimento{% endblock %}
+
+{% block content %}
+
+<div class="container my-5" style="max-width: 720px;">
+
+    <h1 class="h3 mb-3">Atualizamos nossos termos</h1>
+
+    <p class="text-muted">
+        Para continuar, leia e aceite a versão atual ({{ termos_versao }}). Você pode rever suas escolhas
+        a qualquer momento em <strong>Privacidade e dados</strong>, no menu da sua conta.
+    </p>
+
+    <form method="POST" action="{{ url_for('aceitar_termos') }}" novalidate>
+
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="proximo" value="{{ proximo }}">
+
+        <div class="card mb-3">
+            <div class="card-body">
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="termos" name="termos" value="aceito" required>
+                    <label class="form-check-label" for="termos">
+                        Li e aceito os
+                        <a href="{{ url_for('termos_de_uso') }}" target="_blank" rel="noopener">Termos de Uso</a>,
+                        a
+                        <a href="{{ url_for('politica_privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>
+                        e a
+                        <a href="{{ url_for('politica_cookies') }}" target="_blank" rel="noopener">Política de Cookies</a>.
+                        <span class="text-danger">(obrigatório)</span>
+                    </label>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="consentimento_saude"
+                        name="consentimento_saude" value="aceito">
+                    <label class="form-check-label" for="consentimento_saude">
+                        <strong>Consentimento para dados de saúde.</strong>
+                        Autorizo o tratamento do que eu escrever no chatbot, no atendimento com profissionais e no
+                        fórum, que pode revelar informações sobre minha saúde, incluindo o envio do texto do chatbot
+                        a um serviço de inteligência artificial (OpenAI), possivelmente fora do Brasil, e o acesso
+                        de profissionais aprovados quando eu pedir atendimento ou houver sinal de risco.
+                    </label>
+                </div>
+
+                <p class="small text-muted mt-2 mb-0">
+                    Opcional. Sem este consentimento você continua acessando notícias, ajuda e o teste de
+                    autoavaliação, mas não poderá usar o chat nem publicar no fórum. Você pode revogá-lo quando
+                    quiser.
+                </p>
+
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">Continuar</button>
+
+    </form>
+
+</div>
+
+{% endblock %}

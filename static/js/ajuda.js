@@ -1,3 +1,24 @@
+// Monta o conteúdo do popup sem interpretar os dados como HTML
+function montarPopup(nome, cidade, tipo, endereco, telefone, observacao) {
+
+    const conteudo = document.createElement("div");
+
+    const titulo = document.createElement("strong");
+    titulo.textContent = nome;
+    conteudo.appendChild(titulo);
+
+    [cidade, tipo, "📍 " + endereco, telefone ? "📞 " + telefone : "", observacao || ""].forEach(function (linha) {
+        if (!linha) {
+            return;
+        }
+
+        conteudo.appendChild(document.createElement("br"));
+        conteudo.appendChild(document.createTextNode(linha));
+    });
+
+    return conteudo;
+}
+
 window.irParaLocal = function (
     lat,
     lng,
@@ -5,7 +26,8 @@ window.irParaLocal = function (
     cidade,
     tipo,
     endereco,
-    telefone
+    telefone,
+    observacao
 ) {
 
     const map = window._leafletMap;
@@ -18,13 +40,7 @@ window.irParaLocal = function (
 
     L.popup()
         .setLatLng([lat, lng])
-        .setContent(`
-            <strong>${nome}</strong><br>
-            ${cidade}<br>
-            ${tipo}<br>
-            📍 ${endereco}<br>
-            📞 ${telefone}
-        `)
+        .setContent(montarPopup(nome, cidade, tipo, endereco, telefone, observacao))
         .openOn(map);
 
     const mapa = document.getElementById("map");
@@ -71,8 +87,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         locais = JSON.parse(locaisJson);
 
-        console.log("Locais carregados:", locais);
-
     } catch (error) {
 
         console.error("Erro ao interpretar os locais:", error);
@@ -106,10 +120,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const iconeVermelho = new L.Icon({
 
         iconUrl:
-            "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png",
+            "/static/img/leaflet/marker-icon-red.png",
 
         shadowUrl:
-            "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+            "/static/img/leaflet/marker-shadow.png",
 
         iconSize: [25, 41],
 
@@ -125,10 +139,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const iconeAzul = new L.Icon({
 
         iconUrl:
-            "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png",
+            "/static/img/leaflet/marker-icon-blue.png",
 
         shadowUrl:
-            "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+            "/static/img/leaflet/marker-shadow.png",
 
         iconSize: [25, 41],
 
@@ -144,10 +158,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const iconeVerde = new L.Icon({
 
         iconUrl:
-            "https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png",
+            "/static/img/leaflet/marker-icon-green.png",
 
         shadowUrl:
-            "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+            "/static/img/leaflet/marker-shadow.png",
 
         iconSize: [25, 41],
 
@@ -166,7 +180,7 @@ document.addEventListener("DOMContentLoaded", function () {
             return iconeAzul;
         }
 
-        if (tipo.includes("Atendimento")) {
+        if (tipo.includes("Atendimento") || tipo.includes("CAPS")) {
             return iconeVermelho;
         }
 
@@ -215,19 +229,16 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         )
             .addTo(map)
-            .bindPopup(`
-
-                <strong>${item.nome}</strong><br>
-
-                ${item.cidade}<br>
-
-                ${item.tipo}<br>
-
-                📍 ${item.endereco}<br>
-
-                📞 ${item.telefone}
-
-            `);
+            .bindPopup(
+                montarPopup(
+                    item.nome,
+                    item.cidade,
+                    item.tipo,
+                    item.endereco,
+                    item.telefone,
+                    item.observacao
+                )
+            );
 
 
         marcadores.push(marcador);
@@ -235,10 +246,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
 
-    console.log(
-        "Marcadores criados:",
-        marcadores.length
-    );
 
 
     // ==========================
@@ -290,7 +297,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         this.dataset.cidade,
                         this.dataset.tipo,
                         this.dataset.endereco,
-                        this.dataset.telefone
+                        this.dataset.telefone,
+                        this.dataset.observacao
                     );
 
                 }
