@@ -1,0 +1,63 @@
+.opcoes {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+
+.opcao {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    padding: 18px 20px;
+
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+
+    cursor: pointer;
+
+    transition: all 0.2s ease;
+}
+
+
+.opcao:hover {
+    border-color: #212529;
+    background-color: #f8f9fa;
+}
+
+
+.opcao:has(input:checked) {
+    border-color: #212529;
+    background-color: #f1f3f5;
+    box-shadow: 0 0 0 1px #212529;
+}
+
+
+.opcao:has(input:focus-visible) {
+    outline: 3px solid #0d6efd;
+    outline-offset: 2px;
+}
+
+
+.opcao input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+
+.opcao span {
+    font-size: 16px;
+}
+
+
+.progress {
+    background-color: #e9ecef;
+    border-radius: 10px;
+}
+
+
+.progress-bar {
+    transition: width 0.3s ease;
+}

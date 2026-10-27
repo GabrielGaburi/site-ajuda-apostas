@@ -1,9 +1,31 @@
 let perguntaAtual = 1;
 
-const totalPerguntas = 4;
+const totalPerguntas = document.querySelectorAll(".pergunta").length;
+
+const formTeste = document.getElementById("formTeste");
+const mensagemErro = document.getElementById("mensagemErro");
+
+
+function mostrarErro(mostrar) {
+
+    mensagemErro.classList.toggle("d-none", !mostrar);
+
+}
+
+
+function respondida(numero) {
+
+    return document
+        .getElementById("pergunta" + numero)
+        .querySelector('input[type="radio"]:checked') !== null;
+
+}
 
 
 function mostrarPergunta(numero) {
+
+    mostrarErro(false);
+
 
     // Esconde todas
     for (let i = 1; i <= totalPerguntas; i++) {
@@ -16,9 +38,17 @@ function mostrarPergunta(numero) {
 
 
     // Mostra a atual
-    document
-        .getElementById("pergunta" + numero)
-        .classList.remove("d-none");
+    const pergunta = document.getElementById("pergunta" + numero);
+
+    pergunta.classList.remove("d-none");
+
+
+    // Leva o foco para a opção marcada (ou a primeira) para leitores de tela e teclado
+    const foco =
+        pergunta.querySelector('input[type="radio"]:checked') ||
+        pergunta.querySelector('input[type="radio"]');
+
+    foco.focus();
 
 
     // Atualiza contador
@@ -30,8 +60,10 @@ function mostrarPergunta(numero) {
     const porcentagem =
         (numero / totalPerguntas) * 100;
 
-    document.getElementById("barraProgresso").style.width =
-        porcentagem + "%";
+    const barra = document.getElementById("barraProgresso");
+
+    barra.style.width = porcentagem + "%";
+    barra.setAttribute("aria-valuenow", Math.round(porcentagem));
 
 
     // Botão anterior
@@ -67,21 +99,9 @@ function mostrarPergunta(numero) {
 
 function proximaPergunta() {
 
-    const pergunta =
-        document.getElementById(
-            "pergunta" + perguntaAtual
-        );
+    if (!respondida(perguntaAtual)) {
 
-
-    const resposta =
-        pergunta.querySelector(
-            'input[type="radio"]:checked'
-        );
-
-
-    if (!resposta) {
-
-        alert("Selecione uma resposta antes de continuar.");
+        mostrarErro(true);
 
         return;
 
@@ -114,3 +134,49 @@ function anteriorPergunta() {
 
 document.getElementById("btnAnterior").addEventListener("click", anteriorPergunta);
 document.getElementById("btnProxima").addEventListener("click", proximaPergunta);
+
+
+// Esconde o erro assim que o usuário responde
+formTeste.addEventListener("change", function () {
+
+    mostrarErro(false);
+
+});
+
+
+// Enter avança em vez de enviar o formulário com perguntas ocultas
+formTeste.addEventListener("keydown", function (evento) {
+
+    if (evento.key === "Enter" && perguntaAtual < totalPerguntas) {
+
+        evento.preventDefault();
+
+        proximaPergunta();
+
+    }
+
+});
+
+
+// Só envia se todas as perguntas foram respondidas
+formTeste.addEventListener("submit", function (evento) {
+
+    for (let i = 1; i <= totalPerguntas; i++) {
+
+        if (!respondida(i)) {
+
+            evento.preventDefault();
+
+            perguntaAtual = i;
+
+            mostrarPergunta(i);
+
+            mostrarErro(true);
+
+            return;
+
+        }
+
+    }
+
+});

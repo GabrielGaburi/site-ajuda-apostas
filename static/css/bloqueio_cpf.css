@@ -1,0 +1,83 @@
+.cpf-hero {
+    background: linear-gradient(135deg, #fff1f1 0%, #fff8f8 60%, #ffffff 100%);
+    border-bottom: 1px solid #f5d9dc;
+}
+
+
+.cpf-hero-icone {
+    width: 72px;
+    height: 72px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #dc3545;
+    color: #fff;
+    font-size: 2rem;
+    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+}
+
+
+.cpf-requisito {
+    border: 1px solid #e9ecef;
+    border-radius: 16px;
+}
+
+
+.cpf-requisito-icone {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 1.4rem;
+}
+
+
+.cpf-passo {
+    border: 1px solid #e9ecef;
+    border-radius: 16px;
+    scroll-margin-top: 80px;
+}
+
+
+.cpf-passo-numero {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #dc3545;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+
+/* Todas as capturas de tela seguem o mesmo quadro: centralizadas, mesma borda e mesmo espaçamento */
+.passo-imagem {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 1rem auto 0;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+
+/* Imagens de proporção diferente (ex.: e-mail) não ficam esticadas nem coladas na borda */
+.passo-imagem--compacta {
+    max-width: 720px;
+}
+
+
+.cpf-aviso {
+    border-radius: 16px;
+    background: #f1f6ff;
+    border: 1px solid #d6e4ff;
+}

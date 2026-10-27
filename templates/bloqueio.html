@@ -3,71 +3,124 @@
 
 {% block content %}
 
-<div class="container my-5">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bloqueio.css') }}">
 
-    <div class="text-center mb-5">
-        <h1 class="fw-bold">🔒 Como Bloquear Sites de Apostas</h1>
-        <p class="lead">
+<!-- CABEÇALHO -->
+<div class="bloqueio-hero py-5">
+    <div class="container text-center">
+
+        <div class="bloqueio-hero-icone mb-3" aria-hidden="true">
+            <i class="bi bi-shield-lock-fill"></i>
+        </div>
+
+        <h1 class="fw-bold">Como Bloquear Sites de Apostas</h1>
+
+        <p class="lead text-muted mx-auto" style="max-width: 640px;">
             Guia prático para bloquear sites de apostas no computador, celular e roteador.
         </p>
+
+        <div class="bloqueio-camadas d-flex flex-wrap justify-content-center gap-2 mt-4">
+            <span><i class="bi bi-windows" aria-hidden="true"></i> Computador</span>
+            <span><i class="bi bi-phone" aria-hidden="true"></i> Celular</span>
+            <span><i class="bi bi-router" aria-hidden="true"></i> Rede da casa</span>
+            <span><i class="bi bi-person-vcard" aria-hidden="true"></i> CPF</span>
+        </div>
+
     </div>
+</div>
+
+
+<div class="container my-5">
 
     <div class="row g-4">
 
         <!-- Windows -->
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h4>🖥️ Como bloquear no Windows (Arquivo Hosts)</h4>
+        <div class="col-lg-6">
+            <div class="card bloqueio-card shadow-sm h-100">
+                <div class="card-body p-4">
+
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <span class="bloqueio-icone bg-primary-subtle text-primary" aria-hidden="true">
+                            <i class="bi bi-windows"></i>
+                        </span>
+                        <h2 class="h5 fw-bold mb-0">Windows (arquivo hosts)</h2>
+                    </div>
+
                     <ol>
                         <li>Abra o Bloco de Notas como Administrador</li>
-                        <li>Vá em: <code>C:\Windows\System32\drivers\etc</code></li>
+                        <li>Vá em <strong>Arquivo &gt; Abrir</strong> e acesse: <code>C:\Windows\System32\drivers\etc</code></li>
+                        <li>Troque o filtro de tipo de arquivo para <strong>Todos os arquivos</strong>, senão o <strong>hosts</strong> não aparece</li>
                         <li>Abra o arquivo <strong>hosts</strong></li>
-                        <li>Adicione ao final os sites a serem bloqueados:</li>
+                        <li>Adicione ao final os sites a serem bloqueados (estes são apenas exemplos, repita para cada site que quiser bloquear):</li>
                     </ol>
 
-                    <pre class="bg-light p-3 border rounded">
-127.0.0.1 bet365.com
-127.0.0.1 www.bet365.com
-127.0.0.1 blaze.com
-127.0.0.1 www.blaze.com
-</pre>
+                    <pre class="bg-light p-3 border rounded">0.0.0.0 bet365.com
+0.0.0.0 www.bet365.com
+0.0.0.0 blaze.com
+0.0.0.0 www.blaze.com</pre>
 
-                    <p>Salve e reinicie o navegador.</p>
+                    <p>Salve, abra o Prompt de Comando como Administrador e execute <code>ipconfig /flushdns</code>. Depois reinicie o navegador.</p>
+                    <p class="small text-muted mb-0">
+                        Este método bloqueia apenas os endereços listados e pode ser contornado por VPN ou
+                        "DNS seguro" do navegador. Combine com os outros métodos desta página.
+                    </p>
                 </div>
             </div>
         </div>
 
         <!-- iPhone -->
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h4>🍎 Como bloquear no iPhone</h4>
+        <div class="col-lg-6">
+            <div class="card bloqueio-card shadow-sm h-100">
+                <div class="card-body p-4">
+
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <span class="bloqueio-icone bg-dark-subtle text-dark" aria-hidden="true">
+                            <i class="bi bi-apple"></i>
+                        </span>
+                        <h2 class="h5 fw-bold mb-0">iPhone</h2>
+                    </div>
+
                     <ol>
                         <li>Vá em Ajustes</li>
-                        <li>Tempo de Uso</li>
+                        <li>Tempo de Uso (ative e defina uma <strong>Senha do Tempo de Uso</strong>)</li>
                         <li>Conteúdo e Privacidade</li>
                         <li>Restrições de Conteúdo</li>
                         <li>Conteúdo da Web</li>
-                        <li>Adicione em <strong>Nunca Permitir</strong></li>
+                        <li>Escolha <strong>Limitar Sites Adultos</strong> e adicione os sites em <strong>Nunca Permitir</strong></li>
                     </ol>
+                    <p class="small text-muted mb-0">
+                        Peça para alguém de confiança definir a senha do Tempo de Uso. Sem senha, o bloqueio é desfeito em segundos.
+                    </p>
                 </div>
             </div>
         </div>
 
         <!-- Android -->
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h4>🤖 Como bloquear no Android</h4>
+        <div class="col-lg-6">
+            <div class="card bloqueio-card shadow-sm h-100">
+                <div class="card-body p-4">
+
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <span class="bloqueio-icone bg-success-subtle text-success" aria-hidden="true">
+                            <i class="bi bi-android2"></i>
+                        </span>
+                        <h2 class="h5 fw-bold mb-0">Android</h2>
+                    </div>
+
                     <ul>
-                        <li>Use <strong>Family Link</strong></li>
-                        <li>Ative <strong>Bem-Estar Digital</strong></li>
+                        <li>
+                            Ative um <strong>DNS privado com filtro</strong> em Configurações &gt; Rede e internet &gt;
+                            DNS privado (por exemplo, <code>family-filter-dns.cleanbrowsing.org</code>)
+                        </li>
+                        <li>
+                            Use o <strong>Family Link</strong> para limitar apps e sites (vale para contas supervisionadas)
+                        </li>
                         <li>
                             Apps recomendados:
                             <ul>
+                                <li>Gamban (focado em apostas)</li>
                                 <li>BlockSite</li>
-                                <li>Stay Focused</li>
+                                <li>Stay Focused (limita o tempo de uso de apps)</li>
                             </ul>
                         </li>
                     </ul>
@@ -76,20 +129,24 @@
         </div>
 
         <!-- Roteador -->
-        <div class="col-md-6">
-            <div class="card shadow-sm h-100">
-                <div class="card-body">
-                    <h4>🌐 Como bloquear pelo Roteador </h4>
-                    <p>Acesse no navegador:</p>
+        <div class="col-lg-6">
+            <div class="card bloqueio-card shadow-sm h-100">
+                <div class="card-body p-4">
 
-                    <pre class="bg-light p-3 border rounded">
-                        192.168.0.1
-                        ou
-                        192.168.1.1
-                    </pre>
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <span class="bloqueio-icone bg-warning-subtle text-warning-emphasis" aria-hidden="true">
+                            <i class="bi bi-router"></i>
+                        </span>
+                        <h2 class="h5 fw-bold mb-0">Roteador (toda a rede)</h2>
+                    </div>
+
+                    <p>
+                        Acesse no navegador <code>192.168.0.1</code> ou <code>192.168.1.1</code>.
+                        Se nenhum abrir, rode <code>ipconfig</code> e use o endereço do "Gateway Padrão".
+                    </p>
 
                     <ol>
-                        <li>Entre com login do roteador</li>
+                        <li>Entre com o login do roteador (troque a senha padrão, se ainda não trocou)</li>
                         <li>Procure por:</li>
                     </ol>
                     <ul>
@@ -97,43 +154,65 @@
                         <li>Website Blocking</li>
                         <li>URL Filter</li>
                     </ul>
-                    <p>Adicione os sites para bloquear em toda a rede.</p>
+                    <p class="mb-0">Adicione os sites para bloquear em toda a rede.</p>
                 </div>
             </div>
         </div>
 
     </div>
 
-    <div class="alert alert-warning mt-5">
-        <strong>Dica importante:</strong>
-        Se houver compulsão, peça para alguém de confiança definir e guardar as senhas de bloqueio.
+
+    <!-- DICA -->
+    <div class="alert alert-warning bloqueio-nota border-0 shadow-sm mx-auto mt-5" style="max-width: 800px;">
+        <div class="d-flex gap-3">
+            <i class="bi bi-lightbulb-fill fs-4" aria-hidden="true"></i>
+            <div>
+                <strong>Dica importante:</strong>
+                Se houver compulsão, peça para alguém de confiança definir e guardar as senhas de bloqueio.
+            </div>
+        </div>
     </div>
 
-    <div class="text-center mt-4">
-        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+
+    <!-- CPF -->
+    <div class="row justify-content-center mt-5">
+        <div class="col-lg-8">
+
+            <div class="card bloqueio-cpf">
+                <div class="card-body text-center p-4 p-md-5">
+
+                    <div class="bloqueio-cpf-icone mb-3" aria-hidden="true">
+                        <i class="bi bi-person-fill-lock"></i>
+                    </div>
+
+                    <h2 class="h3 fw-bold text-danger">Bloqueie seu CPF nas plataformas de apostas</h2>
+
+                    <p class="mt-3 mb-4 text-secondary mx-auto" style="max-width: 560px;">
+                        Além de bloquear os sites em seus dispositivos, é possível solicitar a
+                        autoexclusão utilizando o seu CPF nas plataformas regulamentadas.
+                        Essa medida dificulta a criação de novas contas e o acesso às apostas,
+                        funcionando como uma importante ferramenta de prevenção.
+                    </p>
+
+                    <a href="{{ url_for('bloqueio_cpf') }}" class="btn btn-danger btn-lg rounded-pill px-4">
+                        Ver passo a passo para bloquear meu CPF
+                        <i class="bi bi-arrow-right ms-1" aria-hidden="true"></i>
+                    </a>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <div class="text-center mt-5">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
             Voltar à Página Inicial
         </a>
     </div>
 
-</div>
-
-<div class="card border-danger shadow-sm mt-5">
-    <div class="card-body text-center">
-
-        <h3 class="text-danger">🛑 Bloqueie seu CPF nas plataformas de apostas</h3>
-
-        <p class="mt-3">
-            Além de bloquear os sites em seus dispositivos, é possível solicitar a
-            autoexclusão utilizando o seu CPF nas plataformas regulamentadas.
-            Essa medida dificulta a criação de novas contas e o acesso às apostas,
-            funcionando como uma importante ferramenta de prevenção.
-        </p>
-
-        <a href="{{ url_for('bloqueio_cpf') }}" class="btn btn-danger btn-lg mt-2">
-            Ver passo a passo para bloquear meu CPF
-        </a>
-
-    </div>
 </div>
 
 {% endblock %}

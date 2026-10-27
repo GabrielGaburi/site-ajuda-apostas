@@ -113,6 +113,24 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     // ========================================
+    // ABRIR CHAT POR BOTÕES DA PÁGINA
+    // ========================================
+
+    document.querySelectorAll("[data-abrir-chatbot]").forEach(function (botao) {
+
+        botao.addEventListener("click", function () {
+
+            // O botão flutuante fica escondido enquanto o chat está aberto
+            if (toggle.style.display !== "none") {
+                toggle.click();
+            } else {
+                input.focus();
+            }
+        });
+    });
+
+
+    // ========================================
     // ADICIONAR MENSAGEM NA TELA
     // ========================================
 
