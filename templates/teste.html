@@ -4,18 +4,27 @@
 
 {% block content %}
 
+<link rel="stylesheet" href="{{ url_for('static', filename='css/teste.css') }}">
+
+{% set perguntas = [
+    "Você já sentiu necessidade de apostar cada vez mais dinheiro?",
+    "Você já tentou diminuir ou parar de apostar e teve dificuldade?",
+    "As apostas já causaram problemas financeiros, familiares ou profissionais?",
+    "Você já apostou novamente para tentar recuperar dinheiro perdido?"
+] %}
+
 <div class="container my-5">
 
     <!-- CABEÇALHO -->
     <div class="text-center mb-5">
 
-        <div class="fs-1 mb-3">
+        <div class="fs-1 mb-3" aria-hidden="true">
             🧠
         </div>
 
-        <h2 class="fw-bold">
+        <h1 class="h2 fw-bold">
             Avalie sua relação com as apostas
-        </h2>
+        </h1>
 
         <p class="text-muted mx-auto" style="max-width: 700px;">
             Este questionário foi desenvolvido para ajudar você a refletir
@@ -30,7 +39,7 @@
 
         <div class="d-flex">
 
-            <div class="fs-4 me-3">
+            <div class="fs-4 me-3" aria-hidden="true">
                 ℹ️
             </div>
 
@@ -63,183 +72,62 @@
                         Progresso
                     </small>
 
-                    <small class="fw-semibold" id="contador">
-                        Pergunta 1 de 4
+                    <small class="fw-semibold" id="contador" aria-live="polite">
+                        Pergunta 1 de {{ perguntas|length }}
                     </small>
 
                 </div>
 
                 <div class="progress" style="height: 8px;">
 
-                    <div id="barraProgresso" class="progress-bar" role="progressbar" style="width: 25%;"></div>
+                    <div id="barraProgresso" class="progress-bar" role="progressbar" style="width: 25%;"
+                        aria-label="Progresso do questionário" aria-valuemin="0" aria-valuemax="100"
+                        aria-valuenow="25"></div>
 
                 </div>
 
             </div>
 
 
-            <form method="POST" action="{{ url_for('teste') }}" id="formTeste">
+            <form method="POST" action="{{ url_for('teste') }}" id="formTeste" novalidate>
 
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
+                {% for texto in perguntas %}
+                {% set n = loop.index %}
 
-                <!-- PERGUNTA 1 -->
-                <div class="pergunta" id="pergunta1">
+                <!-- PERGUNTA {{ n }} -->
+                <fieldset class="pergunta{% if n > 1 %} d-none{% endif %}" id="pergunta{{ n }}">
 
-                    <span class="badge text-bg-dark mb-3">
-                        Pergunta 1
-                    </span>
-
-                    <h4 class="fw-bold mb-4">
-                        Você já sentiu necessidade de apostar
-                        cada vez mais dinheiro?
-                    </h4>
-
-                    <div class="opcoes">
-
-                        <label class="opcao">
-
-                            <input type="radio" name="q1" value="sim" required>
-
-                            <span>
-                                Sim
-                            </span>
-
-                        </label>
-
-
-                        <label class="opcao">
-
-                            <input type="radio" name="q1" value="nao">
-
-                            <span>
-                                Não
-                            </span>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-
-                <!-- PERGUNTA 2 -->
-                <div class="pergunta d-none" id="pergunta2">
-
-                    <span class="badge text-bg-dark mb-3">
-                        Pergunta 2
-                    </span>
-
-                    <h4 class="fw-bold mb-4">
-                        Você já tentou diminuir ou parar de apostar
-                        e teve dificuldade?
-                    </h4>
+                    <legend class="h4 fw-bold mb-4">
+                        <span class="badge text-bg-dark mb-3 d-inline-block">
+                            Pergunta {{ n }}
+                        </span>
+                        <span class="d-block">{{ texto }}</span>
+                    </legend>
 
                     <div class="opcoes">
 
                         <label class="opcao">
-
-                            <input type="radio" name="q2" value="sim" required>
-
-                            <span>
-                                Sim
-                            </span>
-
+                            <input type="radio" name="q{{ n }}" value="sim" required>
+                            <span>Sim</span>
                         </label>
 
-
                         <label class="opcao">
-
-                            <input type="radio" name="q2" value="nao">
-
-                            <span>
-                                Não
-                            </span>
-
+                            <input type="radio" name="q{{ n }}" value="nao">
+                            <span>Não</span>
                         </label>
 
                     </div>
 
-                </div>
+                </fieldset>
+
+                {% endfor %}
 
 
-                <!-- PERGUNTA 3 -->
-                <div class="pergunta d-none" id="pergunta3">
-
-                    <span class="badge text-bg-dark mb-3">
-                        Pergunta 3
-                    </span>
-
-                    <h4 class="fw-bold mb-4">
-                        As apostas já causaram problemas financeiros,
-                        familiares ou profissionais?
-                    </h4>
-
-                    <div class="opcoes">
-
-                        <label class="opcao">
-
-                            <input type="radio" name="q3" value="sim" required>
-
-                            <span>
-                                Sim
-                            </span>
-
-                        </label>
-
-
-                        <label class="opcao">
-
-                            <input type="radio" name="q3" value="nao">
-
-                            <span>
-                                Não
-                            </span>
-
-                        </label>
-
-                    </div>
-
-                </div>
-
-
-                <!-- PERGUNTA 4 -->
-                <div class="pergunta d-none" id="pergunta4">
-
-                    <span class="badge text-bg-dark mb-3">
-                        Pergunta 4
-                    </span>
-
-                    <h4 class="fw-bold mb-4">
-                        Você já apostou novamente para tentar
-                        recuperar dinheiro perdido?
-                    </h4>
-
-                    <div class="opcoes">
-
-                        <label class="opcao">
-
-                            <input type="radio" name="q4" value="sim" required>
-
-                            <span>
-                                Sim
-                            </span>
-
-                        </label>
-
-
-                        <label class="opcao">
-
-                            <input type="radio" name="q4" value="nao">
-
-                            <span>
-                                Não
-                            </span>
-
-                        </label>
-
-                    </div>
-
+                <!-- ERRO -->
+                <div id="mensagemErro" class="alert alert-danger py-2 mt-4 d-none" role="alert">
+                    Selecione uma resposta antes de continuar.
                 </div>
 
 
@@ -280,61 +168,8 @@
 
 </div>
 
+{% endblock %}
 
-<style>
-    .opcoes {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-
-
-    .opcao {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-
-        padding: 18px 20px;
-
-        border: 1px solid #dee2e6;
-        border-radius: 12px;
-
-        cursor: pointer;
-
-        transition: all 0.2s ease;
-    }
-
-
-    .opcao:hover {
-        border-color: #212529;
-        background-color: #f8f9fa;
-    }
-
-
-    .opcao input {
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-    }
-
-
-    .opcao span {
-        font-size: 16px;
-    }
-
-
-    .progress {
-        background-color: #e9ecef;
-        border-radius: 10px;
-    }
-
-
-    .progress-bar {
-        transition: width 0.3s ease;
-    }
-</style>
-
-
-<script src="{{ url_for('static', filename='js/teste.js') }}"></script>
-
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/teste.js') }}" defer></script>
 {% endblock %}

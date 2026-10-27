@@ -50,7 +50,8 @@ POLITICA_CSP = "; ".join([
     "default-src 'self'",
     "script-src 'self' https://cdn.jsdelivr.net https://unpkg.com",
     "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://unpkg.com",
-    "img-src 'self' data: https://images.unsplash.com https://*.tile.openstreetmap.org https://unpkg.com",
+    # https: porque as imagens das notícias vêm do domínio de cada portal (GNews)
+    "img-src 'self' data: https:",
     "font-src 'self' https://cdn.jsdelivr.net",
     "connect-src 'self' https://viacep.com.br",
     "object-src 'none'",

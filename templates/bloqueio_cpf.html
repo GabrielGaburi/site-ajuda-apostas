@@ -1,337 +1,372 @@
 {% extends "base.html" %}
 
-{% block title %}Bloqueio CPF{% endblock %}
+{% block title %}Como bloquear seu CPF nas apostas{% endblock %}
 
 {% block content %}
 
+<link rel="stylesheet" href="{{ url_for('static', filename='css/bloqueio_cpf.css') }}">
 
+<!-- CABEÇALHO -->
+<div class="cpf-hero py-5">
+    <div class="container text-center">
 
-<div class="container my-5">
+        <div class="cpf-hero-icone mb-3" aria-hidden="true">
+            <i class="bi bi-person-fill-lock"></i>
+        </div>
 
-    <div class="text-center mb-5">
-        <h1 class="fw-bold text-primary">
+        <h1 class="fw-bold">
             Como bloquear seu CPF nas plataformas de apostas
         </h1>
 
-        <p class="lead mt-3">
+        <p class="lead text-muted mx-auto mt-3" style="max-width: 720px;">
             O Governo Federal disponibiliza gratuitamente um sistema de
             <strong>Autoexclusão Centralizada</strong>, permitindo que qualquer
             cidadão bloqueie seu CPF para utilização em casas de apostas
             regulamentadas.
         </p>
 
-        <div class="alert alert-warning shadow-sm mt-4 text-center border-0"
-            style="background-color: #e8f4fd; border-left: 6px solid #0d6efd !important;">
-
-            <h5 class="fw-bold text-dark mb-3">
-                ⚠️ Antes de começar
-            </h5>
-
-            <p class="mb-3">
-                Antes de iniciar a solicitação de autoexclusão, verifique os seguintes requisitos:
-            </p>
-
-            <div class="mb-3">
-                <p class="mb-2">
-                    🛡️ <strong>Conta Gov.br nível Prata ou Ouro</strong><br>
-                    É necessário possuir uma conta Gov.br com nível de segurança
-                    <strong>Prata</strong> ou <strong>Ouro</strong> para acessar o serviço.
-                </p>
-
-                <a href="https://www.gov.br/governodigital/pt-br/identidade/conta-gov-br/niveis-da-conta-govbr"
-                    target="_blank" class="btn btn-outline-warning btn-sm">
-                    Saiba mais sobre os níveis da conta
-                </a>
-            </div>
-
-            <hr>
-
-            <div class="mb-3">
-                <p class="mb-2">
-                    🌐 <strong>Prefere acessar diretamente?</strong><br>
-                    Você também pode utilizar a Plataforma Centralizada de Autoexclusão
-                    diretamente pelo portal oficial do Governo Federal.
-                </p>
-
-                <a href="https://www.gov.br/pt-br/servicos/plataforma-centralizada-de-autoexclusao-apostas"
-                    target="_blank" class="btn btn-primary btn-sm">
-                    Acessar plataforma oficial
-                </a>
-            </div>
-
-            <hr>
-
-            <p class="mb-0">
-                📖 Caso prefira um guia detalhado, siga o passo a passo apresentado abaixo
-                para concluir a solicitação de autoexclusão com segurança.
-            </p>
-
-        </div>
-        <!-- PASSO 1 -->
-
-        <div class="card shadow-sm mb-5">
-            <div class="card-body">
-
-                <h3 class="text-primary">
-                    Passo 1 – Acesse a plataforma do Governo Federal
-                </h3>
-
-                <p>
-                    Pesquise no Google por
-                    <strong>"bloquear CPF para apostas"</strong>
-                    ou
-                    <strong>"autoexclusão apostas"</strong>.
-                    Clique no resultado
-                    <strong>"Solicitar a autoexclusão centralizada - Apostas"</strong>.
-                </p>
-
-                <img src="{{ url_for('static', filename='img/tutorial/passo1.png') }}"
-                    class="img-fluid rounded border shadow-sm" alt="Passo 1">
-
-            </div>
-        </div>
+    </div>
+</div>
 
 
-        <!-- PASSO 2 -->
+<div class="container my-5" style="max-width: 900px;">
 
-        <div class="card shadow-sm mb-5">
-            <div class="card-body">
+    <!-- ANTES DE COMEÇAR -->
+    <h2 class="h4 fw-bold text-center mb-4">Antes de começar</h2>
 
-                <h3 class="text-primary">
-                    Passo 2 – Faça login no Gov.br
-                </h3>
+    <div class="row g-4 mb-5">
 
-                <p>
-                    Clique no botão
-                    <strong>"Entrar com Gov.br"</strong>.
-                    Após realizar o login, clique em
-                    <strong>"Iniciar"</strong>
-                    para começar o processo.
-                </p>
+        <div class="col-md-6">
+            <div class="card cpf-requisito shadow-sm h-100">
+                <div class="card-body p-4">
 
-                <div class="row">
-
-                    <div class="col-md-6 mb-3">
-                        <img src="{{ url_for('static', filename='img/tutorial/passo2.png') }}"
-                            class="img-fluid rounded border shadow-sm" alt="">
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <span class="cpf-requisito-icone bg-warning-subtle text-warning-emphasis" aria-hidden="true">
+                            <i class="bi bi-shield-check"></i>
+                        </span>
+                        <h3 class="h6 fw-bold mb-0">Conta Gov.br nível Prata ou Ouro</h3>
                     </div>
 
-                    <div class="col-md-6 mb-3">
-                        <img src="{{ url_for('static', filename='img/tutorial/passo3.png') }}"
-                            class="img-fluid rounded border shadow-sm" alt="">
-                    </div>
+                    <p class="text-secondary">
+                        É necessário possuir uma conta Gov.br com nível de segurança
+                        <strong>Prata</strong> ou <strong>Ouro</strong> para acessar o serviço.
+                    </p>
+
+                    <a href="https://www.gov.br/governodigital/pt-br/identidade/conta-gov-br/niveis-da-conta-govbr"
+                        target="_blank" rel="noopener noreferrer"
+                        class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                        Saiba mais sobre os níveis
+                        <i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i>
+                    </a>
 
                 </div>
-
             </div>
         </div>
 
+        <div class="col-md-6">
+            <div class="card cpf-requisito shadow-sm h-100">
+                <div class="card-body p-4">
 
-        <!-- PASSO 3 -->
+                    <div class="d-flex align-items-center gap-3 mb-3">
+                        <span class="cpf-requisito-icone bg-primary-subtle text-primary" aria-hidden="true">
+                            <i class="bi bi-globe2"></i>
+                        </span>
+                        <h3 class="h6 fw-bold mb-0">Prefere acessar diretamente?</h3>
+                    </div>
 
-        <div class="card shadow-sm mb-5">
-            <div class="card-body">
+                    <p class="text-secondary">
+                        Você pode usar a Plataforma Centralizada de Autoexclusão
+                        diretamente pelo portal oficial do Governo Federal.
+                    </p>
 
-                <h3 class="text-primary">
-                    Passo 3 – Acesse o Sistema de Autoexclusão
-                </h3>
+                    <a href="https://www.gov.br/pt-br/servicos/plataforma-centralizada-de-autoexclusao-apostas"
+                        target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm rounded-pill px-3">
+                        Acessar plataforma oficial
+                        <i class="bi bi-box-arrow-up-right ms-1" aria-hidden="true"></i>
+                    </a>
 
-                <p>
-                    Role a página até encontrar o botão
-                    <strong>"ACESSE AQUI"</strong>.
-                    Clique nele para abrir o Sistema Centralizado de Autoexclusão.
-                </p>
-
-                <img src="{{ url_for('static', filename='img/tutorial/passo4.png') }}"
-                    class="img-fluid rounded border shadow-sm" alt="">
-
+                </div>
             </div>
         </div>
 
+    </div>
 
-        <!-- PASSO 4 -->
+    <p class="text-center text-muted mb-5">
+        <i class="bi bi-journal-text me-1" aria-hidden="true"></i>
+        Caso prefira um guia detalhado, siga o passo a passo abaixo para concluir a solicitação com segurança.
+    </p>
 
-        <div class="card shadow-sm mb-5">
-            <div class="card-body">
 
-                <h3 class="text-primary">
-                    Passo 4 – Escolha o período da autoexclusão
-                </h3>
+    <!-- PASSO 1 -->
+    <div class="card cpf-passo shadow-sm mb-4">
+        <div class="card-body p-4">
 
-                <p>
-                    Confira seus dados pessoais e selecione:
-                </p>
-
-                <ul>
-                    <li>O período da autoexclusão (determinado ou indeterminado).</li>
-                    <li>O motivo da solicitação.</li>
-                </ul>
-
-                <p>
-                    Depois clique em
-                    <strong>Avançar</strong>.
-                </p>
-
-                <img src="{{ url_for('static', filename='img/tutorial/passo5.png') }}"
-                    class="img-fluid rounded border shadow-sm" alt="">
-
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="cpf-passo-numero" aria-hidden="true">1</span>
+                <h2 class="h4 fw-bold mb-0">
+                    <span class="visually-hidden">Passo 1 – </span>Acesse a plataforma do Governo Federal
+                </h2>
             </div>
+
+            <p>
+                Use o botão <strong>"Acessar plataforma oficial"</strong> acima ou pesquise no Google por
+                <strong>"autoexclusão apostas"</strong> e clique no resultado
+                <strong>"Solicitar a autoexclusão centralizada - Apostas"</strong>.
+                Confira se o endereço termina em <code>gov.br</code>.
+            </p>
+
+            <img src="{{ url_for('static', filename='img/tutorial/passo1.png') }}" class="passo-imagem"
+                loading="lazy"
+                alt="Resultado da busca no Google com o link Solicitar a autoexclusão centralizada - Apostas">
+
         </div>
+    </div>
 
 
-        <!-- PASSO 5 -->
+    <!-- PASSO 2 -->
+    <div class="card cpf-passo shadow-sm mb-4">
+        <div class="card-body p-4">
 
-        <div class="card shadow-sm mb-5">
-            <div class="card-body">
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="cpf-passo-numero" aria-hidden="true">2</span>
+                <h2 class="h4 fw-bold mb-0">
+                    <span class="visually-hidden">Passo 2 – </span>Faça login no Gov.br
+                </h2>
+            </div>
 
-                <h3 class="text-primary">
-                    Passo 5 – Aceite os termos e confirme
-                </h3>
+            <p>
+                Clique no botão <strong>"Entrar com Gov.br"</strong>.
+                Após realizar o login, clique em <strong>"Iniciar"</strong>
+                para começar o processo.
+            </p>
 
-                <p>
-                    Na próxima etapa, leia atentamente os Termos de Uso e a Política
-                    de Tratamento de Dados.
-                </p>
+            <img src="{{ url_for('static', filename='img/tutorial/passo2.png') }}" class="passo-imagem"
+                loading="lazy" alt="Botão Entrar com Gov.br na página da autoexclusão">
 
-                <p>
-                    Marque a caixa de confirmação, clique em
-                    <strong>Avançar</strong>
-                    e, na última tela, confirme a solicitação.
-                </p>
+            <img src="{{ url_for('static', filename='img/tutorial/passo3.png') }}" class="passo-imagem"
+                loading="lazy" alt="Botão Iniciar após o login no Gov.br">
 
-                <div class="alert alert-success">
+        </div>
+    </div>
+
+
+    <!-- PASSO 3 -->
+    <div class="card cpf-passo shadow-sm mb-4">
+        <div class="card-body p-4">
+
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="cpf-passo-numero" aria-hidden="true">3</span>
+                <h2 class="h4 fw-bold mb-0">
+                    <span class="visually-hidden">Passo 3 – </span>Acesse o Sistema de Autoexclusão
+                </h2>
+            </div>
+
+            <p>
+                Role a página até encontrar o botão <strong>"ACESSE AQUI"</strong>.
+                Clique nele para abrir o Sistema Centralizado de Autoexclusão.
+            </p>
+
+            <img src="{{ url_for('static', filename='img/tutorial/passo4.png') }}" class="passo-imagem"
+                loading="lazy" alt="Botão ACESSE AQUI para abrir o Sistema Centralizado de Autoexclusão">
+
+        </div>
+    </div>
+
+
+    <!-- PASSO 4 -->
+    <div class="card cpf-passo shadow-sm mb-4">
+        <div class="card-body p-4">
+
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="cpf-passo-numero" aria-hidden="true">4</span>
+                <h2 class="h4 fw-bold mb-0">
+                    <span class="visually-hidden">Passo 4 – </span>Escolha o período da autoexclusão
+                </h2>
+            </div>
+
+            <p>Confira seus dados pessoais e selecione:</p>
+
+            <ul>
+                <li>O período da autoexclusão (determinado ou indeterminado).</li>
+                <li>O motivo da solicitação.</li>
+            </ul>
+
+            <div class="alert alert-warning border-0 d-flex gap-3">
+                <i class="bi bi-exclamation-triangle-fill fs-5" aria-hidden="true"></i>
+                <div>
+                    <strong>Atenção:</strong> a autoexclusão não pode ser desfeita antes do fim do período
+                    escolhido. Confira os prazos e as regras no portal oficial antes de decidir.
+                </div>
+            </div>
+
+            <p>Depois clique em <strong>Avançar</strong>.</p>
+
+            <img src="{{ url_for('static', filename='img/tutorial/passo5.png') }}" class="passo-imagem"
+                loading="lazy" alt="Tela de escolha do período e do motivo da autoexclusão">
+
+        </div>
+    </div>
+
+
+    <!-- PASSO 5 -->
+    <div class="card cpf-passo shadow-sm mb-4">
+        <div class="card-body p-4">
+
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="cpf-passo-numero" aria-hidden="true">5</span>
+                <h2 class="h4 fw-bold mb-0">
+                    <span class="visually-hidden">Passo 5 – </span>Aceite os termos
+                </h2>
+            </div>
+
+            <p>
+                Na próxima etapa, leia atentamente os Termos de Uso e a Política
+                de Tratamento de Dados.
+            </p>
+
+            <p>
+                Marque a caixa de confirmação e clique em <strong>Avançar</strong>.
+            </p>
+
+            <img src="{{ url_for('static', filename='img/tutorial/passo6.png') }}" class="passo-imagem"
+                loading="lazy" alt="Tela com os Termos de Uso e a caixa de confirmação">
+
+        </div>
+    </div>
+
+
+    <!-- PASSO 6 -->
+    <div class="card cpf-passo shadow-sm mb-4">
+        <div class="card-body p-4">
+
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="cpf-passo-numero" aria-hidden="true">6</span>
+                <h2 class="h4 fw-bold mb-0">
+                    <span class="visually-hidden">Passo 6 – </span>Confirme a autoexclusão
+                </h2>
+            </div>
+
+            <p>
+                Este é o último passo para concluir a autoexclusão do seu CPF. Após a confirmação, o bloqueio será
+                processado e, em até 72 horas, seu CPF estará impedido de realizar apostas em todas as plataformas
+                autorizadas pelo Governo Federal.
+            </p>
+
+            <p>
+                Clique em <strong>Confirmar autoexclusão</strong>
+                e sua solicitação será concluída.
+            </p>
+
+            <div class="alert alert-success border-0 d-flex gap-3">
+                <i class="bi bi-check-circle-fill fs-5" aria-hidden="true"></i>
+                <div>
                     Após a confirmação, seu CPF será incluído no sistema de
                     autoexclusão das plataformas de apostas autorizadas pelo Governo
                     Federal.
                 </div>
-                <img src="{{ url_for('static', filename='img/tutorial/passo6.png') }}"
-                    class="img-fluid rounded border shadow-sm" alt="">
-
             </div>
-        </div>
 
-        <!-- PASSO 6 -->
-
-        <div class="card shadow-sm mb-5">
-            <div class="card-body">
-
-                <h3 class="text-primary">
-                    Passo 6 – Confirme a autoexclusão
-                </h3>
-
-                <p>
-                    Este é o último passo para concluir a autoexclusão do seu CPF. Após a confirmação, o bloqueio será
-                    processado e, em até 72 horas, seu CPF estará impedido de realizar apostas em todas as plataformas
-                    autorizadas pelo Governo Federal.
-                </p>
-
-                <p>
-                    Clique em
-                    <strong>Confirmar autoexclusão</strong>
-                    e sua solicitação será concluída.
-                </p>
-
-            </div>
-            <img src="{{ url_for('static', filename='img/tutorial/passo7.png') }}"
-                class="img-fluid rounded border shadow-sm" alt="">
+            <img src="{{ url_for('static', filename='img/tutorial/passo7.png') }}" class="passo-imagem"
+                loading="lazy" alt="Tela de confirmação final da autoexclusão">
 
         </div>
+    </div>
 
 
-        <!-- PASSO 7 -->
+    <!-- PASSO 7 -->
+    <div class="card cpf-passo shadow-sm mb-4">
+        <div class="card-body p-4">
 
-        <div class="card shadow-sm mb-5">
-            <div class="card-body">
-
-                <h3 class="text-primary">
-                    Passo 7 – Informações sobre a solicitação
-                </h3>
-
-                <p>
-                    Nesta tela são exibidas todas as informações do solicitante e os detalhes da solicitação de
-                    autoexclusão.
-                    Além disso, é possível consultar todas as solicitações de autoexclusão realizadas anteriormente.
-                </p>
-
-                <img src="{{ url_for('static', filename='img/tutorial/passo8.png') }}"
-                    class="img-fluid rounded border shadow-sm mt-3"
-                    alt="Informações da solicitação de autoexclusão">
-
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="cpf-passo-numero" aria-hidden="true">7</span>
+                <h2 class="h4 fw-bold mb-0">
+                    <span class="visually-hidden">Passo 7 – </span>Informações sobre a solicitação
+                </h2>
             </div>
+
+            <p>
+                Nesta tela são exibidas todas as informações do solicitante e os detalhes da solicitação de
+                autoexclusão. Além disso, é possível consultar todas as solicitações de autoexclusão realizadas
+                anteriormente.
+            </p>
+
+            <img src="{{ url_for('static', filename='img/tutorial/passo8.png') }}" class="passo-imagem"
+                loading="lazy"
+                alt="Tela com os dados do solicitante e o histórico de solicitações de autoexclusão">
 
         </div>
+    </div>
 
 
+    <!-- PASSO 8 -->
+    <div class="card cpf-passo shadow-sm mb-5">
+        <div class="card-body p-4">
 
-            <!-- PASSO 8 -->
-
-            <div class="card shadow-sm mb-5">
-                <div class="card-body">
-
-                    <h3 class="text-primary">
-                        Passo 8 – Verifique seu Email
-                    </h3>
-
-                    <p>
-                        Após a conclusão do processo, você receberá um e-mail de confirmação da autoexclusão com todos
-                        os
-                        detalhes da solicitação realizada, incluindo as informações do período e das configurações
-                        escolhidas.
-                    </p>
-
-                    <img src="{{ url_for('static', filename='img/tutorial/passo9.png') }}"
-                        class="img-fluid rounded border shadow-sm mt-3"
-                        alt="Informações da solicitação de autoexclusão">
-
-                </div>
-
-
-                <!-- AVISO IMPORTANTE -->
-
-                <div class="alert shadow-sm border-0 mt-5 p-4"
-                    style="background-color: #e8f4fd; border-left: 6px solid #0d6efd !important;">
-
-                    <div class="d-flex align-items-center mb-3">
-                        <h4 class="mb-0 text-primary fw-bold">
-                            ⚠️ Informações importantes
-                        </h4>
-                    </div>
-
-                    <p class="mb-3">
-                        Este site possui caráter <strong>exclusivamente informativo e educativo</strong>,
-                        criado com o objetivo de orientar usuários sobre ferramentas disponíveis para
-                        auxiliar no controle do uso de plataformas de apostas.
-                    </p>
-
-                    <p class="mb-3">
-                        A solicitação de autoexclusão é uma decisão <strong>pessoal e voluntária</strong>.
-                        O usuário é responsável pela escolha realizada e pelas consequências decorrentes
-                        dessa decisão, incluindo possíveis arrependimentos ou alterações futuras.
-                    </p>
-
-                    <p class="mb-3">
-                        Este site não possui vínculo com plataformas de apostas ou órgãos governamentais,
-                        não realiza bloqueios de CPF e não armazena informações pessoais dos usuários.
-                    </p>
-
-                    <p class="mb-0">
-                        Caso esteja enfrentando dificuldades relacionadas ao controle de apostas,
-                        recomenda-se buscar ajuda profissional especializada. A autoexclusão é apenas
-                        uma das medidas que podem auxiliar nesse processo.
-                    </p>
-
-                </div>
-
-
-
-                <div class="text-center mt-5">
-
-                    <a href="{{ url_for('bloqueio') }}" class="btn btn-outline-primary btn-lg">
-                        ← Voltar
-                    </a>
-
-                </div>
-
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <span class="cpf-passo-numero" aria-hidden="true">8</span>
+                <h2 class="h4 fw-bold mb-0">
+                    <span class="visually-hidden">Passo 8 – </span>Verifique seu e-mail
+                </h2>
             </div>
 
-            {% endblock %}
+            <p>
+                Após a conclusão do processo, você receberá um e-mail de confirmação da autoexclusão com todos os
+                detalhes da solicitação realizada, incluindo as informações do período e das configurações
+                escolhidas.
+            </p>
+
+            <img src="{{ url_for('static', filename='img/tutorial/passo9.png') }}"
+                class="passo-imagem passo-imagem--compacta" loading="lazy"
+                alt="E-mail de confirmação da autoexclusão com o período e as configurações escolhidas">
+
+        </div>
+    </div>
+
+
+    <!-- AVISO IMPORTANTE -->
+    <div class="cpf-aviso p-4 p-md-5">
+
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <i class="bi bi-info-circle-fill text-primary fs-4" aria-hidden="true"></i>
+            <h2 class="h4 mb-0 text-primary fw-bold">Informações importantes</h2>
+        </div>
+
+        <p class="mb-3">
+            Este site possui caráter <strong>exclusivamente informativo e educativo</strong>,
+            criado com o objetivo de orientar usuários sobre ferramentas disponíveis para
+            auxiliar no controle do uso de plataformas de apostas.
+        </p>
+
+        <p class="mb-3">
+            A solicitação de autoexclusão é uma decisão <strong>pessoal e voluntária</strong>.
+            O usuário é responsável pela escolha realizada e pelas consequências decorrentes
+            dessa decisão, incluindo possíveis arrependimentos ou alterações futuras.
+        </p>
+
+        <p class="mb-3">
+            Este site não possui vínculo com plataformas de apostas ou órgãos governamentais,
+            e não realiza bloqueios de CPF. A autoexclusão é feita somente no portal oficial do
+            Governo Federal, e o CPF informado lá não é enviado a este site. Os dados que você
+            fornecer aqui (cadastro, chat e fórum) são tratados conforme a
+            <a href="{{ url_for('politica_privacidade') }}">Política de Privacidade</a>.
+        </p>
+
+        <p class="mb-0">
+            Caso esteja enfrentando dificuldades relacionadas ao controle de apostas,
+            recomenda-se buscar ajuda profissional especializada. A autoexclusão é apenas
+            uma das medidas que podem auxiliar nesse processo.
+        </p>
+
+    </div>
+
+
+    <div class="text-center mt-5">
+        <a href="{{ url_for('bloqueio') }}" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1" aria-hidden="true"></i>
+            Voltar
+        </a>
+    </div>
+
+</div>
+
+{% endblock %}

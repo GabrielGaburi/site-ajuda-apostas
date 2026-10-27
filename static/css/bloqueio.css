@@ -1,0 +1,100 @@
+.bloqueio-hero {
+    background: linear-gradient(135deg, #e8f1ff 0%, #f6f9ff 60%, #ffffff 100%);
+    border-bottom: 1px solid #e3eaf7;
+}
+
+
+.bloqueio-hero-icone {
+    width: 72px;
+    height: 72px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #0d6efd;
+    color: #fff;
+    font-size: 2rem;
+    box-shadow: 0 8px 20px rgba(13, 110, 253, 0.3);
+}
+
+
+.bloqueio-camadas span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #dbe4f3;
+    font-size: 0.9rem;
+    color: #495057;
+}
+
+
+.bloqueio-card {
+    border: 1px solid #e9ecef;
+    border-radius: 16px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+
+.bloqueio-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+
+.bloqueio-icone {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 1.4rem;
+}
+
+
+.bloqueio-card ol,
+.bloqueio-card ul {
+    padding-left: 1.25rem;
+}
+
+
+.bloqueio-card li {
+    margin-bottom: 0.4rem;
+}
+
+
+.bloqueio-card pre {
+    font-size: 0.85rem;
+    overflow-x: auto;
+}
+
+
+.bloqueio-nota {
+    border-left: 4px solid #ffc107;
+    border-radius: 12px;
+}
+
+
+.bloqueio-cpf {
+    border: 0;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #fff1f1 0%, #ffffff 70%);
+    box-shadow: 0 10px 30px rgba(220, 53, 69, 0.15);
+}
+
+
+.bloqueio-cpf-icone {
+    width: 64px;
+    height: 64px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #dc3545;
+    color: #fff;
+    font-size: 1.8rem;
+}
