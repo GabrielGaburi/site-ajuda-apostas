@@ -1,10 +1,13 @@
-import re, os, json, traceback, uuid, mysql.connector, requests, unicodedata, threading, time,  hashlib, secrets
+import hmac
+import re, os, json, traceback, uuid, mysql.connector, requests, unicodedata, threading, time,  hashlib, secrets, functools
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session, g, Response
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_mail import Mail, Message
 from itsdangerous import URLSafeTimedSerializer
 from werkzeug.utils import secure_filename
+from werkzeug.exceptions import HTTPException
+from urllib.parse import urlparse
 from werkzeug.middleware.proxy_fix import ProxyFix
 from flask import send_from_directory
 from flask_wtf.csrf import CSRFProtect
@@ -71,6 +74,24 @@ limiter = Limiter(
 SENHA_HASH_FALSA = generate_password_hash(secrets.token_hex(16))
 
 
+def impressao_senha(senha_hash):
+    """Identifica a senha atual sem expor o hash. Fica na sessão e muda quando a
+    senha é trocada, o que derruba as sessões abertas antes da troca."""
+    return hmac.new(
+        app.secret_key.encode("utf-8"),
+        (senha_hash or "").encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()[:32]
+
+
+# Páginas e respostas que, mesmo sem login, carregam dados pessoais ou de saúde
+ENDPOINTS_SEM_CACHE = {
+    "login", "verificar_2fa", "redefinir_senha", "esqueci_senha", "aceitar_termos", "cadastro_usuario",
+    "cadastro_profissional", "reenviar_confirmacao", "reenviar_codigo_2fa", "chatbot_historico",
+    "mensagens", "lista_sessoes",
+}
+
+
 @app.after_request
 def cabecalhos_de_seguranca(resposta):
     """Cabeçalhos que limitam de onde o navegador aceita scripts, estilos e imagens."""
@@ -79,6 +100,14 @@ def cabecalhos_de_seguranca(resposta):
     resposta.headers.setdefault("X-Content-Type-Options", "nosniff")
     resposta.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
     resposta.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()")
+    resposta.headers.setdefault("X-Frame-Options", "DENY")
+
+    # Dados pessoais e de saúde não ficam no cache do navegador: o botão "voltar" depois
+    # do logout, em computador compartilhado, não pode mostrar a página anterior
+    if request.endpoint != "static" and (
+        request.endpoint in ENDPOINTS_SEM_CACHE or "usuario_id" in session
+    ):
+        resposta.headers.setdefault("Cache-Control", "no-store")
 
     if app.config["SESSION_COOKIE_SECURE"]:
         resposta.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
@@ -115,6 +144,11 @@ def arquivo_grande_demais(erro):
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config["SESSION_COOKIE_SECURE"] = os.getenv("HTTPS_ATIVO", "false").lower() == "true"
+
+# Quanto tempo uma sessão sem atividade continua valendo. Sem isso, um cookie roubado
+# serviria por 31 dias (padrão do Flask). Cada requisição renova o prazo.
+SESSAO_HORAS = float(os.getenv("SESSAO_HORAS", "8") or 8)
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=SESSAO_HORAS)
 
 
 
@@ -201,7 +235,9 @@ SYSTEM_PROMPT = (
     "- Use frases curtas e simples, transmitindo presença e proximidade.\n"
     "- Mostre escuta ativa e empatia genuína.\n"
     "- Não pareça um robô ou um atendimento automático.\n"
-    "- Seja natural, como uma conversa entre pessoas.\n\n"
+    "- Seja natural, como uma conversa entre pessoas.\n"
+    "- Responda sempre em no máximo 2 ou 3 frases curtas (cerca de 50 palavras), em texto corrido, sem listas nem títulos.\n"
+    "- Faça no máximo uma pergunta por resposta.\n\n"
 
     "ESCOPO DA CONVERSA:\n"
     "- Mantenha a conversa relacionada ao objetivo do Apoio & Consciência.\n"
@@ -244,152 +280,16 @@ SYSTEM_PROMPT = (
     "Fazer a pessoa sentir-se compreendida, acolhida e menos sozinha, mantendo a conversa dentro do propósito do Apoio & Consciência."
 )
 
-# ============================ DETECÇÃO DE CRITICIDADE ============================ #
-def _normalize_base(s: str) -> str:
-    s = s or ""
-    s = s.lower()
-    s = unicodedata.normalize("NFD", s)
-    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")  # remove acentos
-    s = re.sub(r"[’'`´]", "'", s)
-    s = re.sub(r"[^\w\s'!?💔😭😢😞]", " ", s, flags=re.UNICODE)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
+# Resposta quando a IA não consegue responder: quem está em risco não fica sem orientação
+MENSAGEM_FALHA_IA = (
+    "Desculpe, não consegui responder agora. Tente enviar sua mensagem novamente em alguns instantes. "
+    "Se você estiver em sofrimento ou em risco agora, ligue para o CVV no 188 (gratuito, 24 horas) "
+    "ou para o SAMU no 192. Se preferir, peça para falar com um profissional."
+)
 
-def _leet_to_plain(s: str) -> str:
-    return (s.replace("0", "o")
-             .replace("1", "i")
-             .replace("3", "e")
-             .replace("4", "a")
-             .replace("5", "s")
-             .replace("7", "t"))
-
-def _collapse_repeats(s: str) -> str:
-    return re.sub(r"(.)\1{2,}", r"\1\1", s)
-
-def _normalize_all(s: str) -> str:
-    return _collapse_repeats(_leet_to_plain(_normalize_base(s)))
-
-def _lev_dist(a: str, b: str) -> int:
-    dp = list(range(len(b) + 1))
-    for i, ca in enumerate(a, 1):
-        prev = i - 1
-        dp[0] = i
-        for j, cb in enumerate(b, 1):
-            tmp = dp[j]
-            dp[j] = prev if ca == cb else 1 + min(prev, dp[j], dp[j-1])
-            prev = tmp
-    return dp[-1]
-
-def _fuzzy_includes(hay: str, needle: str, max_edits: int = 1) -> bool:
-    if needle in hay:
-        return True
-    n = len(needle)
-    if n == 0 or len(hay) < n:
-        return False
-    max_edits = min(max_edits + n // 12, 2)
-
-    # Com até k edições, pelo menos um de k+1 pedaços do termo aparece intacto.
-    # Só calcula a distância nas janelas ao redor desses pedaços; comparar a
-    # janela de cada posição do texto levava segundos numa mensagem longa.
-    pedacos = max_edits + 1
-    tamanho = n // pedacos
-    if tamanho == 0:
-        return False
-
-    janelas = set()
-    for p in range(pedacos):
-        inicio = p * tamanho
-        fim = n if p == pedacos - 1 else inicio + tamanho
-        pedaco = needle[inicio:fim]
-        pos = hay.find(pedaco)
-        while pos != -1:
-            for i in range(pos - inicio - max_edits, pos - inicio + max_edits + 1):
-                if 0 <= i <= len(hay) - n:
-                    janelas.add(i)
-            pos = hay.find(pedaco, pos + 1)
-
-    return any(_lev_dist(hay[i:i+n], needle) <= max_edits for i in janelas)
-
-_normalizados = {}
-
-def _normalizar_variante(v: str) -> str:
-    if v not in _normalizados:
-        _normalizados[v] = _normalize_all(v)
-    return _normalizados[v]
-
-def _fuzzy_any(hay: str, variants, max_edits: int = 1) -> bool:
-    return any(_fuzzy_includes(hay, _normalizar_variante(v), max_edits) for v in variants if v)
-
-CRITICAL_PATTERNS = {
-    "suicidio": [
-        "suicidio","me matar","tirar minha vida","acabar com tudo",
-        "quero morrer","sem vontade de viver","nao quero mais viver",
-        "pensando em morrer","ideacao suicida","quero sumir"
-    ],
-    "distress": [
-        "nao aguento","nao aguento mais","desespero","sem saida","sem saída",
-        "to mal","tô mal","muito mal","pior dia","crise de panico","crise panico",
-        "ataque de panico","ansiedade forte","desesperado","no fundo do poco","no fundo do poço",
-        "sou um lixo","nao presto","nao vejo futuro","sofrendo demais"
-    ],
-    "help": [
-        "quero ajuda","preciso de ajuda","socorro","me ajuda","ajuda por favor",
-        "falar com alguem","conversar com alguem","preciso falar com alguem",
-        "posso falar com alguem","quero conversar com alguem","apoio agora"
-    ],
-    "gambling_crisis": [
-        "nao consigo parar de apostar","nao consigo parar","compulsao por apostar","compulsao por jogo",
-        "recaida","recaída","voltei a apostar","perdi tudo","perdi meu salario","perdi meu salário",
-        "endividado","muita divida","muitas dividas","divida com agiota","cobranca pesada",
-        "quebrado","rompi limite"
-    ],
-    "family": [
-        "meu marido aposta","minha esposa aposta","meu filho viciado","minha filha viciada",
-        "meu pai viciado","minha mae viciada","meu irmão viciado","minha irmã viciada",
-        "meu namorado aposta","minha namorada aposta","alguem proximo viciado","alguém próximo viciado",
-        "ajuda para familia","sou familiar de viciado","sou parente de viciado"
-    ]
-}
-CORE_SIGNALS = [
-    "me matar","acabar com tudo","quero morrer","nao aguento mais",
-    "preciso de ajuda","socorro","sem saida","muito mal",
-    "nao consigo parar","perdi tudo","endividado"
-]
-
-def detect_critical(text: str) -> bool:
-    if not text or not text.strip():
-        return False
-    raw = text
-    n = _normalize_all(raw)
-    for variants in CRITICAL_PATTERNS.values():
-        if _fuzzy_any(n, variants, 1):
-            return True
-    if _fuzzy_any(n, CORE_SIGNALS, 2):
-        return True
-    return False
-
-def pediu_profissional(texto):
-    if not texto:
-        return False
-
-    texto = _normalize_all(texto)
-
-    pedidos = [
-        "quero conversar com um profissional",
-        "quero falar com um profissional",
-        "preciso conversar com um profissional",
-        "preciso falar com um profissional",
-        "quero atendimento profissional",
-        "preciso de atendimento profissional",
-        "quero ajuda de um profissional",
-        "preciso de ajuda de um profissional",
-        "quero falar com psicologo",
-        "quero conversar com psicologo",
-        "preciso falar com psicologo",
-        "preciso conversar com psicologo"
-    ]
-
-    return any(pedido in texto for pedido in pedidos)
+from deteccao_risco import detect_critical, pediu_profissional
+from moderacao import verificar_conteudo_proibido
+from nomes import nome_publico
 
 
 def ha_mensagem_pendente(atendimento_id):
@@ -562,18 +462,27 @@ def processar_ia_em_background(atendimento_id):
             resposta = client.responses.create(
                 model=OPENAI_MODEL,
                 instructions=SYSTEM_PROMPT,
-                input=entrada_ia
+                input=entrada_ia,
+                max_output_tokens=800
             )
             texto_resposta = resposta.output_text
 
-            if not texto_resposta or not texto_resposta.strip():
-                
-                texto_resposta = (
-                    "Desculpe, não consegui responder agora. "
-                    "Tente enviar sua mensagem novamente em alguns instantes."
+            # Em modelos com raciocínio interno, os tokens de raciocínio também
+            # contam em max_output_tokens: a resposta pode vir truncada/vazia
+            # sem lançar exceção. Loga para diferenciar isso de um texto vazio
+            # "normal" antes de cair na mensagem genérica de falha.
+            if getattr(resposta, "status", None) == "incomplete":
+                app.logger.warning(
+                    "Resposta da IA incompleta (motivo=%s) no atendimento %s.",
+                    getattr(getattr(resposta, "incomplete_details", None), "reason", None),
+                    atendimento_id
                 )
+
+            if not texto_resposta or not texto_resposta.strip():
+
+                texto_resposta = MENSAGEM_FALHA_IA
             else:
-                texto_resposta = texto_resposta.strip() 
+                texto_resposta = texto_resposta.strip()
         
         except Exception:
             app.logger.exception("Erro na chamada à API da OpenAI.")
@@ -597,11 +506,18 @@ def processar_ia_em_background(atendimento_id):
                     WHERE id = %s
                     AND status = 'ia'
                 """, (
-                    "Desculpe, não consegui responder agora. Tente enviar sua mensagem novamente em alguns instantes.",
+                    MENSAGEM_FALHA_IA,
                     atendimento_id
                 ))
 
-                conexao_erro.commit()
+                if cursor_erro.rowcount == 0:
+                    conexao_erro.rollback()
+                    app.logger.warning(
+                        "Mensagem de falha da IA não registrada: atendimento %s não está mais com a IA.",
+                        atendimento_id
+                    )
+                else:
+                    conexao_erro.commit()
 
             except Exception:
                 if conexao_erro:
@@ -615,6 +531,20 @@ def processar_ia_em_background(atendimento_id):
 
                 if conexao_erro:
                     conexao_erro.close()
+
+            # Mesmo com a IA falhando, uma mensagem pode ter chegado
+            # enquanto essa thread processava e ficaria sem resposta até o
+            # usuário mandar outra (ver comentário equivalente no fim da
+            # função). Libera o atendimento e tenta de novo agora.
+            with atendimentos_lock:
+                atendimentos_processando.discard(atendimento_id)
+
+            if ha_mensagem_pendente(atendimento_id):
+                threading.Thread(
+                    target=processar_ia_em_background,
+                    args=(atendimento_id,),
+                    daemon=True
+                ).start()
 
             return
       
@@ -670,14 +600,24 @@ def processar_ia_em_background(atendimento_id):
                     %s
                 FROM atendimentos_chatbot
                 WHERE id = %s
+                AND status = 'ia'
             """, (
                 atendimento_id,
                 texto_resposta,
                 atendimento_id
             ))
 
-            conexao.commit()
-            respondeu = True
+            if cursor.rowcount == 0:
+                # Um profissional assumiu o atendimento entre a verificação
+                # acima e este INSERT: a resposta da IA não deve mais entrar.
+                conexao.rollback()
+                app.logger.warning(
+                    "Resposta da IA descartada: atendimento %s não está mais com a IA.",
+                    atendimento_id
+                )
+            else:
+                conexao.commit()
+                respondeu = True
 
         except Exception:
             if conexao:
@@ -1010,17 +950,41 @@ def chatbot():
 
         if not atendimento:
 
-            cursor.execute("""
-                INSERT INTO atendimentos_chatbot
-                    (usuario_id, status, motivo)
-                VALUES
-                    (%s, 'ia', %s)
-            """, (
-                usuario_id,
-                "Conversa com o Apoio Virtual"
-            ))
+            # Requisições simultâneas (duplo clique, duas abas) sem conversa na sessão criariam
+            # uma conversa cada, e as respostas da IA ficariam em conversas que a tela não acompanha.
+            # A trava por usuário faz uma esperar a outra terminar, e quem chega depois aproveita
+            # a conversa recém-criada. A trava é liberada quando a conexão fecha.
+            cursor.execute("SELECT GET_LOCK(%s, 5) AS obteve", (f"chat_novo_{usuario_id}",))
+            cursor.fetchone()
 
-            atendimento_id = cursor.lastrowid
+            cursor.execute("""
+                SELECT *
+                FROM atendimentos_chatbot
+                WHERE usuario_id = %s
+                  AND status = 'ia'
+                  AND data_inicio > DATE_SUB(NOW(), INTERVAL 10 SECOND)
+                ORDER BY id DESC
+                LIMIT 1
+                FOR UPDATE
+            """, (usuario_id,))
+
+            atendimento = cursor.fetchone()
+
+            if atendimento:
+                atendimento_id = atendimento["id"]
+
+            else:
+                cursor.execute("""
+                    INSERT INTO atendimentos_chatbot
+                        (usuario_id, status, motivo)
+                    VALUES
+                        (%s, 'ia', %s)
+                """, (
+                    usuario_id,
+                    "Conversa com o Apoio Virtual"
+                ))
+
+                atendimento_id = cursor.lastrowid
 
             session["chatbot_atendimento_id"] = atendimento_id
 
@@ -1114,11 +1078,26 @@ def chatbot():
                     motivo = %s
                 WHERE id = %s
                 AND usuario_id = %s
+                AND status = 'ia'
             """, (
                 motivo,
                 atendimento_id,
                 usuario_id
             ))
+
+            if cursor.rowcount == 0:
+                # Entre o status lido no início da requisição e este UPDATE,
+                # um profissional assumiu ou encerrou o atendimento (ou a IA
+                # em segundo plano já tinha respondido). Não sobrescreve.
+                conexao.rollback()
+
+                return {
+                    "resposta": "",
+                    "handoff": True,
+                    "profissional_atendendo": True,
+                    "atendimento_id": atendimento_id
+                }
+
             cursor.execute("""
                 INSERT INTO mensagens_atendimento
                     (atendimento_id, usuario_id, remetente, mensagem)
@@ -1336,7 +1315,7 @@ def profissional_atendimentos():
     except Exception:
         app.logger.exception("Erro ao buscar atendimentos.")
         flash("Não foi possível carregar os atendimentos.", "danger")
-        return redirect(url_for("dashboard"))
+        return redirect(url_for("dashboard_profissional"))
     
 
 @app.route("/assumir_atendimento/<int:atendimento_id>", methods=["POST"])
@@ -1424,6 +1403,28 @@ def assumir_atendimento(atendimento_id):
 
         if cursor.rowcount == 0:
             conexao.rollback()
+
+            # Outra requisição acabou de assumir. Se foi este mesmo profissional (duplo clique,
+            # duas abas), é sucesso e não conflito
+            cursor.execute("""
+                SELECT status, profissional_id
+                FROM atendimentos_chatbot
+                WHERE id = %s
+            """, (atendimento_id,))
+
+            atual = cursor.fetchone()
+
+            if (
+                atual
+                and atual["status"] == "em_atendimento"
+                and atual["profissional_id"] == profissional_id
+            ):
+                return {
+                    "sucesso": True,
+                    "atendimento_id": atendimento_id,
+                    "ja_assumido": True
+                }
+
             return {
                 "erro": "Este atendimento já foi assumido por outro profissional."
             }, 409
@@ -1757,16 +1758,28 @@ def enviar_profissional(atendimento_id):
                 "erro": "Este atendimento não está mais disponível."
             }, 403
 
-        # Salva a mensagem
+        # Salva a mensagem. A condição vai dentro do próprio INSERT: entre a checagem acima e a
+        # gravação, o atendimento pode ter sido encerrado (por quem escreve ou pelo usuário)
         cursor.execute("""
             INSERT INTO mensagens_atendimento
-            (atendimento_id, usuario_id, remetente, mensagem)
-            VALUES (%s, %s, 'profissional', %s)
+                (atendimento_id, usuario_id, remetente, mensagem)
+            SELECT a.id, %s, 'profissional', %s
+            FROM atendimentos_chatbot a
+            WHERE a.id = %s
+              AND a.profissional_id = %s
+              AND a.status = 'em_atendimento'
         """, (
-            atendimento_id,
             usuario_id,
-            mensagem
+            mensagem,
+            atendimento_id,
+            profissional_id
         ))
+
+        if cursor.rowcount == 0:
+            conexao.rollback()
+            return {
+                "erro": "Este atendimento não está mais disponível."
+            }, 403
 
         conexao.commit()
 
@@ -1853,8 +1866,26 @@ def validar_codigo_2fa(usuario_id, codigo):
         conexao = get_db_connection()
         cursor = conexao.cursor(dictionary=True)
 
+        # A tentativa é reservada ANTES de comparar, em uma só instrução. Ler as tentativas,
+        # comparar e só depois incrementar deixava requisições simultâneas passarem todas
+        # do limite de 5 (40 tentativas ao mesmo tempo eram todas avaliadas)
         cursor.execute("""
-            SELECT codigo_hash, expira_em, tentativas
+            UPDATE codigos_2fa
+            SET tentativas = tentativas + 1
+            WHERE usuario_id = %s
+              AND tentativas < 5
+              AND expira_em > NOW()
+        """, (usuario_id,))
+
+        reservou = cursor.rowcount == 1
+
+        conexao.commit()
+
+        if not reservou:
+            return False
+
+        cursor.execute("""
+            SELECT codigo_hash
             FROM codigos_2fa
             WHERE usuario_id = %s
         """, (usuario_id,))
@@ -1864,20 +1895,6 @@ def validar_codigo_2fa(usuario_id, codigo):
         if not registro:
             return False
 
-        if registro["tentativas"] >= 5:
-            return False
-
-        cursor.execute("""
-            SELECT expira_em > NOW() AS valido
-            FROM codigos_2fa
-            WHERE usuario_id = %s
-        """, (usuario_id,))
-
-        validade = cursor.fetchone()
-
-        if not validade or not validade["valido"]:
-            return False
-
         codigo_hash = hashlib.sha256(
             codigo.strip().encode("utf-8")
         ).hexdigest()
@@ -1885,13 +1902,6 @@ def validar_codigo_2fa(usuario_id, codigo):
         if not secrets.compare_digest(
             codigo_hash, registro["codigo_hash"]
         ):
-            cursor.execute("""
-                UPDATE codigos_2fa
-                SET tentativas = tentativas + 1
-                WHERE usuario_id = %s
-            """, (usuario_id,))
-
-            conexao.commit()
             return False
 
         cursor.execute("""
@@ -1946,7 +1956,7 @@ def verificar_2fa():
             cursor = conexao.cursor(dictionary=True)
 
             cursor.execute("""
-                SELECT id, nome, tipo, status
+                SELECT id, nome, tipo, status, senha_hash
                 FROM usuarios
                 WHERE id = %s
             """, (usuario_id,))
@@ -1992,6 +2002,8 @@ def verificar_2fa():
             session["usuario_id"] = usuario["id"]
             session["usuario_nome"] = usuario["nome"]
             session["tipo_usuario"] = usuario["tipo"]
+            session["senha_v"] = impressao_senha(usuario["senha_hash"])
+            session.permanent = True  # a validade (PERMANENT_SESSION_LIFETIME) passa a valer para o login
 
             flash(
                 f"Bem-vindo(a), {usuario['nome']}!",
@@ -2071,16 +2083,35 @@ def reenviar_codigo_2fa():
                 flash("A conta profissional não está aprovada.", "danger")
                 return redirect(url_for("login"))
 
+        # O reenvio é reservado em uma só instrução. Com SELECT e depois INSERT, pedidos
+        # simultâneos passavam todos pela espera de 1 minuto e cada um mandava um e-mail
         cursor.execute("""
-            SELECT criado_em
-            FROM codigos_2fa
+            UPDATE codigos_2fa
+            SET criado_em = NOW()
             WHERE usuario_id = %s
-              AND criado_em > DATE_SUB(NOW(), INTERVAL 1 MINUTE)
+              AND criado_em <= DATE_SUB(NOW(), INTERVAL 1 MINUTE)
         """, (usuario_id,))
 
-        codigo_recente = cursor.fetchone()
+        reservou = cursor.rowcount == 1
 
-        if codigo_recente:
+        conexao.commit()
+
+        if not reservou:
+            # Sem linha de código (já apagada), a reserva é uma linha-marcador que nunca
+            # valida (vencida e com as 5 tentativas gastas); salvar_codigo_2fa a substitui.
+            # O índice único em usuario_id garante que só uma requisição consiga criá-la.
+            cursor.execute("""
+                INSERT IGNORE INTO codigos_2fa
+                    (usuario_id, codigo_hash, expira_em, tentativas)
+                VALUES
+                    (%s, %s, NOW(), 5)
+            """, (usuario_id, "0" * 64))
+
+            reservou = cursor.rowcount == 1
+
+            conexao.commit()
+
+        if not reservou:
             flash(
                 "Aguarde 1 minuto antes de solicitar outro código.",
                 "warning"
@@ -2351,6 +2382,8 @@ def login():
             session["usuario_id"] = usuario["id"]
             session["usuario_nome"] = usuario["nome"]
             session["tipo_usuario"] = usuario["tipo"]
+            session["senha_v"] = impressao_senha(usuario["senha_hash"])
+            session.permanent = True  # a validade (PERMANENT_SESSION_LIFETIME) passa a valer para o login
 
             flash(
                 f"Bem-vindo(a), {usuario['nome']}!",
@@ -2876,6 +2909,7 @@ def detalhes_usuario(usuario_id):
             conexao.close()
             
 @app.route("/admin/usuarios/<int:usuario_id>/reativar", methods=["POST"])
+@limiter.limit("10 per minute")
 def reativar_usuario(usuario_id):
 
     # =========================
@@ -3502,6 +3536,7 @@ def editar_usuario(usuario_id):
 # =========================
 
 @app.route("/admin/usuarios/<int:usuario_id>/banir", methods=["POST"])
+@limiter.limit("10 per minute")
 def banir_usuario(usuario_id):
 
     # =========================
@@ -3704,6 +3739,7 @@ def banir_usuario(usuario_id):
 # =========================
 
 @app.route("/admin/usuarios/<int:usuario_id>/desbanir", methods=["POST"])
+@limiter.limit("10 per minute")
 def desbanir_usuario(usuario_id):
 
     # =========================
@@ -3889,6 +3925,18 @@ def desbanir_usuario(usuario_id):
             conexao.close()
             
             
+def redirecionar_para_painel():
+    """Leva o usuário logado ao painel do próprio perfil (nunca ao painel de outro)."""
+
+    destino = {
+        "usuario": "dashboard_usuario",
+        "profissional": "dashboard_profissional",
+        "admin": "dashboard_admin",
+    }.get(session.get("tipo_usuario"), "login")
+
+    return redirect(url_for(destino))
+
+
 @app.route("/dashboard_usuario")
 def dashboard_usuario():
 
@@ -3897,7 +3945,7 @@ def dashboard_usuario():
 
     if session.get("tipo_usuario") != "usuario":
         flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("login"))
+        return redirecionar_para_painel()
 
     conexao = None
     cursor = None
@@ -4548,11 +4596,19 @@ def cadastro_usuario():
         # EMAIL DE CONFIRMAÇÃO
         # =========================
 
-        # Se o envio falhar, o usuário pode usar o reenvio na tela de login
-        if not enviar_email_confirmacao_usuario(dados["email"]):
+        # A conta acabou de ser criada agora mesmo (chegou até aqui passando
+        # pelas checagens de conta existente acima), então avisar que o
+        # envio falhou não revela nada sobre outra conta.
+        if enviar_email_confirmacao_usuario(dados["email"]):
+            flash(MENSAGEM_CADASTRO_RECEBIDO, "success")
+        else:
             app.logger.error("Falha ao enviar email de confirmação do cadastro.")
+            flash(
+                "Cadastro recebido, mas não conseguimos enviar o e-mail de confirmação agora. "
+                "Use \"Reenviar e-mail de confirmação\" na tela de login.",
+                "warning"
+            )
 
-        flash(MENSAGEM_CADASTRO_RECEBIDO, "success")
         return redirect(url_for('login'))
 
     # =========================
@@ -4756,6 +4812,18 @@ def confirmar_novo_email(token):
     return redirect(destino)
 
 
+def _enviar_confirmacao_em_background(email, tipo, base_url):
+    # Mesmo esquema de _enviar_recuperacao_em_background: a thread precisa do contexto do app
+    with app.test_request_context(base_url=base_url):
+        if tipo == "profissional":
+            enviado = enviar_email_cadastro_profissional(email)
+        else:
+            enviado = enviar_email_confirmacao_usuario(email)
+
+        if not enviado:
+            app.logger.error("Falha ao reenviar email de confirmação (segundo plano).")
+
+
 @app.route("/reenviar_confirmacao", methods=["GET", "POST"])
 @limiter.limit("5 per minute", methods=["POST"])
 def reenviar_confirmacao():
@@ -4793,13 +4861,13 @@ def reenviar_confirmacao():
                 and not usuario["email_confirmado"]
                 and usuario["status"] != "banido"
             ):
-                if usuario["tipo"] == "profissional":
-                    enviado = enviar_email_cadastro_profissional(email)
-                else:
-                    enviado = enviar_email_confirmacao_usuario(email)
-
-                if not enviado:
-                    app.logger.error("Falha ao reenviar email de confirmação.")
+                # O envio roda em segundo plano para o tempo de resposta ser o mesmo
+                # com ou sem conta (ver comentário em esqueci_senha)
+                threading.Thread(
+                    target=_enviar_confirmacao_em_background,
+                    args=(email, usuario["tipo"], request.host_url),
+                    daemon=True
+                ).start()
 
             flash(mensagem_generica, "info")
             return redirect(url_for("login"))
@@ -5165,10 +5233,21 @@ ENDPOINTS_SEM_ACEITE = {
 def destino_seguro(destino):
     """Aceita só caminhos internos, para o redirecionamento não sair do site."""
 
-    if destino and destino.startswith("/") and not destino.startswith("//") and "\\" not in destino:
-        return destino
+    if not destino or not destino.startswith("/") or destino.startswith("//"):
+        return url_for("index")
 
-    return url_for("index")
+    # Navegadores ignoram tab e quebra de linha dentro da URL ("/<TAB>/site.com" vira
+    # "//site.com"); espaços e barras invertidas também são tratados de forma diferente
+    # entre navegadores. Qualquer caractere de controle, espaço ou "\" é recusado.
+    if "\\" in destino or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in destino):
+        return url_for("index")
+
+    partes = urlparse(destino)
+
+    if partes.scheme or partes.netloc:
+        return url_for("index")
+
+    return destino
 
 
 @app.before_request
@@ -5191,7 +5270,7 @@ def verificar_conta_e_consentimento():
         try:
             cursor.execute(
                 """
-                SELECT status, termos_versao, consentimento_saude_versao
+                SELECT status, senha_hash, termos_versao, consentimento_saude_versao
                 FROM usuarios
                 WHERE id = %s
                 """,
@@ -5202,7 +5281,7 @@ def verificar_conta_e_consentimento():
             app.logger.error("Colunas de consentimento ausentes na tabela usuarios. Rode migrar_lgpd.py.")
 
             cursor.execute(
-                "SELECT status FROM usuarios WHERE id = %s",
+                "SELECT status, senha_hash FROM usuarios WHERE id = %s",
                 (session["usuario_id"],)
             )
 
@@ -5210,7 +5289,10 @@ def verificar_conta_e_consentimento():
 
     except Exception:
         app.logger.exception("Erro ao verificar status do usuário.")
-        return None
+        # Nunca libera acesso quando não dá para confirmar o status da
+        # conta (ex.: falha transitória no banco): um banimento não pode
+        # passar despercebido só porque o banco falhou nesse instante.
+        abort(503)
 
     finally:
         if cursor:
@@ -5222,6 +5304,15 @@ def verificar_conta_e_consentimento():
     if not usuario or usuario["status"] == "banido":
         session.clear()
         flash("Sua conta não está mais ativa.", "danger")
+        return redirect(url_for("login"))
+
+    # Sessão aberta antes da troca de senha (ou criada sem a impressão da senha) não vale mais
+    if not secrets.compare_digest(
+        str(session.get("senha_v", "")),
+        impressao_senha(usuario["senha_hash"])
+    ):
+        session.clear()
+        flash("Sua sessão expirou. Faça login novamente.", "warning")
         return redirect(url_for("login"))
 
     g.consentimento_ok = usuario.get("consentimento_saude_versao") == TERMOS_VERSAO
@@ -5252,7 +5343,9 @@ def forum_home():
                 t.id,
                 t.titulo,
                 t.usuario_id,
-                u.nome AS autor,
+                u.nome,
+                u.sobrenome,
+                u.tipo AS tipo_autor,
                 t.data_criacao
             FROM forum_topicos t
             INNER JOIN usuarios u
@@ -5262,6 +5355,16 @@ def forum_home():
         """)
 
         forum = cursor.fetchall()
+
+        # A lista é pública: visitantes não veem quem escreveu, e quem está logado vê o
+        # nome abreviado. Nome e sobrenome saem do dicionário para nem chegarem ao template
+        logado = "usuario_id" in session
+
+        for topico in forum:
+            nome = topico.pop("nome")
+            sobrenome = topico.pop("sobrenome")
+            tipo_autor = topico.pop("tipo_autor")
+            topico["autor"] = nome_publico(nome, sobrenome, tipo_autor) if logado else "um participante"
 
         return render_template(
             "forum.html",
@@ -5473,7 +5576,9 @@ def forum_topico(topico_id):
                 t.id,
                 t.titulo,
                 t.usuario_id,
-                CONCAT(u.nome, ' ', u.sobrenome) AS autor,
+                u.nome,
+                u.sobrenome,
+                u.tipo AS tipo_autor,
                 t.data_criacao
             FROM forum_topicos t
             INNER JOIN usuarios u
@@ -5497,7 +5602,8 @@ def forum_topico(topico_id):
                 m.usuario_id,
                 m.mensagem,
                 m.data_criacao,
-                CONCAT(u.nome, ' ', u.sobrenome) AS autor,
+                u.nome,
+                u.sobrenome,
                 u.tipo AS tipo_usuario
             FROM forum_mensagens m
             INNER JOIN usuarios u
@@ -5509,6 +5615,12 @@ def forum_topico(topico_id):
         )
 
         mensagens = cursor.fetchall()
+
+        # Nome abreviado para os outros participantes (ver nomes.py)
+        topico["autor"] = nome_publico(topico.pop("nome"), topico.pop("sobrenome"), topico.pop("tipo_autor"))
+
+        for msg in mensagens:
+            msg["autor"] = nome_publico(msg.pop("nome"), msg.pop("sobrenome"), msg["tipo_usuario"])
 
         # Adiciona as mensagens ao objeto do tópico
         topico["mensagens"] = mensagens
@@ -5580,6 +5692,9 @@ def forum_topico(topico_id):
             topico=topico,
             usuario_nome=usuario_nome
         )
+
+    except HTTPException:
+        raise
 
     except Exception:
         
@@ -5677,6 +5792,9 @@ def excluir_topico(topico_id):
             return redirect(url_for("gerenciar_forum"))
 
         return redirect(url_for("forum_home"))
+
+    except HTTPException:
+        raise
 
     except Exception:
         
@@ -5807,6 +5925,9 @@ def excluir_mensagem(topico_id, mensagem_id):
             )
         )
 
+    except HTTPException:
+        raise
+
     except Exception:
         
         if conexao:
@@ -5864,10 +5985,13 @@ def gerenciar_forum():
 
         forum = cursor.fetchall()
 
-        # Buscar as mensagens de cada tópico
-        for topico in forum:
+        # Busca as mensagens de todos os tópicos numa única consulta, em vez
+        # de uma consulta por tópico (N+1), e agrupa em Python por topico_id
+        mensagens_por_topico = {topico["id"]: [] for topico in forum}
 
-            cursor.execute("""
+        if mensagens_por_topico:
+            marcadores = ",".join(["%s"] * len(mensagens_por_topico))
+            cursor.execute(f"""
                 SELECT
                     m.id,
                     m.topico_id,
@@ -5878,11 +6002,15 @@ def gerenciar_forum():
                 FROM forum_mensagens m
                 INNER JOIN usuarios u
                     ON u.id = m.usuario_id
-                WHERE m.topico_id = %s
+                WHERE m.topico_id IN ({marcadores})
                 ORDER BY m.data_criacao ASC
-            """, (topico["id"],))
+            """, list(mensagens_por_topico.keys()))
 
-            topico["mensagens"] = cursor.fetchall()
+            for mensagem in cursor.fetchall():
+                mensagens_por_topico[mensagem["topico_id"]].append(mensagem)
+
+        for topico in forum:
+            topico["mensagens"] = mensagens_por_topico[topico["id"]]
 
         return render_template(
             "admin_forum.html",
@@ -5965,6 +6093,14 @@ OPCOES_ESPECIALIDADE = [
 # Tamanho máximo (em pixels) do maior lado da foto de perfil
 TAMANHO_MAXIMO_FOTO = 1024
 
+# Limite de pixels da foto enviada. O upload tem no máximo 5 MB, mas uma imagem lisa de
+# 12000x12000 cabe nisso e ocupa centenas de MB de memória ao ser aberta.
+MAXIMO_PIXELS_FOTO = 50_000_000
+
+
+class ImagemGrandeDemais(ValueError):
+    pass
+
 
 def salvar_foto_perfil(arquivo, pasta, prefixo=""):
     # Valida a imagem enviada e grava uma cópia nova dela: isso remove os metadados
@@ -5986,6 +6122,10 @@ def salvar_foto_perfil(arquivo, pasta, prefixo=""):
         if formato not in {"JPEG", "PNG"}:
             raise ValueError
 
+        # O cabeçalho já informa o tamanho, então isso é checado antes de decodificar a imagem
+        if imagem.width * imagem.height > MAXIMO_PIXELS_FOTO:
+            raise ImagemGrandeDemais
+
         # Aplica a rotação indicada no EXIF antes de descartá-lo
         imagem = ImageOps.exif_transpose(imagem)
         imagem.thumbnail((TAMANHO_MAXIMO_FOTO, TAMANHO_MAXIMO_FOTO))
@@ -6001,12 +6141,21 @@ def salvar_foto_perfil(arquivo, pasta, prefixo=""):
         nome = f"{prefixo}{uuid.uuid4().hex}{extensao}"
         caminho = os.path.join(pasta, nome)
 
+        # O comentário do JPEG (marcador COM) é regravado pelo Pillow se ficar em info
+        imagem.info.pop("comment", None)
+
         if formato == "JPEG":
             imagem.save(caminho, "JPEG", quality=85, optimize=True)
         else:
             imagem.save(caminho, "PNG", optimize=True)
 
         return nome
+
+    except ImagemGrandeDemais:
+        raise ValueError(
+            "A imagem tem resolução alta demais (máximo de 50 megapixels). "
+            "Reduza a foto e tente novamente."
+        )
 
     except (ValueError, OSError, SyntaxError, Image.DecompressionBombError):
         raise ValueError("A imagem é inválida ou está em um formato não permitido.")
@@ -6620,286 +6769,6 @@ def bloqueio_cpf():
 
 
 
-PALAVRAS_PROIBIDAS = [
-    "porra",
-    "merda",
-    "caralho",
-    "foda-se",
-    "fodase",
-    "foder",
-    "fudeu",
-    "puta",
-    "puto",
-    "putaria",
-    "buceta",
-    "cacete",
-    "cu",
-    "cuzão",
-    "cusao",
-    "cuzona",
-    "viado",
-    "veado",
-    "bicha",
-    "baitola",
-    "retardado",
-    "imbecil",
-    "idiota",
-    "otário",
-    "otario",
-    "babaca",
-    "burro",
-    "estúpido",
-    "estupido",
-    "arrombado",
-    "desgraçado",
-    "desgracado",
-    "filho da puta",
-    "filhodaputa",
-    "piranha",
-    "vagabunda",
-    "vagabundo",
-    "safado",
-    "fdp",
-    "vtnc",
-    "bct",
-    "safada"
-]
-
-FRASES_APOSTAS_PROIBIDAS = [
-    "aposte agora",
-    "aposta agora",
-    "apostem agora",
-    "vai apostar",
-    "vá apostar",
-    "va apostar",
-    "vamos apostar",
-    "bora apostar",
-    "bora aposta",
-    "faça uma aposta",
-    "faca uma aposta",
-    "faz uma aposta",
-    "faça sua aposta",
-    "faca sua aposta",
-    "faz sua aposta",
-    "coloque uma aposta",
-    "coloca uma aposta",
-    "faça sua fezinha",
-    "faca sua fezinha",
-    "faz uma fezinha",
-    "tente a sorte",
-    "tenta a sorte",
-    "arrisque seu dinheiro",
-    "arrisca seu dinheiro",
-    "coloque seu dinheiro",
-    "coloca seu dinheiro",
-    "jogue seu dinheiro",
-    "joga seu dinheiro",
-    "aposte nesse jogo",
-    "aposta nesse jogo",
-    "aposte nesse time",
-    "aposta nesse time",
-    "aposte nesse campeonato",
-    "aposta nesse campeonato",
-    "entra nessa aposta",
-    "entre nessa aposta",
-    "aproveite e aposte",
-    "aproveita e aposta",
-    "não perca essa aposta",
-    "nao perca essa aposta",
-    "não deixe de apostar",
-    "nao deixe de apostar",
-    "vale a pena apostar",
-    "compensa apostar",
-    "melhor apostar",
-    "tem que apostar"
-]
-
-FRASES_PROMOCAO_APOSTAS = [
-    "ganhe dinheiro apostando",
-    "ganhar dinheiro apostando",
-    "ganhe dinheiro com apostas",
-    "ganhar dinheiro com apostas",
-    "fique rico apostando",
-    "ficar rico apostando",
-    "fique rico com apostas",
-    "dinheiro fácil com apostas",
-    "dinheiro facil com apostas",
-    "lucro garantido",
-    "ganho garantido",
-    "renda garantida",
-    "retorno garantido",
-    "lucro fácil",
-    "lucro facil",
-    "ganho fácil",
-    "ganho facil",
-    "dinheiro fácil",
-    "dinheiro facil",
-    "dinheiro rápido",
-    "dinheiro rapido",
-    "ganhe fácil",
-    "ganhe facil",
-    "ganhe rápido",
-    "ganhe rapido",
-    "ganhe muito apostando",
-    "ganhe muito com apostas",
-    "lucre apostando",
-    "lucrar apostando",
-    "lucre com apostas",
-    "lucrar com apostas",
-    "renda com apostas",
-    "renda através de apostas",
-    "renda atraves de apostas",
-    "viva de apostas",
-    "viver de apostas"
-]
-
-FRASES_RECUPERACAO_PERDAS = [
-    "recupere seu dinheiro apostando",
-    "recuperar seu dinheiro apostando",
-    "recupere o dinheiro perdido",
-    "recuperar o dinheiro perdido",
-    "recupere suas perdas",
-    "recuperar suas perdas",
-    "recupere o prejuízo",
-    "recuperar o prejuizo",
-    "recupere o prejuízo apostando",
-    "recuperar o prejuizo apostando",
-    "dobre sua banca",
-    "dobrar sua banca",
-    "duplique sua banca",
-    "duplicar sua banca",
-    "aumente sua banca",
-    "aumentar sua banca",
-    "recupere na próxima aposta",
-    "recuperar na próxima aposta",
-    "recuperar na proxima aposta",
-    "apostar mais para recuperar",
-    "aposte mais para recuperar",
-    "apostando mais você recupera",
-    "apostando mais voce recupera",
-    "não pare até recuperar",
-    "nao pare ate recuperar"
-]
-
-FRASES_DIVULGACAO_APOSTAS = [
-    "site de apostas",
-    "sites de apostas",
-    "casa de apostas",
-    "casas de apostas",
-    "plataforma de apostas",
-    "plataformas de apostas",
-    "aplicativo de apostas",
-    "aplicativo para apostas",
-    "app de apostas",
-    "link de aposta",
-    "link para apostar",
-    "link de apostas",
-    "código promocional",
-    "codigo promocional",
-    "cupom de aposta",
-    "cupom de apostas",
-    "bônus de aposta",
-    "bonus de aposta",
-    "bônus de apostas",
-    "bonus de apostas",
-    "bônus de cadastro",
-    "bonus de cadastro",
-    "bônus grátis",
-    "bonus gratis",
-    "indicação de aposta",
-    "indicacao de aposta",
-    "indicação de apostas",
-    "indicacao de apostas"
-]
-
-TERMOS_PROMOCAO_APOSTAS = [
-    "odd alta",
-    "odds altas",
-    "odd turbinada",
-    "odds turbinadas",
-    "aposta segura",
-    "aposta certa",
-    "aposta garantida",
-    "apostas seguras",
-    "apostas certas",
-    "apostas garantidas",
-    "palpite certeiro",
-    "palpite garantido",
-    "dica de aposta",
-    "dicas de aposta",
-    "dica para apostar",
-    "dicas para apostar",
-    "estratégia de aposta",
-    "estrategia de aposta",
-    "estratégia para apostar",
-    "estrategia para apostar",
-    "método para ganhar",
-    "metodo para ganhar",
-    "método para lucrar",
-    "metodo para lucrar",
-    "banca garantida",
-    "banca fácil",
-    "banca facil"
-]
-
-def normalizar_texto(texto):
-    texto = texto.lower().strip()
-
-    substituicoes = {
-        "á": "a",
-        "à": "a",
-        "ã": "a",
-        "â": "a",
-        "é": "e",
-        "ê": "e",
-        "í": "i",
-        "ó": "o",
-        "ô": "o",
-        "õ": "o",
-        "ú": "u",
-        "ç": "c"
-    }
-
-    for original, substituto in substituicoes.items():
-        texto = texto.replace(original, substituto)
-
-    texto = re.sub(r"\s+", " ", texto)
-
-    return texto
-
-
-def verificar_conteudo_proibido(texto):
-    texto_normalizado = normalizar_texto(texto)
-
-    for palavra in PALAVRAS_PROIBIDAS:
-        palavra_normalizada = normalizar_texto(palavra)
-
-        if re.search(
-            r"\b" + re.escape(palavra_normalizada) + r"\b",
-            texto_normalizado
-        ):
-            return "A mensagem contém linguagem ofensiva não permitida."
-
-    grupos_de_frases = [
-        FRASES_APOSTAS_PROIBIDAS,
-        FRASES_PROMOCAO_APOSTAS,
-        FRASES_RECUPERACAO_PERDAS,
-        FRASES_DIVULGACAO_APOSTAS,
-        TERMOS_PROMOCAO_APOSTAS
-    ]
-
-    for grupo in grupos_de_frases:
-        for frase in grupo:
-            frase_normalizada = normalizar_texto(frase)
-
-            if frase_normalizada in texto_normalizado:
-                return (
-                    "Esta mensagem contém conteúdo que incentiva, "
-                    "promove ou estimula apostas."
-                )
-
-    return None
-
 # Página principal do fórum
 
 
@@ -6913,7 +6782,7 @@ def dashboard_admin():
 
     if session.get("tipo_usuario") != "admin":
         flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("dashboard_usuario"))
+        return redirecionar_para_painel()
 
     conexao = None
     cursor = None
@@ -7111,7 +6980,7 @@ def dashboard_profissional():
 
     if session.get("tipo_usuario") != "profissional":
         flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("dashboard_usuario"))
+        return redirecionar_para_painel()
 
     conexao = None
     cursor = None
@@ -7799,6 +7668,7 @@ def editar_profissional_aprovados(profissional_id):
 
 
 @app.route("/admin/profissionais-aprovados/<int:profissional_id>/banir", methods=["POST"])
+@limiter.limit("10 per minute")
 def banir_profissional(profissional_id):
 
     # =========================
@@ -7959,6 +7829,7 @@ def banir_profissional(profissional_id):
             conexao.close()
             
 @app.route("/admin/profissionais-aprovados/<int:profissional_id>/reativar", methods=["POST"])
+@limiter.limit("10 per minute")
 def reativar_profissional(profissional_id):
 
     # =========================
@@ -8094,6 +7965,58 @@ def reativar_profissional(profissional_id):
 def escolher_cadastro():
     return render_template('escolher_cadastro.html')
 
+
+def _envolver_email_html(conteudo_interno):
+    # Skeleton HTML compartilhado por todos os emails do site (DOCTYPE, head,
+    # estilo do body e o cartão branco externo). Cada email só monta o que
+    # vai dentro do cartão (cabeçalho, conteúdo, rodapé) e passa aqui.
+    return f"""
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body style="
+    margin:0;
+    padding:0;
+    background-color:#f4f6f9;
+    font-family:Arial, Helvetica, sans-serif;
+">
+
+    <div style="
+        max-width:600px;
+        margin:40px auto;
+        background:#ffffff;
+        border-radius:16px;
+        overflow:hidden;
+        box-shadow:0 8px 25px rgba(0,0,0,0.08);
+    ">
+
+{conteudo_interno}
+
+    </div>
+
+</body>
+</html>
+    """
+
+
+def _montar_e_enviar_email(destinatario, assunto, texto_simples, conteudo_interno_html):
+    # Monta a Message do Flask-Mail e envia. Fica fora do try/except de cada
+    # enviar_email_* para cada função manter sua própria mensagem de log e
+    # seu próprio tratamento (ex.: rollback de uma transação em andamento).
+    msg = Message(
+        subject=assunto,
+        recipients=[destinatario],
+        sender=app.config['MAIL_DEFAULT_SENDER']
+    )
+
+    msg.body = texto_simples
+    msg.html = _envolver_email_html(conteudo_interno_html)
+
+    mail.send(msg)
+
+
 def enviar_email_cadastro_profissional(email):
     try:
 
@@ -8102,13 +8025,7 @@ def enviar_email_cadastro_profissional(email):
         token = serializer.dumps(email, salt='confirmacao-email')
         link = url_externa('confirmar_email', token=token)
 
-        msg = Message(
-            subject='Cadastro recebido - Apoio & Consciência',
-            recipients=[email],
-            sender=app.config['MAIL_DEFAULT_SENDER']
-        )
-
-        msg.body = f"""
+        texto = f"""
 Olá!
 
 Seu cadastro profissional no Apoio & Consciência foi recebido com sucesso.
@@ -8126,29 +8043,7 @@ Atenciosamente,
 Equipe Apoio & Consciência
         """
 
-        msg.html = f"""
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-</head>
-
-<body style="
-    margin:0;
-    padding:0;
-    background-color:#f4f6f9;
-    font-family:Arial, Helvetica, sans-serif;
-">
-
-    <div style="
-        max-width:600px;
-        margin:40px auto;
-        background:#ffffff;
-        border-radius:16px;
-        overflow:hidden;
-        box-shadow:0 8px 25px rgba(0,0,0,0.08);
-    ">
-
+        conteudo = f"""
         <div style="
             background:linear-gradient(135deg, #1d3557, #457b9d);
             padding:30px;
@@ -8250,14 +8145,14 @@ Equipe Apoio & Consciência
             Se você não fez este cadastro, ignore esta mensagem.<br>
             Equipe Apoio &amp; Consciência
         </div>
-
-    </div>
-
-</body>
-</html>
         """
 
-        mail.send(msg)
+        _montar_e_enviar_email(
+            email,
+            'Cadastro recebido - Apoio & Consciência',
+            texto,
+            conteudo
+        )
 
         return True
 
@@ -8269,22 +8164,9 @@ Equipe Apoio & Consciência
 def enviar_email_confirmacao_usuario(email):
     try:
         token = serializer.dumps(email, salt='confirmacao-email')
+        link = url_externa('confirmar_email', token=token)
 
-    
-        link = url_externa(
-            'confirmar_email',
-            token=token
-        )
-
-
-        msg = Message(
-            subject='Confirme seu cadastro - Apoio & Consciência',
-            recipients=[email],
-            sender=app.config['MAIL_DEFAULT_SENDER']
-        )
-
-        # VERSÃO TEXTO
-        msg.body = f"""
+        texto = f"""
 Confirme seu cadastro acessando o link abaixo:
 
 {link}
@@ -8292,29 +8174,7 @@ Confirme seu cadastro acessando o link abaixo:
 Se você não criou essa conta, ignore esta mensagem.
         """
 
-        # VERSÃO HTML PROFISSIONAL
-        msg.html = f"""
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-</head>
-<body style="
-    margin:0;
-    padding:0;
-    background-color:#f4f6f9;
-    font-family:Arial, Helvetica, sans-serif;
-">
-
-    <div style="
-        max-width:600px;
-        margin:40px auto;
-        background:#ffffff;
-        border-radius:16px;
-        overflow:hidden;
-        box-shadow:0 8px 25px rgba(0,0,0,0.08);
-    ">
-
+        conteudo = f"""
         <!-- TOPO -->
         <div style="
             background:linear-gradient(135deg, #1d3557, #457b9d);
@@ -8405,16 +8265,16 @@ Se você não criou essa conta, ignore esta mensagem.
             Se você não criou essa conta, ignore esta mensagem com segurança.<br>
             © Apoio & Consciência
         </div>
-
-    </div>
-
-</body>
-</html>
         """
 
         app.config['MAIL_PASSWORD'] = os.getenv("MAIL_PASSWORD")
 
-        mail.send(msg)
+        _montar_e_enviar_email(
+            email,
+            'Confirme seu cadastro - Apoio & Consciência',
+            texto,
+            conteudo
+        )
 
         return True
 
@@ -8430,13 +8290,7 @@ def enviar_email_conta_existente(email):
         link_login = url_externa("login")
         link_senha = url_externa("esqueci_senha")
 
-        msg = Message(
-            subject='Tentativa de cadastro - Apoio & Consciência',
-            recipients=[email],
-            sender=app.config['MAIL_DEFAULT_SENDER']
-        )
-
-        msg.body = f"""
+        texto = f"""
 Recebemos uma tentativa de cadastro usando dados que já pertencem à sua conta.
 
 Se foi você, não é preciso criar outra conta. Faça login em:
@@ -8448,17 +8302,7 @@ Esqueceu a senha? Redefina em:
 Se não foi você, ignore esta mensagem. Nenhuma conta nova foi criada.
         """
 
-        msg.html = f"""
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-</head>
-<body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, Helvetica, sans-serif;">
-
-    <div style="max-width:600px; margin:40px auto; background:#ffffff; border-radius:16px;
-        overflow:hidden; box-shadow:0 8px 25px rgba(0,0,0,0.08);">
-
+        conteudo = f"""
         <div style="background:linear-gradient(135deg, #1d3557, #457b9d); padding:30px;
             text-align:center; color:white;">
             <h1 style="margin:0; font-size:28px;">Apoio & Consciência</h1>
@@ -8491,14 +8335,14 @@ Se não foi você, ignore esta mensagem. Nenhuma conta nova foi criada.
             Se não foi você, ignore esta mensagem. Nenhuma conta nova foi criada.<br>
             © Apoio & Consciência
         </div>
-
-    </div>
-
-</body>
-</html>
         """
 
-        mail.send(msg)
+        _montar_e_enviar_email(
+            email,
+            'Tentativa de cadastro - Apoio & Consciência',
+            texto,
+            conteudo
+        )
 
         return True
 
@@ -8518,13 +8362,7 @@ def enviar_email_troca_email(usuario_id, email_atual, novo_email):
 
         link = url_externa("confirmar_novo_email", token=token)
 
-        msg = Message(
-            subject='Confirme seu novo e-mail - Apoio & Consciência',
-            recipients=[novo_email],
-            sender=app.config['MAIL_DEFAULT_SENDER']
-        )
-
-        msg.body = f"""
+        texto = f"""
 Recebemos um pedido para usar este e-mail na sua conta do Apoio & Consciência.
 
 Para confirmar a troca, acesse o link abaixo (válido por 1 hora):
@@ -8534,17 +8372,7 @@ Para confirmar a troca, acesse o link abaixo (válido por 1 hora):
 Se você não pediu essa troca, ignore esta mensagem. Nada será alterado.
         """
 
-        msg.html = f"""
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-</head>
-<body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, Helvetica, sans-serif;">
-
-    <div style="max-width:600px; margin:40px auto; background:#ffffff; border-radius:16px;
-        overflow:hidden; box-shadow:0 8px 25px rgba(0,0,0,0.08);">
-
+        conteudo = f"""
         <div style="background:linear-gradient(135deg, #1d3557, #457b9d); padding:30px;
             text-align:center; color:white;">
             <h1 style="margin:0; font-size:28px;">Apoio & Consciência</h1>
@@ -8583,14 +8411,14 @@ Se você não pediu essa troca, ignore esta mensagem. Nada será alterado.
             Se você não pediu essa troca, ignore esta mensagem. Nada será alterado.<br>
             © Apoio & Consciência
         </div>
-
-    </div>
-
-</body>
-</html>
         """
 
-        mail.send(msg)
+        _montar_e_enviar_email(
+            novo_email,
+            'Confirme seu novo e-mail - Apoio & Consciência',
+            texto,
+            conteudo
+        )
 
         return True
 
@@ -8602,13 +8430,7 @@ Se você não pediu essa troca, ignore esta mensagem. Nada será alterado.
 def enviar_email_email_alterado(email_antigo, novo_email):
     # Avisa o email antigo depois da troca, para o dono perceber se não foi ele
     try:
-        msg = Message(
-            subject='Seu e-mail foi alterado - Apoio & Consciência',
-            recipients=[email_antigo],
-            sender=app.config['MAIL_DEFAULT_SENDER']
-        )
-
-        msg.body = f"""
+        texto = f"""
 O e-mail da sua conta no Apoio & Consciência foi alterado para {novo_email}.
 
 Se foi você, nada precisa ser feito.
@@ -8616,17 +8438,7 @@ Se foi você, nada precisa ser feito.
 Se não foi você, entre em contato com a equipe do site o quanto antes.
         """
 
-        msg.html = f"""
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-</head>
-<body style="margin:0; padding:0; background-color:#f4f6f9; font-family:Arial, Helvetica, sans-serif;">
-
-    <div style="max-width:600px; margin:40px auto; background:#ffffff; border-radius:16px;
-        overflow:hidden; box-shadow:0 8px 25px rgba(0,0,0,0.08);">
-
+        conteudo = f"""
         <div style="background:linear-gradient(135deg, #1d3557, #457b9d); padding:30px;
             text-align:center; color:white;">
             <h1 style="margin:0; font-size:28px;">Apoio & Consciência</h1>
@@ -8651,14 +8463,14 @@ Se não foi você, entre em contato com a equipe do site o quanto antes.
             color:#6c757d; border-top:1px solid #e9ecef;">
             © Apoio & Consciência
         </div>
-
-    </div>
-
-</body>
-</html>
         """
 
-        mail.send(msg)
+        _montar_e_enviar_email(
+            email_antigo,
+            'Seu e-mail foi alterado - Apoio & Consciência',
+            texto,
+            conteudo
+        )
 
         return True
 
@@ -8726,17 +8538,7 @@ def enviar_email_recuperacao(email):
             token=token
         )
 
-
-        msg = Message(
-            subject='Redefinição de senha - Apoio & Consciência',
-            recipients=[email],
-            sender=app.config['MAIL_DEFAULT_SENDER']
-        )
-
-        # =========================
-        # VERSÃO TEXTO
-        # =========================
-        msg.body = f"""
+        texto = f"""
 Redefina sua senha acessando o link abaixo:
 
 {link}
@@ -8744,31 +8546,7 @@ Redefina sua senha acessando o link abaixo:
 Se você não solicitou essa alteração, ignore este email com segurança.
         """
 
-        # =========================
-        # VERSÃO HTML PROFISSIONAL
-        # =========================
-        msg.html = f"""
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-</head>
-<body style="
-    margin:0;
-    padding:0;
-    background-color:#f4f6f9;
-    font-family:Arial, Helvetica, sans-serif;
-">
-
-    <div style="
-        max-width:600px;
-        margin:40px auto;
-        background:#ffffff;
-        border-radius:16px;
-        overflow:hidden;
-        box-shadow:0 8px 25px rgba(0,0,0,0.08);
-    ">
-
+        conteudo = f"""
         <!-- TOPO -->
         <div style="
             background:linear-gradient(135deg, #0d6efd, #3a86ff);
@@ -8873,14 +8651,14 @@ Se você não solicitou essa alteração, ignore este email com segurança.
             Protegendo seu acesso com responsabilidade.<br>
             © Apoio & Consciência
         </div>
-
-    </div>
-
-</body>
-</html>
         """
 
-        mail.send(msg)
+        _montar_e_enviar_email(
+            email,
+            'Redefinição de senha - Apoio & Consciência',
+            texto,
+            conteudo
+        )
 
         return True
 
@@ -8899,10 +8677,23 @@ Se você não solicitou essa alteração, ignore este email com segurança.
         if conexao:
             conexao.close()
 
-    
-    
-    
+
+def _enviar_recuperacao_em_background(email, base_url):
+    # test_request_context fornece o contexto de app e de requisição que
+    # url_for/mail.send precisam, já que esta função roda numa thread fora
+    # do request original (ver comentário em esqueci_senha). base_url vem
+    # do request original para que o link no email use o host correto
+    # quando BASE_URL não estiver configurada (fallback de url_externa).
+    with app.test_request_context(base_url=base_url):
+        if not enviar_email_recuperacao(email):
+            app.logger.error(
+                "Falha ao enviar email de recuperação (segundo plano) para %s",
+                email
+            )
+
+
 @app.route("/esqueci-senha", methods=["GET", "POST"])
+@limiter.limit("5 per minute", methods=["POST"])
 def esqueci_senha():
 
     if request.method == "POST":
@@ -8927,32 +8718,23 @@ def esqueci_senha():
 
             usuario = cursor.fetchone()
 
-            if not usuario:
-                flash(
-                    "Se o e-mail estiver cadastrado e puder receber recuperação, você receberá as instruções.",
-                    "info"
-                )
-                return redirect(url_for("login"))
+            # A mensagem exibida e o tempo de resposta precisam ser os
+            # mesmos independentemente de o e-mail existir, estar banido ou
+            # o envio falhar. Caso contrário, alguém sem login consegue
+            # descobrir quais e-mails estão cadastrados (CWE-203). Por isso
+            # o envio roda em segundo plano e a resposta já é devolvida
+            # com a mesma mensagem genérica em todos os casos.
+            if usuario and usuario["status"] == "ativo":
+                threading.Thread(
+                    target=_enviar_recuperacao_em_background,
+                    args=(email, request.host_url),
+                    daemon=True
+                ).start()
 
-            # Usuário banido não pode recuperar a senha
-            if usuario["status"] == "banido":
-                flash(
-                    "Se o e-mail estiver cadastrado e puder receber recuperação, você receberá as instruções.",
-                    "info"
-                )
-                return redirect(url_for("login"))
-
-            if enviar_email_recuperacao(email):
-                flash(
-                    "Enviamos um link para redefinição de senha.",
-                    "success"
-                )
-            else:
-                flash(
-                    "Erro ao enviar email de recuperação.",
-                    "danger"
-                )
-
+            flash(
+                "Se o e-mail estiver cadastrado e puder receber recuperação, você receberá as instruções.",
+                "info"
+            )
             return redirect(url_for("login"))
 
         except Exception:
@@ -9116,18 +8898,7 @@ def redefinir_senha(token):
 
 def enviar_email_aprovacao(email, nome):
     try:
-
-        msg = Message(
-            subject='Seu cadastro profissional foi aprovado - Apoio & Consciência',
-            recipients=[email],
-            sender=app.config['MAIL_DEFAULT_SENDER']
-        )
-
-        # =========================
-        # VERSÃO TEXTO
-        # =========================
-
-        msg.body = f"""
+        texto = f"""
 Olá, {nome}.
 
 Temos uma boa notícia!
@@ -9143,34 +8914,7 @@ Atenciosamente,
 Equipe Apoio & Consciência
 """
 
-        # =========================
-        # VERSÃO HTML
-        # =========================
-
-        msg.html = f"""
-<!DOCTYPE html>
-<html lang="pt-BR">
-
-<head>
-    <meta charset="UTF-8">
-</head>
-
-<body style="
-    margin:0;
-    padding:0;
-    background-color:#f4f6f9;
-    font-family:Arial, Helvetica, sans-serif;
-">
-
-    <div style="
-        max-width:600px;
-        margin:40px auto;
-        background:#ffffff;
-        border-radius:16px;
-        overflow:hidden;
-        box-shadow:0 8px 25px rgba(0,0,0,0.08);
-    ">
-
+        conteudo = f"""
         <!-- TOPO -->
 
         <div style="
@@ -9292,20 +9036,14 @@ Equipe Apoio & Consciência
             © Apoio & Consciência
 
         </div>
+        """
 
-    </div>
-
-</body>
-
-</html>
-"""
-
-        # =========================
-        # DEBUG
-        # =========================
-
-
-        mail.send(msg)
+        _montar_e_enviar_email(
+            email,
+            'Seu cadastro profissional foi aprovado - Apoio & Consciência',
+            texto,
+            conteudo
+        )
 
         return True
 
@@ -9315,18 +9053,7 @@ Equipe Apoio & Consciência
 
 def enviar_email_recusa(email, nome, motivo):
     try:
-
-        msg = Message(
-            subject='Atualização do seu cadastro profissional - Apoio & Consciência',
-            recipients=[email],
-            sender=app.config['MAIL_DEFAULT_SENDER']
-        )
-
-        # =========================
-        # VERSÃO TEXTO
-        # =========================
-
-        msg.body = f"""
+        texto = f"""
 Olá, {nome}.
 
 Agradecemos pelo seu interesse em fazer parte da plataforma Apoio & Consciência.
@@ -9344,34 +9071,7 @@ Atenciosamente,
 Equipe Apoio & Consciência
 """
 
-        # =========================
-        # VERSÃO HTML
-        # =========================
-
-        msg.html = f"""
-<!DOCTYPE html>
-<html lang="pt-BR">
-
-<head>
-    <meta charset="UTF-8">
-</head>
-
-<body style="
-    margin:0;
-    padding:0;
-    background-color:#f4f6f9;
-    font-family:Arial, Helvetica, sans-serif;
-">
-
-    <div style="
-        max-width:600px;
-        margin:40px auto;
-        background:#ffffff;
-        border-radius:16px;
-        overflow:hidden;
-        box-shadow:0 8px 25px rgba(0,0,0,0.08);
-    ">
-
+        conteudo = f"""
         <!-- TOPO -->
 
         <div style="
@@ -9494,18 +9194,14 @@ Equipe Apoio & Consciência
             © Apoio & Consciência
 
         </div>
+        """
 
-    </div>
-
-</body>
-
-</html>
-"""
-
-        
-
-        mail.send(msg)
-
+        _montar_e_enviar_email(
+            email,
+            'Atualização do seu cadastro profissional - Apoio & Consciência',
+            texto,
+            conteudo
+        )
 
         return True
 
@@ -9728,12 +9424,12 @@ def limpar_fotos_periodicamente():
     limpar_fotos_orfas()
 
 
-@app.route("/uploads/<filename>")
-def uploaded_file(filename):
+@app.route("/uploads/<nome_arquivo>")
+def servir_upload(nome_arquivo):
 
     # Só serve fotos registradas em profissionais (nunca as temporárias).
     # Fotos de cadastros pendentes, recusados ou banidos só aparecem para o admin e para o dono.
-    if secure_filename(filename) != filename:
+    if secure_filename(nome_arquivo) != nome_arquivo:
         abort(404)
 
     conexao = None
@@ -9750,7 +9446,7 @@ def uploaded_file(filename):
             INNER JOIN usuarios u ON u.id = p.usuario_id
             WHERE p.foto = %s
             """,
-            (filename,)
+            (nome_arquivo,)
         )
 
         foto = cursor.fetchone()
@@ -9776,7 +9472,7 @@ def uploaded_file(filename):
 
     return send_from_directory(
         app.config["UPLOAD_FOLDER"],
-        filename
+        nome_arquivo
     )
 
 # =========================
@@ -9807,6 +9503,27 @@ def carregar_dados_legais():
 
 
 LEGAL = carregar_dados_legais()
+
+
+@functools.lru_cache(maxsize=512)
+def _versao_arquivo_estatico(filename):
+    # Lê a data de modificação uma única vez por arquivo (cache em memória);
+    # os arquivos estáticos não mudam enquanto o processo está no ar.
+    try:
+        caminho = os.path.join(app.static_folder, filename)
+        return int(os.path.getmtime(caminho))
+    except (OSError, TypeError, ValueError):
+        return None
+
+
+@app.url_defaults
+def versionar_arquivos_estaticos(endpoint, values):
+    # Acrescenta ?v=<data de modificação> nos CSS/JS, para o navegador
+    # baixar de novo sempre que o arquivo mudar em vez de usar o cache antigo
+    if endpoint == "static" and values.get("filename") and "v" not in values:
+        versao = _versao_arquivo_estatico(values["filename"])
+        if versao is not None:
+            values["v"] = versao
 
 
 @app.context_processor
@@ -10042,6 +9759,92 @@ def minha_privacidade():
             conexao.close()
 
 
+ROTULOS_DADOS_CONTA = {
+    "nome": "Nome", "sobrenome": "Sobrenome", "email": "E-mail", "telefone": "Telefone",
+    "cpf": "CPF", "data_nascimento": "Data de nascimento", "cep": "CEP", "estado": "Estado",
+    "cidade": "Cidade", "bairro": "Bairro", "rua": "Rua", "numero": "Número",
+    "complemento": "Complemento", "tipo": "Tipo de conta", "status": "Situação da conta",
+    "data_cadastro": "Cadastro feito em", "crp": "CRP", "uf_crp": "UF do CRP",
+    "especialidade": "Especialidade", "status_aprovacao": "Situação da aprovação",
+}
+
+# Campos do cadastro que entram no arquivo "Baixar meus dados"
+CAMPOS_EXPORTAVEIS = set(ROTULOS_DADOS_CONTA) | {
+    "sexo", "email_confirmado", "termos_aceitos", "termos_aceitos_em", "termos_versao",
+    "experiencia", "faculdade", "pos", "biografia", "data_aprovacao", "motivo_recusa",
+}
+
+NOMES_REMETENTE = {"usuario": "Você", "bot": "Apoio Virtual", "profissional": "Profissional"}
+
+
+def montar_texto_meus_dados(conta, profissional, atendimentos, mensagens_chat, topicos, mensagens_forum):
+    """Monta o arquivo de texto com os dados do usuário, legível por qualquer pessoa."""
+
+    def valor_legivel(valor):
+        if valor is None or valor == "":
+            return "(não informado)"
+        if isinstance(valor, datetime):
+            return valor.strftime("%d/%m/%Y %H:%M")
+        if isinstance(valor, date):
+            return valor.strftime("%d/%m/%Y")
+        return str(valor)
+
+    def campos_visiveis(registro):
+        # Só sai o que está em CAMPOS_EXPORTAVEIS. Uma lista de campos proibidos deixaria
+        # passar qualquer coluna nova ou interna (como o segredo do autenticador)
+        linhas = []
+        for chave, valor in (registro or {}).items():
+            if chave not in CAMPOS_EXPORTAVEIS:
+                continue
+            rotulo = ROTULOS_DADOS_CONTA.get(chave, chave.replace("_", " ").capitalize())
+            linhas.append(f"{rotulo}: {valor_legivel(valor)}")
+        return linhas
+
+    linhas = [
+        "MEUS DADOS - APOIO & CONSCIÊNCIA",
+        f"Gerado em {datetime.now().strftime('%d/%m/%Y às %H:%M')}",
+        "",
+        "=" * 50,
+        "DADOS DO CADASTRO",
+        "=" * 50,
+        *campos_visiveis(conta),
+        "",
+    ]
+
+    if profissional:
+        linhas += ["=" * 50, "DADOS PROFISSIONAIS", "=" * 50, *campos_visiveis(profissional), ""]
+
+    linhas += ["=" * 50, "CONVERSAS COM O APOIO VIRTUAL", "=" * 50]
+
+    if not atendimentos:
+        linhas.append("Nenhuma conversa registrada.")
+
+    for atendimento in atendimentos:
+        linhas += ["", f"Conversa iniciada em {valor_legivel(atendimento['data_inicio'])}"]
+
+        for msg in mensagens_chat:
+            if msg["atendimento_id"] == atendimento["id"]:
+                autor = NOMES_REMETENTE.get(msg["remetente"], msg["remetente"])
+                linhas.append(f"  [{valor_legivel(msg['data_envio'])}] {autor}: {msg['mensagem']}")
+
+    linhas += ["", "=" * 50, "FÓRUM", "=" * 50]
+
+    if not topicos and not mensagens_forum:
+        linhas.append("Nenhuma participação registrada.")
+
+    if topicos:
+        linhas += ["", "Tópicos que você criou:"]
+        for topico in topicos:
+            linhas.append(f"  - {topico['titulo']} ({valor_legivel(topico['data_criacao'])})")
+
+    if mensagens_forum:
+        linhas += ["", "Mensagens que você escreveu:"]
+        for msg in mensagens_forum:
+            linhas.append(f"  [{valor_legivel(msg['data_criacao'])}] {msg['mensagem']}")
+
+    return "\r\n".join(linhas) + "\r\n"
+
+
 @app.route("/conta/exportar", methods=["POST"])
 @limiter.limit("5 per hour")
 def exportar_meus_dados():
@@ -10111,21 +9914,16 @@ def exportar_meus_dados():
         )
         mensagens_forum = cursor.fetchall()
 
-        dados = {
-            "gerado_em": datetime.now().isoformat(timespec="seconds"),
-            "conta": conta,
-            "dados_profissionais": profissional,
-            "conversas_chatbot": atendimentos,
-            "mensagens_chatbot": mensagens_chat,
-            "topicos_forum": topicos,
-            "mensagens_forum": mensagens_forum,
-        }
+        texto = montar_texto_meus_dados(
+            conta, profissional, atendimentos, mensagens_chat, topicos, mensagens_forum
+        )
 
         return Response(
-            json.dumps(dados, ensure_ascii=False, indent=2, default=str),
-            mimetype="application/json",
+            texto,
+            mimetype="text/plain",
             headers={
-                "Content-Disposition": "attachment; filename=meus-dados.json",
+                "Content-Disposition": "attachment; filename=meus-dados.txt",
+                "Content-Type": "text/plain; charset=utf-8",
                 "Cache-Control": "no-store",
             }
         )

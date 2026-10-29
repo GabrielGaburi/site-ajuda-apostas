@@ -400,13 +400,44 @@
             }
         }
 
+        // Pergunta em um modal do Bootstrap; sem ele, usa o confirm do navegador
+        function confirmarEncerramento() {
+
+            const elModal = document.getElementById('modalEncerrar');
+
+            if (!elModal || !window.bootstrap) {
+                return Promise.resolve(confirm('Encerrar este atendimento?'));
+            }
+
+            return new Promise((resolve) => {
+
+                const modal = bootstrap.Modal.getOrCreateInstance(elModal);
+                const btnSim = document.getElementById('btnConfirmarEncerrar');
+                let confirmou = false;
+
+                const aoConfirmar = () => {
+                    confirmou = true;
+                    modal.hide();
+                };
+
+                btnSim.addEventListener('click', aoConfirmar, { once: true });
+
+                elModal.addEventListener('hidden.bs.modal', () => {
+                    btnSim.removeEventListener('click', aoConfirmar);
+                    resolve(confirmou);
+                }, { once: true });
+
+                modal.show();
+            });
+        }
+
         async function encerrar() {
 
             if (!sessaoSelecionada) {
                 return;
             }
 
-            const ok = confirm('Encerrar este atendimento?');
+            const ok = await confirmarEncerramento();
 
             if (!ok) {
                 return;
