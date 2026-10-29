@@ -88,6 +88,9 @@ TAMANHO_MAXIMO_CAMPOS = {
     "biografia": 1000
 }
 
+# Campos de endereço em texto livre: os sinais < e > nunca fazem parte de um endereço
+CAMPOS_SEM_HTML = {"rua", "numero", "bairro", "cidade"}
+
 OPCOES_SEXO = {"Masculino", "Feminino", "Prefiro não informar"}
 
 UFS_VALIDAS = {
@@ -112,6 +115,9 @@ def validar_campos_obrigatorios(dados, campos):
         limite = TAMANHO_MAXIMO_CAMPOS.get(campo)
         if limite and len(dados[campo]) > limite:
             raise ErroCadastro(campo, f"O campo {nome_campo} deve ter no máximo {limite} caracteres.")
+
+        if campo in CAMPOS_SEM_HTML and re.search(r"[<>]", dados[campo]):
+            raise ErroCadastro(campo, f"O campo {nome_campo} não pode conter os caracteres < e >.")
 
 
 def validar_dados_pessoais(dados, campos):
