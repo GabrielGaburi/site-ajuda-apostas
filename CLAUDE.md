@@ -19,7 +19,7 @@ python -m venv .venv
 - Antes de usar os recursos de LGPD, rode uma vez `.venv\Scripts\python migrar_lgpd.py` (cria as colunas de consentimento e exclusão em `usuarios`). Sem isso, o chat e o fórum ficam bloqueados por falta de consentimento.
 - Retenção de dados: agende `.venv\Scripts\flask --app app aplicar-retencao` para rodar uma vez por dia. Os prazos vêm de `RETENCAO_CONVERSAS_DIAS` (padrão 365) e `RETENCAO_CONVERSAS_VISITANTES_DIAS` (padrão 30) no `.env`.
 - Páginas legais (`/termos`, `/privacidade`, `/cookies`): os dados do controlador vêm das variáveis `LEGAL_*` do `.env`; enquanto faltarem, as páginas mostram o aviso de rascunho. Ao mudar o texto jurídico, atualize `TERMOS_VERSAO` em `app.py`: todos os usuários precisarão aceitar de novo e consentir novamente para dados de saúde.
-- Não há testes automatizados, linter nem etapa de build. As mudanças são verificadas manualmente no navegador, inclusive no celular.
+- Os testes automatizados cobrem só regras puras, sem banco: `.venv\Scripts\python -m unittest discover -s testes` (`validacoes.py`, `deteccao_risco.py`, `moderacao.py`, `normalizacao.py`) e `node --test testes/test_validacao_cadastro.js` (`static/js/validacao_cadastro.js`). Ao mudar a detecção de crise ou a moderação, rode-os: eles guardam os casos de evasão já corrigidos. Não há linter nem etapa de build. Rotas, banco e telas são verificados manualmente no navegador, inclusive no celular.
 
 A configuração vem do `.env`, carregado com `override=True`. As variáveis são `SECRET_KEY`, `BASE_URL`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `MAIL_USERNAME`, `MAIL_PASSWORD` (senha de app do Gmail), `OPENAI_API_KEY` e `GNEWS_API_KEY`. `HTTPS_ATIVO=true` é opcional e ativa cookies de sessão seguros. `PROXIES_CONFIAVEIS` (padrão `0`) é o número de proxies na frente do app (ex.: `1` com o túnel `cloudflared` ou um Nginx); quando é maior que zero, o `ProxyFix` faz o Flask e o `Flask-Limiter` usarem o IP real do visitante.
 
@@ -41,6 +41,8 @@ Todo o back-end está em um único `app.py` de ~10 mil linhas: configuração, f
 - `Flask-Limiter` limita rotas sensíveis: `@limiter.limit("5 per minute")` em login, 2FA, cadastro e redefinição de senha, e 20 por minuto no chatbot.
 - Cookies `HttpOnly` + `SameSite=Lax`.
 - Limite de 5 MB por upload.
+- Sessão: `PERMANENT_SESSION_LIFETIME` vem de `SESSAO_HORAS` (padrão 8 h sem atividade, renovada a cada requisição); o login marca `session.permanent = True`. A sessão guarda `senha_v`, uma impressão da senha que derruba sessões abertas antes de uma troca de senha.
+- Fórum: usuários comuns aparecem como "Maria S." (`nomes.py`), profissionais e admins com nome completo, e visitantes não veem o autor na lista pública. O painel `/admin/forum` mostra nomes completos para moderação.
 
 **Fluxo do chatbot** (`/chatbot`, `/profissional/atendimentos`, `/assumir_atendimento`, `/enviar_profissional`, `/encerrar`, `/mensagens`):
 - Cada conversa é uma linha de `atendimentos_chatbot`, e as mensagens ficam em `mensagens_atendimento`.
@@ -49,9 +51,9 @@ Todo o back-end está em um único `app.py` de ~10 mil linhas: configuração, f
   - Vai para `em_atendimento` quando um profissional assume a conversa.
 - As respostas da IA são geradas de forma assíncrona por `processar_ia_em_background`, em uma `threading.Thread`. Um set em memória com lock (`atendimentos_processando`) evita que a mesma conversa seja processada duas vezes. O front-end (`static/js/chatbot.js`) consulta o servidor periodicamente para buscar mensagens novas.
 - O cliente OpenAI usa o `SYSTEM_PROMPT`, que limita o bot estritamente a apoio emocional relacionado a apostas.
-- `detect_critical` normaliza o texto e faz correspondência aproximada (Levenshtein e leet-speak) contra `CRITICAL_PATTERNS`.
+- `detect_critical` (em `deteccao_risco.py`) normaliza o texto e faz correspondência aproximada (Levenshtein e leet-speak) contra `CRITICAL_PATTERNS`. Também pega letras separadas por espaço ou ponto, Unicode disfarçado e o radical "suicid". `pediu_profissional` fica no mesmo módulo. Se a IA falhar, a resposta (`MENSAGEM_FALHA_IA`) cita o CVV 188 e o SAMU 192.
 
-**Moderação de conteúdo**: posts do fórum e outros textos de usuários passam por `verificar_conteudo_proibido`. Essa função normaliza o texto com `normalizar_texto` e o compara com as listas `PALAVRAS_PROIBIDAS`, `FRASES_*` e `TERMOS_PROMOCAO_APOSTAS`. Assim são bloqueados conteúdos como divulgação de apostas e dicas para recuperar perdas.
+**Moderação de conteúdo**: posts do fórum e a biografia dos profissionais (não o chat) passam por `verificar_conteudo_proibido`, em `moderacao.py`. Essa função compara o texto, normalizado de duas formas (`normalizar_texto` e a forma canônica de `normalizacao.py`, que desfaz leet, separadores, caracteres invisíveis e Unicode disfarçado), com as listas `PALAVRAS_PROIBIDAS`, `FRASES_*` e `TERMOS_PROMOCAO_APOSTAS`. Marcas de casas de apostas não são bloqueadas de propósito, para quem conta o que perdeu poder citá-las. Assim são bloqueados conteúdos como divulgação de apostas e dicas para recuperar perdas.
 
 **Uploads**: as fotos dos profissionais ficam em `uploads/` e são servidas por `/uploads/<filename>`. Só `.jpg`, `.jpeg` e `.png` são aceitos, com validação pelo Pillow.
 - Arquivos com prefixo `temp_` são uploads pendentes, registrados em `session["foto_temporaria_profissional"]`.
@@ -65,4 +67,3 @@ Todo o back-end está em um único `app.py` de ~10 mil linhas: configuração, f
 
 - `@app.route("/")` está registrada duas vezes (`index` e `inicio`), e só a primeira é usada.
 - A lista de locais de ajuda (com lat/lng) está escrita direto dentro da rota `ajuda()`.
-- `forum.json` e `static/forum.json` são legados, já que o fórum agora lê do MySQL.

@@ -214,9 +214,15 @@
                         UF
                     </label>
 
-                    <input type="text" id="estado" name="estado" class="form-control text-uppercase{{ classe_erro('estado') }}"
-                        value="{{ dados.get('estado', '') }}" maxlength="2" autocomplete="address-level1" readonly
-                        {{ aria_erro('estado') }} required>
+                    <select id="estado" name="estado" class="form-select{{ classe_erro('estado') }}"
+                        autocomplete="address-level1" {{ aria_erro('estado') }} required>
+
+                        <option value="">UF</option>
+                        {% for uf in ["AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO"] %}
+                        <option value="{{ uf }}" {% if (dados.get('estado', '') or '')|upper == uf %}selected{% endif %}>{{ uf }}</option>
+                        {% endfor %}
+
+                    </select>
 
                     {{ mensagens_campo("estado") }}
 

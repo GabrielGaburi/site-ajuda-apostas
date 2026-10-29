@@ -22,6 +22,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const botaoProfissional = document.querySelector(".chatbot-profissional-button");
     const botaoEncerrar = document.getElementById("chatbot-encerrar");
+    const avisoEncerrar = document.getElementById("chatbot-encerrar-confirmar");
+    const botaoEncerrarSim = document.getElementById("chatbot-encerrar-sim");
+    const botaoEncerrarNao = document.getElementById("chatbot-encerrar-nao");
+    let timerConfirmarEncerrar = null;
     const painelConsentimento = document.getElementById("chatbot-consentimento");
     const botaoConsentir = document.getElementById("chatbot-consentir");
     const chatbotContainer = document.getElementById("chatbot-container");
@@ -30,29 +34,19 @@ document.addEventListener("DOMContentLoaded", function () {
     const botoesOcultosKey = "chatbotBotoesOcultos";
     const janelaAbertaKey = "chatbotJanelaAberta";
 
-    const sessaoChatKey = "chatbotSessaoAtiva";
+    const statusKey = "chatbotStatusAtendimento";
 
     const parametrosURL = new URLSearchParams(window.location.search);
 
+    // Só o logout apaga a conversa; trocar de página precisa mantê-la
     if (parametrosURL.get("logout") === "1") {
 
         sessionStorage.removeItem("atendimentoId");
         sessionStorage.removeItem("chatbotHistoricoSessao");
         sessionStorage.removeItem("chatbotIAProcessando");
         sessionStorage.removeItem("chatbotNovoAtendimento");
-        sessionStorage.removeItem("chatbotSessaoAtiva");
+        sessionStorage.removeItem(statusKey);
     }
-
-    const sessaoAtiva = sessionStorage.getItem(sessaoChatKey) === "true";
-
-    if (!usuarioAutenticado && sessaoAtiva) {
-        sessionStorage.removeItem("atendimentoId");
-        sessionStorage.removeItem("chatbotHistoricoSessao");
-        sessionStorage.removeItem("chatbotIAProcessando");
-        sessionStorage.removeItem("chatbotNovoAtendimento");
-    }
-
-    sessionStorage.setItem(sessaoChatKey, "true");
 
     let atendimentoId = sessionStorage.getItem("atendimentoId");
     let pollingMensagens = null;
@@ -60,7 +54,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let ultimoIdMensagem = 0;
     let profissionalAtendendo = false;
     let atendimentoInicializado = false;
-    let statusAtendimentoAnterior = null;
+    let statusAtendimentoAnterior = sessionStorage.getItem(statusKey);
     let avisoProfissionalExibido = false;
     let historicoCarregando = false;
     let historicoCarregado = false;
@@ -195,21 +189,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
         messages.appendChild(mensagem);
 
-        if (tipo !== "profissional") {
-
+        try {
             const historico = JSON.parse(
                 sessionStorage.getItem("chatbotHistoricoSessao") || "[]"
             );
 
             historico.push({
                 mensagem: texto,
-                remetente: tipo === "usuario" ? "usuario" : "bot"
+                remetente: tipo === "usuario" || tipo === "profissional" ? tipo : "bot"
             });
 
             sessionStorage.setItem(
                 "chatbotHistoricoSessao",
-                JSON.stringify(historico)
+                JSON.stringify(historico.slice(-100))
             );
+        } catch (erro) {
+            // Sem sessionStorage a conversa só não sobrevive à troca de página
         }
 
         messages.scrollTop = messages.scrollHeight;
@@ -273,7 +268,21 @@ document.addEventListener("DOMContentLoaded", function () {
     function mostrarBotaoEncerrar(visivel) {
 
         if (botaoEncerrar) {
-            botaoEncerrar.hidden = !visivel;
+            // Enquanto a confirmação está na tela, o botão continua escondido
+            botaoEncerrar.hidden = !visivel || (avisoEncerrar && !avisoEncerrar.hidden);
+        }
+
+        if (!visivel) {
+            fecharConfirmacaoEncerrar();
+        }
+    }
+
+    function fecharConfirmacaoEncerrar() {
+
+        clearTimeout(timerConfirmarEncerrar);
+
+        if (avisoEncerrar) {
+            avisoEncerrar.hidden = true;
         }
     }
 
@@ -324,7 +333,9 @@ document.addEventListener("DOMContentLoaded", function () {
         historicoLocal.forEach(function (mensagem) {
             adicionarMensagemSemPersistir(
                 mensagem.mensagem,
-                mensagem.remetente === "usuario" ? "usuario" : "bot"
+                mensagem.remetente === "usuario" || mensagem.remetente === "profissional"
+                    ? mensagem.remetente
+                    : "bot"
             );
         });
 
@@ -393,6 +404,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     profissionalAtendendo = true;
 
+                    // A IA não responde mais; sem isso o envio ficava bloqueado
+                    iaRespondendo = false;
+                    sessionStorage.removeItem("chatbotIAProcessando");
+                    removerDigitando();
+
                     mostrarAtendimentoProfissional();
                     mostrarBotaoEncerrar(true);
 
@@ -415,6 +431,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
 
                     statusAtendimentoAnterior = "em_atendimento";
+                    sessionStorage.setItem(statusKey, statusAtendimentoAnterior);
                 }
 
                 // ========================================
@@ -434,7 +451,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     profissionalAtendendo = false;
                     iaRespondendo = false;
                     sessionStorage.removeItem("chatbotIAProcessando");
-                    statusAtendimentoAnterior = "finalizado";
+                    statusAtendimentoAnterior = null;
+                    sessionStorage.removeItem(statusKey);
                     mostrarBotaoEncerrar(false);
 
                     mostrarApoioVirtual();
@@ -453,6 +471,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
                     profissionalAtendendo = false;
 
+                    // Aguardando humano: a IA não responde, então não há o que esperar
+                    iaRespondendo = false;
+                    sessionStorage.removeItem("chatbotIAProcessando");
+                    removerDigitando();
+
                     mostrarAguardandoProfissional();
                     mostrarBotaoEncerrar(true);
 
@@ -461,6 +484,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     }
 
                     statusAtendimentoAnterior = "aguardando";
+                    sessionStorage.setItem(statusKey, statusAtendimentoAnterior);
                 }
 
                 const mensagens = dados.mensagens;
@@ -474,6 +498,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 // ========================================
 
                 if (!atendimentoInicializado) {
+                    // As mensagens já exibidas voltam do sessionStorage
+                    // (carregarHistoricoChat); aqui só se marca até onde
+                    // já foi lido, para não repeti-las.
                     mensagens.forEach(function (mensagem) {
                         if (!mensagem || !mensagem.id) {
                             return;
@@ -481,33 +508,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
                         mensagensExibidas.add(mensagem.id);
                         ultimoIdMensagem = Math.max(ultimoIdMensagem, mensagem.id);
-
-                        if (mensagem.sender === "human") {
-
-                            adicionarMensagem(
-                                mensagem.text,
-                                "profissional"
-                            );
-
-                        } else if (
-                            mensagem.sender === "bot" &&
-                            dados.status === "aguardando"
-                        ) {
-                            removerDigitando();
-
-                            iaRespondendo = false;
-                            sessionStorage.removeItem("chatbotIAProcessando");
-
-                            adicionarMensagem(
-                                mensagem.text,
-                                "bot"
-                            );
-                        }
                     });
 
                     atendimentoInicializado = true;
-
-                    console.log("Histórico do atendimento restaurado.");
 
                     return;
                 }
@@ -712,8 +715,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
             if (dados.atendimento_id) {
 
+                // O id guardado no sessionStorage é texto e o do servidor é número
                 const novoAtendimento =
-                    atendimentoId !== dados.atendimento_id;
+                    String(atendimentoId) !== String(dados.atendimento_id);
 
                 atendimentoId = dados.atendimento_id;
                 sessionStorage.setItem("atendimentoId", atendimentoId);
@@ -728,7 +732,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     mensagensExibidas.clear();
                     ultimoIdMensagem = 0;
 
-                    atendimentoInicializado = false;
+                    // Conversa criada agora: nada foi exibido ainda, então tudo que
+                    // chegar (ex.: resposta do pedido de profissional) deve aparecer
+                    atendimentoInicializado = true;
 
                     verificarMensagensProfissional();
 
@@ -756,7 +762,9 @@ document.addEventListener("DOMContentLoaded", function () {
             sessionStorage.removeItem("chatbotIAProcessando");
 
             adicionarMensagem(
-                "Desculpe, não consegui responder agora. Tente novamente em alguns instantes.",
+                "Desculpe, não consegui responder agora. Tente novamente em alguns instantes. " +
+                "Se você estiver em sofrimento ou em risco agora, ligue para o CVV no 188 (gratuito, 24 horas) " +
+                "ou para o SAMU no 192.",
                 "bot"
             );
         });
@@ -842,11 +850,42 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (botaoEncerrar) {
 
+        // Primeiro clique: pede confirmação na própria janela do chat
         botaoEncerrar.addEventListener("click", function () {
 
-            if (!confirm("Encerrar o atendimento profissional e voltar a conversar com o Apoio Virtual?")) {
+            if (!avisoEncerrar) {
+                encerrarAtendimento();
                 return;
             }
+
+            avisoEncerrar.hidden = false;
+            botaoEncerrar.hidden = true;
+
+            rolarChatParaBaixo();
+
+            // Sem resposta em alguns segundos, volta ao botão normal
+            clearTimeout(timerConfirmarEncerrar);
+            timerConfirmarEncerrar = setTimeout(function () {
+                fecharConfirmacaoEncerrar();
+                botaoEncerrar.hidden = false;
+            }, 6000);
+        });
+
+        if (botaoEncerrarNao) {
+            botaoEncerrarNao.addEventListener("click", function () {
+                fecharConfirmacaoEncerrar();
+                botaoEncerrar.hidden = false;
+            });
+        }
+
+        if (botaoEncerrarSim) {
+            botaoEncerrarSim.addEventListener("click", function () {
+                fecharConfirmacaoEncerrar();
+                encerrarAtendimento();
+            });
+        }
+
+        function encerrarAtendimento() {
 
             botaoEncerrar.disabled = true;
 
@@ -881,7 +920,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 .finally(function () {
                     botaoEncerrar.disabled = false;
                 });
-        });
+        }
     }
 
 

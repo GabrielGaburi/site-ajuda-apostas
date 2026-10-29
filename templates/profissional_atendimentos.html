@@ -104,6 +104,25 @@ Painel do Profissional - Apoio & Consciência
 
 <div id="toast" class="toast"></div>
 
+<div class="modal fade" id="modalEncerrar" tabindex="-1" aria-labelledby="modalEncerrarTitulo" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5" id="modalEncerrarTitulo">Encerrar atendimento?</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                A conversa será encerrada e a pessoa voltará a falar com o Apoio Virtual.
+                Essa ação não pode ser desfeita.
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarEncerrar">Sim, encerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <script src="{{ url_for('static', filename='js/profissional_atendimentos.js') }}"></script>
 
 </div>

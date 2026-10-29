@@ -45,12 +45,12 @@
             <h2 class="h6">Baixar meus dados</h2>
 
             <p class="small text-muted">
-                Gera um arquivo com seus dados de cadastro, conversas com o Apoio Virtual e mensagens do fórum.
+                Baixa um arquivo de texto, que abre no Bloco de Notas ou no Word, com seus dados de cadastro, conversas com o Apoio Virtual e mensagens do fórum.
             </p>
 
             <form method="POST" action="{{ url_for('exportar_meus_dados') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-outline-primary">Baixar arquivo (JSON)</button>
+                <button type="submit" class="btn btn-outline-primary">Baixar meus dados</button>
             </form>
 
         </div>
@@ -69,7 +69,8 @@
             </p>
 
             <form method="POST" action="{{ url_for('revogar_consentimento_saude') }}"
-                data-confirmar="Revogar o consentimento? O chat e o fórum serão bloqueados.">
+                data-confirmar-botao="Revogar o consentimento? O chat e o fórum serão bloqueados."
+                data-confirmar-sim="Sim, revogar">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-outline-secondary">Revogar consentimento</button>
             </form>
@@ -90,7 +91,8 @@
             </p>
 
             <form method="POST" action="{{ url_for('apagar_minhas_conversas') }}"
-                data-confirmar="Apagar todas as suas conversas? Isso não pode ser desfeito.">
+                data-confirmar-botao="Apagar todas as suas conversas? Isso não pode ser desfeito."
+                data-confirmar-sim="Sim, apagar">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-outline-danger">Apagar conversas</button>
             </form>
@@ -145,4 +147,8 @@
 
 </div>
 
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/confirmar_botao.js') }}"></script>
 {% endblock %}

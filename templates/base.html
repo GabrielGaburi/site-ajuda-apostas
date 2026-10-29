@@ -80,19 +80,17 @@
                         <ul class="dropdown-menu dropdown-menu-end shadow border-0">
 
                             <li>
-                                {% if session.get("tipo_usuario") == "profissional" %}
-
-                                <a class="dropdown-item" href="{{ url_for('perfil_profissional') }}">
-                                    <i class="bi bi-person" aria-hidden="true"></i> Meu Perfil
-                                </a>
-
+                                {% if session.get("tipo_usuario") == "admin" %}
+                                {% set destino_dashboard = url_for('dashboard_admin') %}
+                                {% elif session.get("tipo_usuario") == "profissional" %}
+                                {% set destino_dashboard = url_for('dashboard_profissional') %}
                                 {% else %}
-
-                                <a class="dropdown-item" href="{{ url_for('perfil') }}">
-                                    <i class="bi bi-person" aria-hidden="true"></i> Meu Perfil
-                                </a>
-
+                                {% set destino_dashboard = url_for('dashboard_usuario') %}
                                 {% endif %}
+
+                                <a class="dropdown-item" href="{{ destino_dashboard }}">
+                                    <i class="bi bi-speedometer2" aria-hidden="true"></i> Dashboard
+                                </a>
                             </li>
 
                             <li>
@@ -222,9 +220,7 @@
 
             <div id="chatbot-messages">
 
-                <div class="chatbot-message chatbot-bot-message">
-                    Oi! Eu sou o Apoio Virtual. Estou aqui para conversar e ouvir você. 💙
-                </div>
+                <div class="chatbot-message chatbot-bot-message">Oi! Eu sou o Apoio Virtual. Estou aqui para conversar e ouvir você. 💙</div>
 
             </div>
 
@@ -253,6 +249,14 @@
             <button id="chatbot-encerrar" type="button" hidden>
                 Encerrar atendimento e voltar ao Apoio Virtual
             </button>
+
+            <div id="chatbot-encerrar-confirmar" role="alert" hidden>
+                <span>Encerrar o atendimento e voltar ao Apoio Virtual?</span>
+                <div>
+                    <button id="chatbot-encerrar-sim" type="button">Sim, encerrar</button>
+                    <button id="chatbot-encerrar-nao" type="button">Cancelar</button>
+                </div>
+            </div>
 
             <p id="chatbot-aviso">
                 As conversas são guardadas e processadas por uma IA externa. Evite
