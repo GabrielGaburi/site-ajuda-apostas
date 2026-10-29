@@ -1,5 +1,5 @@
 // Testes das regras do static/js/validacao_cadastro.js.
-// Rodar na raiz do projeto: node --test testes/
+// Rodar na raiz do projeto: node --test testes/test_validacao_cadastro.js
 
 const { test } = require("node:test");
 const assert = require("node:assert");

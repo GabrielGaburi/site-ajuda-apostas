@@ -138,6 +138,13 @@ class TestDadosPessoais(unittest.TestCase):
         mensagem = self.assertErro("nome", nome="a" * 101)
         self.assertEqual(mensagem, "O campo Nome deve ter no máximo 100 caracteres.")
 
+    def test_endereco_sem_html(self):
+        for campo in ("rua", "numero", "bairro", "cidade"):
+            mensagem = self.assertErro(campo, **{campo: "<svg onload=1>"})
+            self.assertIn("< e >", mensagem)
+        # Endereços reais continuam válidos, inclusive com símbolos comuns
+        validar_dados_pessoais(dados_validos(rua="Av. Dr. João d'Ávila, 1º andar", numero="10-B", bairro="Jd. São José"), CAMPOS)
+
     def test_nome_so_letras(self):
         self.assertErro("sobrenome", sobrenome="Silva2")
         self.assertErro("nome", nome="Ma  ria")
