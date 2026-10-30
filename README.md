@@ -126,3 +126,7 @@ testes/           testes das validações, da detecção de risco e da moderaç�
 uploads/          fotos de profissionais (criada em execução, fora do git)
 .env.example      modelo das variáveis de ambiente
 ```
+
+## Licença
+
+Distribuído sob a licença MIT. Veja o arquivo [LICENSE](LICENSE).
