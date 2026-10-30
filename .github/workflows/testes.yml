@@ -23,3 +23,5 @@ jobs:
         run: python -m unittest discover -s testes -v
       - name: Testes JavaScript (validação do cadastro)
         run: node --test testes/test_validacao_cadastro.js
+        env:
+          PYTHON: python

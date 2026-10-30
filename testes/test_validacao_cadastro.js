@@ -37,9 +37,9 @@ test("CPF: o JS e o servidor concordam", () => {
     }
     casos.push("00000000000", "52998224725", "11144477735");
 
-    const python = process.platform === "win32"
+    const python = process.env.PYTHON || (process.platform === "win32"
         ? path.join(raiz, ".venv", "Scripts", "python.exe")
-        : path.join(raiz, ".venv", "bin", "python");
+        : path.join(raiz, ".venv", "bin", "python"));
     const saida = execFileSync(python, ["-c",
         "import sys, json; sys.path.insert(0, '.'); from validacoes import validar_cpf; " +
         "print(json.dumps([validar_cpf(c) for c in json.load(sys.stdin)]))"
