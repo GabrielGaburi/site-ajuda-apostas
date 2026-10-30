@@ -1,5 +1,11 @@
 # Apoio & Consciência
 
+[![Testes](https://github.com/GabrielGaburi/site-ajuda-apostas/actions/workflows/testes.yml/badge.svg)](https://github.com/GabrielGaburi/site-ajuda-apostas/actions/workflows/testes.yml)
+![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-green)
+![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-000000?logo=flask&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-4479A1?logo=mysql&logoColor=white)
+
 Aplicação web em português (pt-BR) de apoio a pessoas afetadas por apostas. Reúne um chatbot com IA que pode transferir a conversa para um profissional humano, um fórum moderado, notícias sobre apostas, um teste de autoavaliação e um mapa de locais de ajuda.
 
 > **Projeto acadêmico.** Começou como TCC em grupo e foi refeito do zero por mim, para estudo e portfólio. Não tem vínculo com órgãos públicos, casas de apostas ou serviços de saúde, e não substitui atendimento profissional. Em crise, ligue 188 (CVV).
