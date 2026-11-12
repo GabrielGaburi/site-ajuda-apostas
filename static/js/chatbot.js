@@ -826,14 +826,17 @@ document.addEventListener("DOMContentLoaded", function () {
                     return resposta.json();
                 })
                 .then(function (dados) {
-                    if (dados.sucesso) {
-                        consentimentoOk = true;
-                        aplicarConsentimento();
-                        input.focus();
+                    if (!dados.sucesso) {
+                        throw new Error("consentimento recusado");
                     }
+
+                    consentimentoOk = true;
+                    aplicarConsentimento();
+                    input.focus();
                 })
                 .catch(function () {
-                    // O painel continua visível para a pessoa tentar de novo
+                    // O painel continua visível; avisa a pessoa em vez de falhar em silêncio
+                    botaoConsentir.textContent = "Não foi possível registrar. Tentar de novo";
                 })
                 .finally(function () {
                     botaoConsentir.disabled = false;
