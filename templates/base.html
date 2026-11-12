@@ -47,7 +47,7 @@
     <!-- NAVBAR -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container">
-            <a class="navbar-brand fw-bold" href="{{ url_for('index') }}">
+            <a class="navbar-brand fw-bold" href="{{ url_for('publico.index') }}">
                 Apoio & Consciência
             </a>
 
@@ -61,11 +61,11 @@
                 <!-- MENU -->
                 <ul class="navbar-nav ms-auto align-items-lg-center">
 
-                    {{ link_menu('index', 'Início', ['index', 'inicio']) }}
-                    {{ link_menu('todas_noticias', 'Notícias', ['todas_noticias']) }}
+                    {{ link_menu('publico.index', 'Início', ['publico.index']) }}
+                    {{ link_menu('publico.todas_noticias', 'Notícias', ['publico.todas_noticias']) }}
                     {{ link_menu('forum_home', 'Fórum', ['forum_home', 'forum_novo', 'forum_topico']) }}
-                    {{ link_menu('ajuda', 'Ajuda', ['ajuda']) }}
-                    {{ link_menu('bloqueio', 'Bloqueie Sites', ['bloqueio', 'bloqueio_cpf']) }}
+                    {{ link_menu('publico.ajuda', 'Ajuda', ['publico.ajuda']) }}
+                    {{ link_menu('publico.bloqueio', 'Bloqueie Sites', ['publico.bloqueio', 'publico.bloqueio_cpf']) }}
 
                     <!-- USUÁRIO LOGADO -->
                     {% if session.get("usuario_id") %}

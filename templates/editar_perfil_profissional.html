@@ -382,7 +382,7 @@
                     {# Mostra a foto atual; o validacao_cadastro.js troca pela prévia da nova foto escolhida #}
                     <img id="previaFoto" alt="Foto de perfil"
                         class="rounded-circle border{% if not profissional.foto %} d-none{% endif %}"
-                        {% if profissional.foto %}src="{{ url_for('servir_upload', nome_arquivo=profissional.foto) }}"{% endif %}
+                        {% if profissional.foto %}src="{{ url_for('publico.servir_upload', nome_arquivo=profissional.foto) }}"{% endif %}
                         width="72" height="72" style="object-fit: cover;">
 
                     <input type="file" id="foto" name="foto" class="form-control{{ classe_erro('foto') }}"

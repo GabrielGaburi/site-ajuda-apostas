@@ -3,12 +3,9 @@ import re, os, json, traceback, uuid, mysql.connector, threading, time,  hashlib
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session, g, Response
 from datetime import datetime, date
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 from werkzeug.exceptions import HTTPException
 from urllib.parse import urlparse
-from flask import send_from_directory
 from flask_limiter.util import get_remote_address
-from locais_ajuda import LOCAIS
 from validacoes import (
     ErroCadastro,
     validar_cpf,
@@ -31,6 +28,7 @@ from config import (
 )
 from extensoes import limiter, csrf, client, iniciar_extensoes
 from db import get_db_connection
+from rotas.publico import bp as bp_publico
 from servicos.tokens import serializer
 from servicos.emails import (
     enviar_email_cadastro_profissional,
@@ -53,7 +51,6 @@ from servicos.fotos import (
     descartar_foto_temporaria,
     limpar_fotos_periodicamente,
 )
-from servicos.noticias import carregar_noticias
 from servicos.retencao import (
     RETENCAO_CONVERSAS_DIAS,
     RETENCAO_CONVERSAS_VISITANTES_DIAS,
@@ -63,6 +60,7 @@ from servicos.retencao import (
 app = Flask(__name__)
 configurar_app(app)
 iniciar_extensoes(app)
+app.register_blueprint(bp_publico)
 
 # Hash usado no login quando o e-mail não existe,
 # para igualar o tempo de resposta
@@ -2395,7 +2393,7 @@ def perfil():
             "danger"
         )
 
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     finally:
 
@@ -2428,7 +2426,7 @@ def gerenciar_usuarios():
             "Você não tem permissão para acessar esta página.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -2555,7 +2553,7 @@ def detalhes_usuario(usuario_id):
             "Você não tem permissão para acessar esta página.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -2707,7 +2705,7 @@ def reativar_usuario(usuario_id):
             "Você não tem permissão para realizar esta ação.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -3076,7 +3074,7 @@ def editar_meu_perfil():
         )
 
         return redirect(
-            url_for("index")
+            url_for("publico.index")
         )
 
     finally:
@@ -3098,7 +3096,7 @@ def editar_usuario(usuario_id):
 
     if session.get("tipo_usuario") != "admin":
         flash("Você não tem permissão para realizar esta ação.", "danger")
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -3334,7 +3332,7 @@ def banir_usuario(usuario_id):
             "Você não tem permissão para realizar esta ação.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     # =========================
     # IMPede ADMIN DE BANIR A SI MESMO
@@ -3537,7 +3535,7 @@ def desbanir_usuario(usuario_id):
             "Você não tem permissão para realizar esta ação.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -3796,7 +3794,7 @@ def aprovar_profissional(profissional_id):
             "Você não tem permissão para realizar esta ação.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -3979,7 +3977,7 @@ def recusar_profissional(profissional_id):
             "Você não tem permissão para realizar esta ação.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     motivo = request.form.get("motivo_recusa", "").strip()
 
@@ -5007,18 +5005,18 @@ def destino_seguro(destino):
     """Aceita só caminhos internos, para o redirecionamento não sair do site."""
 
     if not destino or not destino.startswith("/") or destino.startswith("//"):
-        return url_for("index")
+        return url_for("publico.index")
 
     # Navegadores ignoram tab e quebra de linha dentro da URL ("/<TAB>/site.com" vira
     # "//site.com"); espaços e barras invertidas também são tratados de forma diferente
     # entre navegadores. Qualquer caractere de controle, espaço ou "\" é recusado.
     if "\\" in destino or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in destino):
-        return url_for("index")
+        return url_for("publico.index")
 
     partes = urlparse(destino)
 
     if partes.scheme or partes.netloc:
-        return url_for("index")
+        return url_for("publico.index")
 
     return destino
 
@@ -5152,7 +5150,7 @@ def forum_home():
             "danger"
         )
 
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     finally:
         if cursor:
@@ -6146,31 +6144,13 @@ def cadastro_profissional():
     return erro(None, "")
 
 
-@app.route("/")
-def index():
-    noticias_completas = carregar_noticias()
-    return render_template("index.html", noticias=noticias_completas[:3])
 
-@app.route("/")
-def inicio():
-    noticias_destaque = carregar_noticias()
-    return render_template("inicio.html", noticias=noticias_destaque)
 
-@app.route("/noticias")
-def todas_noticias():
-    noticias_completas = carregar_noticias()
-    return render_template("noticia.html", noticias=noticias_completas[:9])
 
         
 
 
-@app.route("/bloqueio")
-def bloqueio():
-    return render_template("bloqueio.html")
 
-@app.route("/bloqueio-cpf")
-def bloqueio_cpf():
-    return render_template("bloqueio_cpf.html")
 
 
 # Página principal do fórum
@@ -6254,7 +6234,7 @@ def gerenciar_profissionais():
 
     if session.get("tipo_usuario") != "admin":
         flash("Você não tem permissão para acessar esta página.", "danger")
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -6455,7 +6435,7 @@ def detalhes_profissional(profissional_id):
             "Você não tem permissão para acessar esta página.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -6578,7 +6558,7 @@ def gerenciar_profissionais_aprovados():
             "Você não tem permissão para acessar esta página.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -6680,7 +6660,7 @@ def detalhes_profissional_aprovado(profissional_id):
             "Você não tem permissão para acessar esta página.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -6787,7 +6767,7 @@ def editar_profissional_aprovados(profissional_id):
 
     if session.get("tipo_usuario") != "admin":
         flash("Você não tem permissão para realizar esta ação.", "danger")
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -7085,7 +7065,7 @@ def banir_profissional(profissional_id):
             "Você não tem permissão para realizar esta ação.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -7246,7 +7226,7 @@ def reativar_profissional(profissional_id):
             "Você não tem permissão para realizar esta ação.",
             "danger"
         )
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     conexao = None
     cursor = None
@@ -7358,9 +7338,6 @@ def reativar_profissional(profissional_id):
             conexao.close()
             
                         
-@app.route('/escolher_cadastro')
-def escolher_cadastro():
-    return render_template('escolher_cadastro.html')
 
 
 def _enviar_recuperacao_em_background(email, base_url):
@@ -7584,156 +7561,10 @@ def redefinir_senha(token):
     
 
 
-@app.route("/teste", methods=["GET", "POST"])
-def teste():
-
-    if request.method == "POST":
-
-        pontos = 0
-
-        # Conta as respostas "sim"
-        for pergunta in ["q1", "q2", "q3", "q4"]:
-            if request.form.get(pergunta) == "sim":
-                pontos += 1
-
-        # Resultado
-        if pontos == 0:
-
-            resultado = {
-                "titulo": "Nenhum sinal identificado",
-                "mensagem": (
-                    "Você respondeu não a todas as perguntas. "
-                    "Isso indica ausência de sinais de risco relacionados às apostas."
-                ),
-                "orientacao": (
-                    "Mantenha atenção aos sinais de alerta e procure "
-                    "informações e orientação caso sua relação com as apostas mude."
-                ),
-                "classe": "success"
-            }
-
-        elif pontos == 1:
-
-            resultado = {
-                "titulo": "Possível problema com o jogo",
-                "mensagem": (
-                    "Você pode estar apresentando sinais de problemas "
-                    "relacionados ao jogo."
-                ),
-                "orientacao": (
-                    "Reflita sobre sua relação com as apostas, converse "
-                    "com pessoas de confiança e considere buscar acolhimento "
-                    "em uma Unidade Básica de Saúde (UBS)."
-                ),
-                "classe": "warning"
-            }
-
-        elif pontos == 2:
-
-            resultado = {
-                "titulo": "Possível problema relacionado ao jogo",
-                "mensagem": (
-                    "Sua pontuação indica que pode existir um problema "
-                    "relacionado às apostas."
-                ),
-                "orientacao": (
-                    "É recomendado buscar apoio em uma Unidade Básica "
-                    "de Saúde (UBS) ou Centro de Atenção Psicossocial (CAPS)."
-                ),
-                "classe": "warning"
-            }
-
-        elif pontos == 3:
-
-            resultado = {
-                "titulo": "Impactos significativos",
-                "mensagem": (
-                    "Sua relação com o jogo pode estar causando "
-                    "impactos significativos."
-                ),
-                "orientacao": (
-                    "Procure apoio em uma Unidade Básica de Saúde (UBS) "
-                    "ou Centro de Atenção Psicossocial (CAPS)."
-                ),
-                "classe": "danger"
-            }
-
-        else:
-
-            resultado = {
-                "titulo": "Sinais de problemas com o jogo",
-                "mensagem": (
-                    "Sua pontuação indica sinais importantes "
-                    "de problemas relacionados ao jogo."
-                ),
-                "orientacao": (
-                    "Procure rapidamente apoio em uma Unidade Básica "
-                    "de Saúde (UBS) ou Centro de Atenção Psicossocial (CAPS)."
-                ),
-                "classe": "danger"
-            }
-
-        return render_template(
-            "resultado_teste.html",
-            pontos=pontos,
-            resultado=resultado
-        )
-
-    return render_template("teste.html")
 
                 
 
 
-@app.route("/uploads/<nome_arquivo>")
-def servir_upload(nome_arquivo):
-
-    # Só serve fotos registradas em profissionais (nunca as temporárias).
-    # Fotos de cadastros pendentes, recusados ou banidos só aparecem para o admin e para o dono.
-    if secure_filename(nome_arquivo) != nome_arquivo:
-        abort(404)
-
-    conexao = None
-    cursor = None
-
-    try:
-        conexao = get_db_connection()
-        cursor = conexao.cursor(dictionary=True)
-
-        cursor.execute(
-            """
-            SELECT p.usuario_id, p.status_aprovacao, u.status
-            FROM profissionais p
-            INNER JOIN usuarios u ON u.id = p.usuario_id
-            WHERE p.foto = %s
-            """,
-            (nome_arquivo,)
-        )
-
-        foto = cursor.fetchone()
-
-    finally:
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-
-    if not foto:
-        abort(404)
-
-    publica = foto["status_aprovacao"] == "aprovado" and foto["status"] == "ativo"
-
-    if not (
-        publica
-        or session.get("tipo_usuario") == "admin"
-        or session.get("usuario_id") == foto["usuario_id"]
-    ):
-        abort(404)
-
-    return send_from_directory(
-        app.config["UPLOAD_FOLDER"],
-        nome_arquivo
-    )
 
 # =========================
 # PÁGINAS LEGAIS
@@ -8009,7 +7840,7 @@ def minha_privacidade():
 
         flash("Não foi possível carregar a página.", "danger")
 
-        return redirect(url_for("index"))
+        return redirect(url_for("publico.index"))
 
     finally:
         if cursor:
@@ -8437,7 +8268,7 @@ def excluir_minha_conta():
 
     flash("Sua conta foi excluída e seus dados pessoais foram removidos.", "success")
 
-    return redirect(url_for("index"))
+    return redirect(url_for("publico.index"))
 
 
 # =========================
@@ -8453,15 +8284,6 @@ def comando_aplicar_retencao():
         print(f"{nome}: {quantidade}")
 
 
-@app.route("/ajuda")
-def ajuda():
-    locais = LOCAIS
-
-    return render_template(
-        "ajuda.html",
-        locais=locais,
-        revisado_em=os.getenv("AJUDA_REVISADA_EM", "").strip()
-    )
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)

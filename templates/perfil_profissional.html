@@ -44,7 +44,7 @@
 
                     {% if profissional.foto %}
 
-                    <img src="{{ url_for('servir_upload', nome_arquivo=profissional.foto) }}"
+                    <img src="{{ url_for('publico.servir_upload', nome_arquivo=profissional.foto) }}"
                          alt="Foto profissional"
                          class="rounded-circle img-fluid"
                          style="width: 160px; height: 160px; object-fit: cover;">
