@@ -713,7 +713,7 @@ def gerenciar_forum():
             "danger"
         )
 
-        return redirect(url_for("dashboard_admin"))
+        return redirect(url_for("admin.dashboard_admin"))
 
     finally:
 

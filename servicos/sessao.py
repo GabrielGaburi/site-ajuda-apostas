@@ -55,7 +55,7 @@ def redirecionar_para_painel():
     destino = {
         "usuario": "dashboard_usuario",
         "profissional": "profissional.dashboard_profissional",
-        "admin": "dashboard_admin",
+        "admin": "admin.dashboard_admin",
     }.get(session.get("tipo_usuario"), "login")
 
     return redirect(url_for(destino))

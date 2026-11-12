@@ -19,7 +19,7 @@
             </p>
         </div>
 
-        <a href="{{ url_for('gerenciar_usuarios') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('admin.gerenciar_usuarios') }}" class="btn btn-outline-secondary">
             Voltar
         </a>
 
@@ -227,7 +227,7 @@
             <div class="d-flex gap-2">
 
                 <!-- EDITAR -->
-                <a href="{{ url_for('editar_usuario', usuario_id=usuario.id) }}" class="btn btn-primary">
+                <a href="{{ url_for('admin.editar_usuario', usuario_id=usuario.id) }}" class="btn btn-primary">
                     Editar informações
                 </a>
 
@@ -235,7 +235,7 @@
                 <!-- BANIR -->
                 {% if usuario.status == "ativo" %}
 
-                <form method="POST" action="{{ url_for('banir_usuario', usuario_id=usuario.id) }}"
+                <form method="POST" action="{{ url_for('admin.banir_usuario', usuario_id=usuario.id) }}"
                     data-confirmar="Tem certeza que deseja banir este usuário?">
 
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -251,7 +251,7 @@
                 <!-- REATIVAR -->
                 {% elif usuario.status == "banido" %}
 
-                <form method="POST" action="{{ url_for('reativar_usuario', usuario_id=usuario.id) }}"
+                <form method="POST" action="{{ url_for('admin.reativar_usuario', usuario_id=usuario.id) }}"
                     data-confirmar="Tem certeza que deseja reativar este usuário?">
 
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

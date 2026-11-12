@@ -81,7 +81,7 @@
 
                             <li>
                                 {% if session.get("tipo_usuario") == "admin" %}
-                                {% set destino_dashboard = url_for('dashboard_admin') %}
+                                {% set destino_dashboard = url_for('admin.dashboard_admin') %}
                                 {% elif session.get("tipo_usuario") == "profissional" %}
                                 {% set destino_dashboard = url_for('profissional.dashboard_profissional') %}
                                 {% else %}
