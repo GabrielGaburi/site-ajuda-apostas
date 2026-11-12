@@ -1045,3 +1045,31 @@ Equipe Apoio & Consciência
     except Exception:
         current_app.logger.exception("Erro ao enviar email de recusa.")
         return False
+
+
+# Rodam em threads fora da requisição original: por isso recebem o app real (current_app
+# não vale numa thread nova) e abrem um test_request_context para url_for e mail.send.
+def enviar_confirmacao_em_background(app, email, tipo, base_url):
+    # Mesmo esquema de enviar_recuperacao_em_background: a thread precisa do contexto do app
+    with app.test_request_context(base_url=base_url):
+        if tipo == "profissional":
+            enviado = enviar_email_cadastro_profissional(email)
+        else:
+            enviado = enviar_email_confirmacao_usuario(email)
+
+        if not enviado:
+            app.logger.error("Falha ao reenviar email de confirmação (segundo plano).")
+
+
+def enviar_recuperacao_em_background(app, email, base_url):
+    # test_request_context fornece o contexto de app e de requisição que
+    # url_for/mail.send precisam, já que esta função roda numa thread fora
+    # do request original (ver comentário em esqueci_senha). base_url vem
+    # do request original para que o link no email use o host correto
+    # quando BASE_URL não estiver configurada (fallback de url_externa).
+    with app.test_request_context(base_url=base_url):
+        if not enviar_email_recuperacao(email):
+            app.logger.error(
+                "Falha ao enviar email de recuperação (segundo plano) para %s",
+                email
+            )

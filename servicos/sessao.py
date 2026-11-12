@@ -1,8 +1,14 @@
 """Helpers de sessão e acesso usados por mais de uma rota."""
 
+import hashlib
+import hmac
+import secrets
 from urllib.parse import urlparse
 
 from flask import flash, g, redirect, request, session, url_for
+from werkzeug.security import generate_password_hash
+
+from config import SECRET_KEY
 
 
 def destino_seguro(destino):
@@ -59,3 +65,18 @@ def redirecionar_para_painel():
     }.get(session.get("tipo_usuario"), "login")
 
     return redirect(url_for(destino))
+
+
+# Hash usado no login quando o e-mail não existe,
+# para igualar o tempo de resposta
+SENHA_HASH_FALSA = generate_password_hash(secrets.token_hex(16))
+
+
+def impressao_senha(senha_hash):
+    """Identifica a senha atual sem expor o hash. Fica na sessão e muda quando a
+    senha é trocada, o que derruba as sessões abertas antes da troca."""
+    return hmac.new(
+        SECRET_KEY.encode("utf-8"),
+        (senha_hash or "").encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()[:32]

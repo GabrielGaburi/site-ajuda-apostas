@@ -1,4 +1,3 @@
-import hmac
 import os, json, traceback, mysql.connector, threading, time, hashlib, secrets, functools
 from flask import Flask, render_template, request, redirect, url_for, flash, abort, session, g
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -20,6 +19,10 @@ from config import (
 )
 from extensoes import limiter, csrf, client, iniciar_extensoes
 from db import get_db_connection
+from servicos.sessao import (
+    SENHA_HASH_FALSA,
+    impressao_senha,
+)
 from rotas.usuario import bp as bp_usuario
 from rotas.admin_profissionais import bp as bp_admin_profissionais
 from rotas.admin import bp as bp_admin
@@ -32,10 +35,9 @@ from servicos.lgpd import (
 from rotas.publico import bp as bp_publico
 from servicos.tokens import serializer
 from servicos.emails import (
-    enviar_email_cadastro_profissional,
-    enviar_email_confirmacao_usuario,
+    enviar_confirmacao_em_background,
+    enviar_recuperacao_em_background,
     enviar_email_email_alterado,
-    enviar_email_recuperacao,
 )
 from servicos.doisfa import (
     preparar_codigo_2fa,
@@ -58,19 +60,8 @@ app.register_blueprint(bp_forum)
 app.register_blueprint(bp_conta)
 app.register_blueprint(bp_publico)
 
-# Hash usado no login quando o e-mail não existe,
-# para igualar o tempo de resposta
-SENHA_HASH_FALSA = generate_password_hash(secrets.token_hex(16))
 
 
-def impressao_senha(senha_hash):
-    """Identifica a senha atual sem expor o hash. Fica na sessão e muda quando a
-    senha é trocada, o que derruba as sessões abertas antes da troca."""
-    return hmac.new(
-        app.secret_key.encode("utf-8"),
-        (senha_hash or "").encode("utf-8"),
-        hashlib.sha256
-    ).hexdigest()[:32]
 
 
 # Páginas e respostas que, mesmo sem login, carregam dados pessoais ou de saúde
@@ -2497,16 +2488,6 @@ def confirmar_novo_email(token):
     return redirect(destino)
 
 
-def _enviar_confirmacao_em_background(email, tipo, base_url):
-    # Mesmo esquema de _enviar_recuperacao_em_background: a thread precisa do contexto do app
-    with app.test_request_context(base_url=base_url):
-        if tipo == "profissional":
-            enviado = enviar_email_cadastro_profissional(email)
-        else:
-            enviado = enviar_email_confirmacao_usuario(email)
-
-        if not enviado:
-            app.logger.error("Falha ao reenviar email de confirmação (segundo plano).")
 
 
 @app.route("/reenviar_confirmacao", methods=["GET", "POST"])
@@ -2549,8 +2530,8 @@ def reenviar_confirmacao():
                 # O envio roda em segundo plano para o tempo de resposta ser o mesmo
                 # com ou sem conta (ver comentário em esqueci_senha)
                 threading.Thread(
-                    target=_enviar_confirmacao_em_background,
-                    args=(email, usuario["tipo"], request.host_url),
+                    target=enviar_confirmacao_em_background,
+                    args=(app, email, usuario["tipo"], request.host_url),
                     daemon=True
                 ).start()
 
@@ -2718,18 +2699,6 @@ def verificar_conta_e_consentimento():
                         
 
 
-def _enviar_recuperacao_em_background(email, base_url):
-    # test_request_context fornece o contexto de app e de requisição que
-    # url_for/mail.send precisam, já que esta função roda numa thread fora
-    # do request original (ver comentário em esqueci_senha). base_url vem
-    # do request original para que o link no email use o host correto
-    # quando BASE_URL não estiver configurada (fallback de url_externa).
-    with app.test_request_context(base_url=base_url):
-        if not enviar_email_recuperacao(email):
-            app.logger.error(
-                "Falha ao enviar email de recuperação (segundo plano) para %s",
-                email
-            )
 
 
 @app.route("/esqueci-senha", methods=["GET", "POST"])
@@ -2766,8 +2735,8 @@ def esqueci_senha():
             # com a mesma mensagem genérica em todos os casos.
             if usuario and usuario["status"] == "ativo":
                 threading.Thread(
-                    target=_enviar_recuperacao_em_background,
-                    args=(email, request.host_url),
+                    target=enviar_recuperacao_em_background,
+                    args=(app, email, request.host_url),
                     daemon=True
                 ).start()
 
