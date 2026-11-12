@@ -93,7 +93,7 @@ def cadastro_usuario():
                     enviar_email_conta_existente(conta_existente["email"])
 
                 flash(MENSAGEM_CADASTRO_RECEBIDO, "success")
-                return redirect(url_for('login'))
+                return redirect(url_for('auth.login'))
 
             # =========================
             # INSERE O USUÁRIO NO MYSQL
@@ -111,7 +111,7 @@ def cadastro_usuario():
             # 1062 = email ou CPF duplicado (outra requisição cadastrou no mesmo instante)
             if erro_banco.errno == 1062:
                 flash(MENSAGEM_CADASTRO_RECEBIDO, "success")
-                return redirect(url_for('login'))
+                return redirect(url_for('auth.login'))
 
             current_app.logger.exception("Erro de integridade ao cadastrar usuário.")
             flash("Ocorreu um erro ao realizar o cadastro. Tente novamente.", "danger")
@@ -151,7 +151,7 @@ def cadastro_usuario():
                 "warning"
             )
 
-        return redirect(url_for('login'))
+        return redirect(url_for('auth.login'))
 
     # =========================
     # GET
@@ -176,7 +176,7 @@ def perfil():
             "Faça login para acessar seu perfil.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
 
     conexao = None
@@ -221,7 +221,7 @@ def perfil():
                 "danger"
             )
 
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
         # =========================
         # IDENTIFICA O TIPO
@@ -275,7 +275,7 @@ def perfil():
                 "danger"
             )
 
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
     except Exception:
         
@@ -303,7 +303,7 @@ def editar_meu_perfil():
 
     if "usuario_id" not in session:
         flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # O profissional edita pelo próprio perfil, que não deixa mudar os dados conferidos na aprovação
     if session.get("tipo_usuario") == "profissional":
@@ -346,7 +346,7 @@ def editar_meu_perfil():
                 "warning"
             )
 
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
         # Dados atuais, no mesmo formato do formulário
         dados = {campo: usuario.get(campo) or "" for campo, _ in CAMPOS_EDITAR_MEU_PERFIL}
@@ -513,7 +513,7 @@ def editar_meu_perfil():
 def dashboard_usuario():
 
     if "usuario_id" not in session:
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     if session.get("tipo_usuario") != "usuario":
         flash("Acesso não autorizado.", "danger")
@@ -545,7 +545,7 @@ def dashboard_usuario():
                 "Sua conta está inativa ou não possui autorização.",
                 "warning"
             )
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
         return render_template("dashboard_usuario.html")
 
@@ -557,7 +557,7 @@ def dashboard_usuario():
             "Não foi possível carregar seu painel. Tente novamente.",
             "danger"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     finally:
         if cursor:

@@ -80,7 +80,7 @@ def forum_novo():
     # Precisa estar logado
     if "usuario_id" not in session:
         flash("Você precisa estar logado para criar um tópico.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     usuario_id = session["usuario_id"]
     usuario_nome = session.get("usuario_nome", "")
@@ -236,7 +236,7 @@ def forum_topico(topico_id):
             "Você precisa estar logado para participar do fórum.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     usuario_id = session["usuario_id"]
     usuario_nome = session.get("usuario_nome", "")
@@ -413,7 +413,7 @@ def excluir_topico(topico_id):
     # Precisa estar logado
     if "usuario_id" not in session:
         flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     usuario_id = session["usuario_id"]
     tipo_usuario = session.get("tipo_usuario")
@@ -517,7 +517,7 @@ def excluir_mensagem(topico_id, mensagem_id):
     # Precisa estar logado
     if "usuario_id" not in session:
         flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     usuario_id = session["usuario_id"]
     tipo_usuario = session.get("tipo_usuario")
@@ -646,7 +646,7 @@ def excluir_mensagem(topico_id, mensagem_id):
 def gerenciar_forum():
 
     if "usuario_id" not in session:
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     if session.get("tipo_usuario") != "admin":
         flash("Acesso não autorizado.", "danger")

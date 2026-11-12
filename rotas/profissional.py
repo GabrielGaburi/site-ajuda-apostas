@@ -156,7 +156,7 @@ def cadastro_profissional():
                     enviar_email_conta_existente(conta_existente["email"])
 
                 flash(MENSAGEM_CADASTRO_PROFISSIONAL_RECEBIDO, "success")
-                return redirect(url_for("login"))
+                return redirect(url_for("auth.login"))
 
             # =========================
             # VERIFICA SE O CRP JÁ EXISTE
@@ -243,7 +243,7 @@ def cadastro_profissional():
             if erro_banco.errno == 1062:
                 descartar_foto_temporaria()
                 flash(MENSAGEM_CADASTRO_PROFISSIONAL_RECEBIDO, "success")
-                return redirect(url_for("login"))
+                return redirect(url_for("auth.login"))
 
             current_app.logger.exception("Erro de integridade ao cadastrar profissional.")
             flash("Ocorreu um erro ao realizar o cadastro. Tente novamente.", "danger")
@@ -279,7 +279,7 @@ def cadastro_profissional():
             current_app.logger.error("Falha ao enviar email de cadastro do profissional.")
 
         flash(MENSAGEM_CADASTRO_PROFISSIONAL_RECEBIDO, "success")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     return erro(None, "")
 
@@ -289,11 +289,11 @@ def perfil_profissional():
 
     if "usuario_id" not in session:
         flash("Faça login para acessar seu perfil.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     if session.get("tipo_usuario") != "profissional":
         flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     conexao = None
     cursor = None
@@ -351,7 +351,7 @@ def perfil_profissional():
 
         if not profissional:
             flash("Profissional não encontrado.", "danger")
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
         return render_template(
             "perfil_profissional.html",
@@ -366,7 +366,7 @@ def perfil_profissional():
             "danger"
         )
 
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     finally:
 
@@ -386,7 +386,7 @@ def editar_perfil_profissional():
 
     if "usuario_id" not in session:
         flash("Faça login para acessar seu perfil.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # O usuário comum edita os dados pela própria página
     if session.get("tipo_usuario") == "usuario":
@@ -613,7 +613,7 @@ def dashboard_profissional():
 
     if "usuario_id" not in session:
         flash("Faça login para continuar.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     if session.get("tipo_usuario") != "profissional":
         flash("Acesso não autorizado.", "danger")
@@ -648,7 +648,7 @@ def dashboard_profissional():
                 "Sua conta está inativa ou seu cadastro profissional não está aprovado.",
                 "warning"
             )
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
         return render_template("dashboard_profissional.html")
 
@@ -661,7 +661,7 @@ def dashboard_profissional():
             "Não foi possível carregar o painel profissional.",
             "danger"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     finally:
         if cursor:

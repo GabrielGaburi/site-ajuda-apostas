@@ -79,7 +79,7 @@ def enviar_email_cadastro_profissional(email):
         # O profissional também confirma o email: o admin só consegue
         # aprovar o cadastro depois disso (ver aprovar_profissional)
         token = serializer.dumps(email, salt='confirmacao-email')
-        link = url_externa('confirmar_email', token=token)
+        link = url_externa('auth.confirmar_email', token=token)
 
         texto = f"""
 Olá!
@@ -220,7 +220,7 @@ Equipe Apoio & Consciência
 def enviar_email_confirmacao_usuario(email):
     try:
         token = serializer.dumps(email, salt='confirmacao-email')
-        link = url_externa('confirmar_email', token=token)
+        link = url_externa('auth.confirmar_email', token=token)
 
         texto = f"""
 Confirme seu cadastro acessando o link abaixo:
@@ -343,8 +343,8 @@ def enviar_email_conta_existente(email):
     # Enviado quando alguém tenta se cadastrar com o email ou CPF de uma conta que já existe.
     # Assim a tela de cadastro não precisa revelar que a conta existe.
     try:
-        link_login = url_externa("login")
-        link_senha = url_externa("esqueci_senha")
+        link_login = url_externa("auth.login")
+        link_senha = url_externa("auth.esqueci_senha")
 
         texto = f"""
 Recebemos uma tentativa de cadastro usando dados que já pertencem à sua conta.
@@ -416,7 +416,7 @@ def enviar_email_troca_email(usuario_id, email_atual, novo_email):
             salt="troca-email"
         )
 
-        link = url_externa("confirmar_novo_email", token=token)
+        link = url_externa("auth.confirmar_novo_email", token=token)
 
         texto = f"""
 Recebemos um pedido para usar este e-mail na sua conta do Apoio & Consciência.
@@ -588,7 +588,7 @@ def enviar_email_recuperacao(email):
 
 
         link = url_externa(
-            "redefinir_senha",
+            "auth.redefinir_senha",
             token=token
         )
 

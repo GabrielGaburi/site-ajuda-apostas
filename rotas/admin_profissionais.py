@@ -29,7 +29,7 @@ def gerenciar_profissionais():
 
     if "usuario_id" not in session:
         flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA ADMIN
@@ -164,7 +164,7 @@ def detalhes_profissional(profissional_id):
             "Você precisa estar logado.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA SE É ADMIN
@@ -290,7 +290,7 @@ def aprovar_profissional(profissional_id):
             "Você precisa estar logado.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA SE É ADMIN
@@ -473,7 +473,7 @@ def recusar_profissional(profissional_id):
             "Você precisa estar logado.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA SE É ADMIN
@@ -656,7 +656,7 @@ def gerenciar_profissionais_aprovados():
             "Você precisa estar logado.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA ADMIN
@@ -759,7 +759,7 @@ def detalhes_profissional_aprovado(profissional_id):
             "Você precisa estar logado.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA ADMIN
@@ -874,7 +874,7 @@ def editar_profissional_aprovados(profissional_id):
 
     if "usuario_id" not in session:
         flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     if session.get("tipo_usuario") != "admin":
         flash("Você não tem permissão para realizar esta ação.", "danger")
@@ -1165,7 +1165,7 @@ def banir_profissional(profissional_id):
 
     if "usuario_id" not in session:
         flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA SE É ADMIN
@@ -1212,7 +1212,7 @@ def banir_profissional(profissional_id):
                 "warning"
             )
 
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
 
         # =========================
@@ -1327,7 +1327,7 @@ def reativar_profissional(profissional_id):
 
     if "usuario_id" not in session:
         flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA ADMIN

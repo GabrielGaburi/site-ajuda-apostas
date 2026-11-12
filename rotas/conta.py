@@ -35,7 +35,7 @@ def aceitar_termos():
     """Registra o aceite da versão atual dos Termos e o consentimento para dados de saúde."""
 
     if "usuario_id" not in session:
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     proximo = destino_seguro(request.values.get("proximo"))
 

@@ -105,7 +105,7 @@
 
                             <!-- SAIR -->
                             <li>
-                                <form method="POST" action="{{ url_for('logout') }}">
+                                <form method="POST" action="{{ url_for('auth.logout') }}">
 
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -122,7 +122,7 @@
                     <!-- NÃO LOGADO -->
                     {% else %}
                     <li class="nav-item ms-lg-3">
-                        <a class="btn btn-outline-light px-3" href="{{ url_for('login') }}">
+                        <a class="btn btn-outline-light px-3" href="{{ url_for('auth.login') }}">
                             Login
                         </a>
                     </li>

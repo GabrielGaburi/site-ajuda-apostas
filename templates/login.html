@@ -23,7 +23,7 @@
 
             <h3 class="mb-4 text-center">Login</h3>
 
-            <form method="POST" action="{{ url_for('login') }}" id="formLogin">
+            <form method="POST" action="{{ url_for('auth.login') }}" id="formLogin">
 
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -62,7 +62,7 @@
 
                 <!-- ESQUECI SENHA -->
                 <div class="text-end mb-3">
-                    <a href="{{ url_for('esqueci_senha') }}" class="text-decoration-none">
+                    <a href="{{ url_for('auth.esqueci_senha') }}" class="text-decoration-none">
                         Esqueci minha senha
                     </a>
                 </div>
@@ -86,7 +86,7 @@
 
             <div class="text-center mt-2">
                 <small>
-                    <a href="{{ url_for('reenviar_confirmacao') }}">
+                    <a href="{{ url_for('auth.reenviar_confirmacao') }}">
                         Reenviar e-mail de confirmação
                     </a>
                 </small>

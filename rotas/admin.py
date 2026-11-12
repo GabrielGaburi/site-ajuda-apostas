@@ -18,7 +18,7 @@ def dashboard_admin():
 
     if "usuario_id" not in session:
         flash("Faça login para continuar.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     if session.get("tipo_usuario") != "admin":
         flash("Acesso não autorizado.", "danger")
@@ -50,7 +50,7 @@ def dashboard_admin():
                 "Sua conta administrativa está inativa ou não possui autorização.",
                 "warning"
             )
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
         return render_template("dashboard_admin.html")
 
@@ -63,7 +63,7 @@ def dashboard_admin():
             "Não foi possível carregar o painel administrativo.",
             "danger"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     finally:
         if cursor:
@@ -85,7 +85,7 @@ def gerenciar_usuarios():
             "Você precisa estar logado.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA SE É ADMIN
@@ -136,7 +136,7 @@ def gerenciar_usuarios():
                 "warning"
             )
 
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
 
         # =========================
@@ -213,7 +213,7 @@ def detalhes_usuario(usuario_id):
             "Você precisa estar logado.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA ADMIN
@@ -264,7 +264,7 @@ def detalhes_usuario(usuario_id):
                 "warning"
             )
 
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
 
         # =========================
@@ -360,7 +360,7 @@ def editar_usuario(usuario_id):
 
     if "usuario_id" not in session:
         flash("Você precisa estar logado.", "warning")
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     if session.get("tipo_usuario") != "admin":
         flash("Você não tem permissão para realizar esta ação.", "danger")
@@ -584,7 +584,7 @@ def banir_usuario(usuario_id):
             "Você precisa estar logado.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA ADMIN
@@ -642,7 +642,7 @@ def banir_usuario(usuario_id):
                 "Sua conta administrativa está inativa ou não possui autorização.",
                 "warning"
             )
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
 
         # =========================
@@ -783,7 +783,7 @@ def desbanir_usuario(usuario_id):
             "Você precisa estar logado.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA ADMIN
@@ -830,7 +830,7 @@ def desbanir_usuario(usuario_id):
                 "warning"
             )
 
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
 
         # =========================
@@ -970,7 +970,7 @@ def reativar_usuario(usuario_id):
             "Você precisa estar logado.",
             "warning"
         )
-        return redirect(url_for("login"))
+        return redirect(url_for("auth.login"))
 
     # =========================
     # VERIFICA ADMIN
@@ -1021,7 +1021,7 @@ def reativar_usuario(usuario_id):
                 "warning"
             )
 
-            return redirect(url_for("login"))
+            return redirect(url_for("auth.login"))
 
 
         # =========================

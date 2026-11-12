@@ -36,7 +36,7 @@ def usuario_comum_logado():
 
     if "usuario_id" not in session:
         flash("Faça login para acessar esta página.", "warning")
-        return None, redirect(url_for("login"))
+        return None, redirect(url_for("auth.login"))
 
     return session["usuario_id"], None
 
@@ -62,7 +62,7 @@ def redirecionar_para_painel():
         "usuario": "usuario.dashboard_usuario",
         "profissional": "profissional.dashboard_profissional",
         "admin": "admin.dashboard_admin",
-    }.get(session.get("tipo_usuario"), "login")
+    }.get(session.get("tipo_usuario"), "auth.login")
 
     return redirect(url_for(destino))
 
