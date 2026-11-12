@@ -390,7 +390,7 @@ def editar_perfil_profissional():
 
     # O usuário comum edita os dados pela própria página
     if session.get("tipo_usuario") == "usuario":
-        return redirect(url_for("editar_meu_perfil"))
+        return redirect(url_for("usuario.editar_meu_perfil"))
 
     if session.get("tipo_usuario") != "profissional":
         abort(403)

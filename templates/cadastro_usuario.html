@@ -47,7 +47,7 @@
                     </div>
 
                     {# novalidate: a validação é feita pelo cadastro_usuario.js (mensagens em português) e pelo servidor #}
-                    <form method="POST" action="{{ url_for('cadastro_usuario') }}" id="formCadastro" novalidate>
+                    <form method="POST" action="{{ url_for('usuario.cadastro_usuario') }}" id="formCadastro" novalidate>
 
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 

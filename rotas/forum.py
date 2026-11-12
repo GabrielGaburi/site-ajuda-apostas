@@ -650,7 +650,7 @@ def gerenciar_forum():
 
     if session.get("tipo_usuario") != "admin":
         flash("Acesso não autorizado.", "danger")
-        return redirect(url_for("dashboard_usuario"))
+        return redirect(url_for("usuario.dashboard_usuario"))
 
     conexao = None
     cursor = None

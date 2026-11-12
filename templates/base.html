@@ -85,7 +85,7 @@
                                 {% elif session.get("tipo_usuario") == "profissional" %}
                                 {% set destino_dashboard = url_for('profissional.dashboard_profissional') %}
                                 {% else %}
-                                {% set destino_dashboard = url_for('dashboard_usuario') %}
+                                {% set destino_dashboard = url_for('usuario.dashboard_usuario') %}
                                 {% endif %}
 
                                 <a class="dropdown-item" href="{{ destino_dashboard }}">
