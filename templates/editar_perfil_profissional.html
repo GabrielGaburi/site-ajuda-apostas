@@ -22,14 +22,14 @@
         </p>
     </div>
 
-    <a href="{{ url_for('perfil_profissional') }}" class="btn btn-outline-secondary">
+    <a href="{{ url_for('profissional.perfil_profissional') }}" class="btn btn-outline-secondary">
         Voltar
     </a>
 
 </div>
 
 {# novalidate: a validação é feita pelo validacao_cadastro.js (mensagens em português) e pelo servidor #}
-<form method="POST" action="{{ url_for('editar_perfil_profissional') }}" id="formEditarPerfilProfissional"
+<form method="POST" action="{{ url_for('profissional.editar_perfil_profissional') }}" id="formEditarPerfilProfissional"
     enctype="multipart/form-data" novalidate>
 
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -413,7 +413,7 @@
             Salvar alterações
         </button>
 
-        <a href="{{ url_for('perfil_profissional') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('profissional.perfil_profissional') }}" class="btn btn-outline-secondary">
             Cancelar
         </a>
 

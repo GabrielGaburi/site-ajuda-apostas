@@ -83,7 +83,7 @@
                                 {% if session.get("tipo_usuario") == "admin" %}
                                 {% set destino_dashboard = url_for('dashboard_admin') %}
                                 {% elif session.get("tipo_usuario") == "profissional" %}
-                                {% set destino_dashboard = url_for('dashboard_profissional') %}
+                                {% set destino_dashboard = url_for('profissional.dashboard_profissional') %}
                                 {% else %}
                                 {% set destino_dashboard = url_for('dashboard_usuario') %}
                                 {% endif %}
