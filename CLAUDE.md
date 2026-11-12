@@ -18,52 +18,84 @@ python -m venv .venv
 - O `gunicorn` está no requirements para deploy (`gunicorn app:app`).
 - Antes de usar os recursos de LGPD, rode uma vez `.venv\Scripts\python migrar_lgpd.py` (cria as colunas de consentimento e exclusão em `usuarios`). Sem isso, o chat e o fórum ficam bloqueados por falta de consentimento.
 - Retenção de dados: agende `.venv\Scripts\flask --app app aplicar-retencao` para rodar uma vez por dia. Os prazos vêm de `RETENCAO_CONVERSAS_DIAS` (padrão 365) e `RETENCAO_CONVERSAS_VISITANTES_DIAS` (padrão 30) no `.env`.
-- Páginas legais (`/termos`, `/privacidade`, `/cookies`): os dados do controlador vêm das variáveis `LEGAL_*` do `.env`; enquanto faltarem, as páginas mostram o aviso de rascunho. Ao mudar o texto jurídico, atualize `TERMOS_VERSAO` em `app.py`: todos os usuários precisarão aceitar de novo e consentir novamente para dados de saúde.
+- Páginas legais (`/termos`, `/privacidade`, `/cookies`): os dados do controlador vêm das variáveis `LEGAL_*` do `.env`; enquanto faltarem, as páginas mostram o aviso de rascunho. Ao mudar o texto jurídico, atualize `TERMOS_VERSAO` em `config.py`: todos os usuários precisarão aceitar de novo e consentir novamente para dados de saúde.
 - Os testes automatizados cobrem só regras puras, sem banco: `.venv\Scripts\python -m unittest discover -s testes` (`validacoes.py`, `deteccao_risco.py`, `moderacao.py`, `normalizacao.py`) e `node --test testes/test_validacao_cadastro.js` (`static/js/validacao_cadastro.js`). Ao mudar a detecção de crise ou a moderação, rode-os: eles guardam os casos de evasão já corrigidos. Não há linter nem etapa de build. Rotas, banco e telas são verificados manualmente no navegador, inclusive no celular.
 
-A configuração vem do `.env`, carregado com `override=True`. As variáveis são `SECRET_KEY`, `BASE_URL`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `MAIL_USERNAME`, `MAIL_PASSWORD` (senha de app do Gmail), `OPENAI_API_KEY` e `GNEWS_API_KEY`. `HTTPS_ATIVO=true` é opcional e ativa cookies de sessão seguros. `PROXIES_CONFIAVEIS` (padrão `0`) é o número de proxies na frente do app (ex.: `1` com o túnel `cloudflared` ou um Nginx); quando é maior que zero, o `ProxyFix` faz o Flask e o `Flask-Limiter` usarem o IP real do visitante.
+A configuração vem do `.env`, carregado com `override=True` em `config.py`, que também aplica o `app.config` (`configurar_app`). As variáveis são `SECRET_KEY`, `BASE_URL`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `MAIL_USERNAME`, `MAIL_PASSWORD` (senha de app do Gmail), `OPENAI_API_KEY` e `GNEWS_API_KEY`. `HTTPS_ATIVO=true` é opcional e ativa cookies de sessão seguros. `PROXIES_CONFIAVEIS` (padrão `0`) é o número de proxies na frente do app (ex.: `1` com o túnel `cloudflared` ou um Nginx); quando é maior que zero, o `ProxyFix` faz o Flask e o `Flask-Limiter` usarem o IP real do visitante.
 
 ## Arquitetura
 
-Todo o back-end está em um único `app.py` de ~10 mil linhas: configuração, funções auxiliares, todas as rotas, envio de e-mails e filtros de conteúdo. Não há blueprints, models nem ORM. Para encontrar algo, use grep em `@app.route` ou `def `.
+O back-end é dividido em módulos, e o `app.py` é só a fábrica do app (cria o Flask, aplica a configuração, liga as extensões e registra os hooks e os Blueprints). Não há models nem ORM. Para encontrar uma rota, use grep em `@bp.route`; para encontrar uma regra reutilizável, procure em `servicos/`.
 
-**Banco de dados**: MySQL via `mysql-connector-python`. Cada rota abre a própria conexão com `get_db_connection()`, usa `cursor(dictionary=True)` e SQL puro parametrizado (`%s`), e fecha cursor e conexão no `finally`. O `templates/database/schema.sql` só define `usuarios` e `profissionais`. As outras tabelas usadas pelo código (`atendimentos_chatbot`, `mensagens_atendimento`, `forum_topicos`, `forum_mensagens`, `codigos_2fa`, `tokens_recuperacao_senha`, `noticias_site`) existem apenas no banco real. Para saber as colunas delas, é preciso olhar as queries no `app.py`.
+```
+app.py            fábrica do app: configuração, extensões, hooks e Blueprints
+config.py         .env, constantes (TERMOS_VERSAO, POLITICA_CSP, ...) e app.config
+extensoes.py      limiter, csrf, mail e cliente OpenAI, ligados ao app em iniciar_extensoes()
+db.py             get_db_connection()
+hooks.py          hooks globais: cabeçalhos de segurança, erros 429/413, checagem de conta
+                  e consentimento, versão dos estáticos, dados legais nos templates e o
+                  comando aplicar-retencao
+rotas/            um Blueprint por domínio:
+  publico           início, notícias, ajuda, bloqueio de sites, teste, /uploads
+  conta             termos, privacidade, cookies, aceite, consentimentos e /conta/* (LGPD)
+  auth              login, logout, 2FA, recuperação de senha, confirmação de e-mail
+  usuario           cadastro, perfil e painel do usuário comum
+  profissional      cadastro, perfil e painel do profissional
+  admin             painel do admin e gerenciamento de usuários
+  admin_profissionais  aprovar, recusar, editar, banir e reativar profissionais
+  forum             /forum* e o painel /admin/forum
+  chatbot           /chatbot*, fila e atendimento dos profissionais, /mensagens, /lista_sessoes
+servicos/         regras reutilizáveis, sem rota: emails, doisfa, tokens, sessao, lgpd, fotos,
+                  noticias, retencao, ia, cadastro, profissionais
+validacoes.py, deteccao_risco.py, moderacao.py, normalizacao.py, nomes.py, locais_ajuda.py
+                  regras puras e dados, com testes automatizados
+```
+
+Convenções que a divisão exige:
+- Os endpoints têm o formato `<blueprint>.<função>` (`url_for("auth.login")`). Além dos `url_for`, os nomes de endpoint aparecem como texto em `ENDPOINTS_SEM_CACHE` e `ENDPOINTS_SEM_ACEITE` (`hooks.py`), no dicionário de `redirecionar_para_painel` (`servicos/sessao.py`), no `link_menu` do `base.html` e nas chamadas `url_externa("auth.confirmar_email")` dos e-mails. Ao renomear ou mover uma rota, atualize todos esses lugares: um nome errado não dá erro na hora, só quebra um link ou um redirecionamento.
+- Um helper usado por mais de um Blueprint fica em `servicos/`, nunca em `rotas/`, e `servicos/` não importa o `app.py` (evita import circular). Use `current_app` em vez de `app`.
+- Numa thread nova não existe `current_app`. Quem roda em segundo plano (`enviar_recuperacao_em_background`, `enviar_confirmacao_em_background`, `processar_ia_em_background`) recebe o `app` como primeiro argumento, e a rota o passa com `current_app._get_current_object()`.
+- Rota nova vai no Blueprint do domínio, com `@bp.route`. Blueprint novo precisa ser registrado em `app.py`.
+
+**Banco de dados**: MySQL via `mysql-connector-python`. Cada rota abre a própria conexão com `get_db_connection()` (`db.py`), usa `cursor(dictionary=True)` e SQL puro parametrizado (`%s`), e fecha cursor e conexão no `finally`. O `templates/database/schema.sql` só define `usuarios` e `profissionais`. As outras tabelas usadas pelo código (`atendimentos_chatbot`, `mensagens_atendimento`, `forum_topicos`, `forum_mensagens`, `codigos_2fa`, `tokens_recuperacao_senha`, `noticias_site`) existem apenas no banco real. Para saber as colunas delas, é preciso olhar as queries em `rotas/` e `servicos/`.
 
 **Autenticação e perfis**: o login usa sessão e não há decorators. Cada rota protegida faz a checagem dentro do próprio código: se `"usuario_id" not in session`, redireciona para o login; depois, se `session.get("tipo_usuario") != "<perfil>"`, retorna `abort(403)`. Existem três perfis em `usuarios.tipo`: `usuario`, `profissional` e `admin`.
 - Cada linha de `profissionais` aponta para `usuarios` pelo `usuario_id`.
 - O profissional se cadastra e fica aguardando o admin aprovar ou recusar, e cada decisão dispara um e-mail.
 - Usuários e profissionais podem ser banidos e reativados (`status` `ativo`/`banido`).
-- O login de admin e de profissional exige 2FA por e-mail. A rota `login` grava `session["2fa_usuario_id"]` e envia um código (tabela `codigos_2fa`), e a rota `/verificar_2fa` completa o login.
-- A confirmação de e-mail e a redefinição de senha usam tokens do `itsdangerous.URLSafeTimedSerializer`.
+- O login de admin e de profissional exige 2FA por e-mail (`rotas/auth.py` e `servicos/doisfa.py`). A rota `login` grava `session["2fa_usuario_id"]` e envia um código (tabela `codigos_2fa`), e a rota `/verificar_2fa` completa o login.
+- A confirmação de e-mail e a redefinição de senha usam tokens do `itsdangerous.URLSafeTimedSerializer` (`servicos/tokens.py`).
 
 **Segurança**:
-- CSRF via `Flask-WTF`: todo formulário POST precisa de `csrf_token`.
+- CSRF via `Flask-WTF` (`extensoes.py`): todo formulário POST precisa de `csrf_token`.
 - `Flask-Limiter` limita rotas sensíveis: `@limiter.limit("5 per minute")` em login, 2FA, cadastro e redefinição de senha, e 20 por minuto no chatbot.
 - Cookies `HttpOnly` + `SameSite=Lax`.
 - Limite de 5 MB por upload.
-- Sessão: `PERMANENT_SESSION_LIFETIME` vem de `SESSAO_HORAS` (padrão 8 h sem atividade, renovada a cada requisição); o login marca `session.permanent = True`. A sessão guarda `senha_v`, uma impressão da senha que derruba sessões abertas antes de uma troca de senha.
+- `hooks.py` roda em toda requisição: cabeçalhos de segurança (a CSP é `POLITICA_CSP`, em `config.py`), `Cache-Control: no-store` nas áreas logadas, as páginas de erro 429 e 413, e a checagem de conta ativa, senha atual e aceite dos Termos (`verificar_conta_e_consentimento`, que exige o aceite da `TERMOS_VERSAO` atual fora das rotas de `ENDPOINTS_SEM_ACEITE`).
+- Sessão: `PERMANENT_SESSION_LIFETIME` vem de `SESSAO_HORAS` (padrão 8 h sem atividade, renovada a cada requisição); o login marca `session.permanent = True`. A sessão guarda `senha_v` (`impressao_senha`, em `servicos/sessao.py`), uma impressão da senha que derruba sessões abertas antes de uma troca de senha.
 - Fórum: usuários comuns aparecem como "Maria S." (`nomes.py`), profissionais e admins com nome completo, e visitantes não veem o autor na lista pública. O painel `/admin/forum` mostra nomes completos para moderação.
 
-**Fluxo do chatbot** (`/chatbot`, `/profissional/atendimentos`, `/assumir_atendimento`, `/enviar_profissional`, `/encerrar`, `/mensagens`):
+**Fluxo do chatbot** (`rotas/chatbot.py`: `/chatbot`, `/profissional/atendimentos`, `/assumir_atendimento`, `/enviar_profissional`, `/encerrar`, `/mensagens`; a IA fica em `servicos/ia.py`):
 - Cada conversa é uma linha de `atendimentos_chatbot`, e as mensagens ficam em `mensagens_atendimento`.
 - O status passa por `ia` → `aguardando` → `em_atendimento` → `finalizado`:
   - Vai para `aguardando` quando o usuário pede um humano (detectado por `pediu_profissional`) ou quando `detect_critical` identifica risco.
   - Vai para `em_atendimento` quando um profissional assume a conversa.
-- As respostas da IA são geradas de forma assíncrona por `processar_ia_em_background`, em uma `threading.Thread`. Um set em memória com lock (`atendimentos_processando`) evita que a mesma conversa seja processada duas vezes. O front-end (`static/js/chatbot.js`) consulta o servidor periodicamente para buscar mensagens novas.
-- O cliente OpenAI usa o `SYSTEM_PROMPT`, que limita o bot estritamente a apoio emocional relacionado a apostas.
+- As respostas da IA são geradas de forma assíncrona por `processar_ia_em_background` (`servicos/ia.py`), em uma `threading.Thread` que recebe o `app` como primeiro argumento. Um set em memória com lock (`atendimentos_processando`, no mesmo módulo: não duplique) evita que a mesma conversa seja processada duas vezes. O front-end (`static/js/chatbot.js`) consulta o servidor periodicamente para buscar mensagens novas.
+- O cliente OpenAI (`extensoes.py`) usa o `SYSTEM_PROMPT` (`servicos/ia.py`), que limita o bot estritamente a apoio emocional relacionado a apostas.
 - `detect_critical` (em `deteccao_risco.py`) normaliza o texto e faz correspondência aproximada (Levenshtein e leet-speak) contra `CRITICAL_PATTERNS`. Também pega letras separadas por espaço ou ponto, Unicode disfarçado e o radical "suicid". `pediu_profissional` fica no mesmo módulo. Se a IA falhar, a resposta (`MENSAGEM_FALHA_IA`) cita o CVV 188 e o SAMU 192.
 
 **Moderação de conteúdo**: posts do fórum e a biografia dos profissionais (não o chat) passam por `verificar_conteudo_proibido`, em `moderacao.py`. Essa função compara o texto, normalizado de duas formas (`normalizar_texto` e a forma canônica de `normalizacao.py`, que desfaz leet, separadores, caracteres invisíveis e Unicode disfarçado), com as listas `PALAVRAS_PROIBIDAS`, `FRASES_*` e `TERMOS_PROMOCAO_APOSTAS`. Marcas de casas de apostas não são bloqueadas de propósito, para quem conta o que perdeu poder citá-las. Assim são bloqueados conteúdos como divulgação de apostas e dicas para recuperar perdas.
 
 **Uploads**: as fotos dos profissionais ficam em `uploads/` e são servidas por `/uploads/<filename>`. Só `.jpg`, `.jpeg` e `.png` são aceitos, com validação pelo Pillow.
 - Arquivos com prefixo `temp_` são uploads pendentes, registrados em `session["foto_temporaria_profissional"]`.
-- `limpar_fotos_temporarias` e `limpar_fotos_orfas` rodam no início das rotas de cadastro e de edição do profissional. Elas apagam arquivos temporários antigos e qualquer arquivo que não esteja em `profissionais.foto`.
+- `limpar_fotos_temporarias` e `limpar_fotos_orfas` (`servicos/fotos.py`) rodam, no máximo a cada 10 minutos, por `limpar_fotos_periodicamente()` no início das rotas de cadastro e de edição do profissional. Elas apagam arquivos temporários antigos e qualquer arquivo que não esteja em `profissionais.foto`.
 
-**Notícias**: `carregar_noticias` busca notícias na API do GNews, filtra com `noticia_relevante` e guarda em cache na tabela `noticias_site`.
+**Notícias**: `carregar_noticias` (`servicos/noticias.py`) busca notícias na API do GNews, filtra com `noticia_relevante` e guarda em cache na tabela `noticias_site`.
 
 **Front-end**: os templates Jinja ficam em `templates/` e estendem o `base.html`. Cada página tem seu JS em `static/js/` e seu CSS em `static/css/`. `templates/database/schema.sql` e `templates/lib.dom.d.ts` estão em `templates/`, mas não são templates.
 
 ## Pontos de atenção
 
-- `@app.route("/")` está registrada duas vezes (`index` e `inicio`), e só a primeira é usada.
-- A lista de locais de ajuda (com lat/lng) está escrita direto dentro da rota `ajuda()`.
+- Importar o `app` cria o cliente OpenAI na hora (`extensoes.py`): sem `OPENAI_API_KEY` no ambiente nem no `.env` a importação falha. Por isso os testes automatizados cobrem só módulos que não importam o `app`.
+- O código continua sem decorators de autorização: cada rota nova precisa repetir a checagem de sessão e de perfil logo no começo.
+- Os locais de ajuda (com lat/lng) ficam em `locais_ajuda.py` e são usados por `ajuda()`, em `rotas/publico.py`.

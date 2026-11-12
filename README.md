@@ -44,7 +44,7 @@ copy .env.example .env      # preencha os valores
 .venv\Scripts\python app.py # http://localhost:5000
 ```
 
-1. Crie o banco e as tabelas (`templates/database/schema.sql` define `usuarios` e `profissionais`; as demais tabelas são usadas em `app.py`).
+1. Crie o banco e as tabelas (`templates/database/schema.sql` define `usuarios` e `profissionais`; as demais tabelas são usadas em `rotas/` e `servicos/`).
 2. Rode uma vez `.venv\Scripts\python migrar_lgpd.py` para criar as colunas de consentimento. Sem isso, chat e fórum ficam bloqueados.
 3. Agende `flask --app app aplicar-retencao` uma vez por dia para aplicar a retenção de dados.
 4. (Opcional) Rode os testes das regras puras, que não precisam do banco:
@@ -60,7 +60,7 @@ Veja `.env.example` para todas as variáveis. Para publicar o site, siga a seç�
 
 > **Antes do primeiro acesso público**, confira esta lista. Os itens 1 a 3 são obrigatórios: o site trata dados de saúde (LGPD, art. 11).
 
-1. **Jurídico.** Preencha as variáveis `LEGAL_*` no `.env` (`LEGAL_CONTROLADOR`, `LEGAL_DOCUMENTO`, `LEGAL_ENDERECO`, `LEGAL_ENCARREGADO`, `LEGAL_EMAIL_PRIVACIDADE`, `LEGAL_EMAIL_CONTATO` e `LEGAL_ATUALIZACAO`) e resolva com um advogado os trechos `[A DEFINIR...]` de `templates/termos.html`, `privacidade.html` e `cookies.html` (bases legais, transferência internacional para a OpenAI, prazos de guarda, menores de idade). Depois atualize `TERMOS_VERSAO` em `app.py`: todos os usuários terão de aceitar de novo.
+1. **Jurídico.** Preencha as variáveis `LEGAL_*` no `.env` (`LEGAL_CONTROLADOR`, `LEGAL_DOCUMENTO`, `LEGAL_ENDERECO`, `LEGAL_ENCARREGADO`, `LEGAL_EMAIL_PRIVACIDADE`, `LEGAL_EMAIL_CONTATO` e `LEGAL_ATUALIZACAO`) e resolva com um advogado os trechos `[A DEFINIR...]` de `templates/termos.html`, `privacidade.html` e `cookies.html` (bases legais, transferência internacional para a OpenAI, prazos de guarda, menores de idade). Depois atualize `TERMOS_VERSAO` em `config.py`: todos os usuários terão de aceitar de novo.
 2. **Segredos novos para produção.** `SECRET_KEY` (`python -c "import secrets; print(secrets.token_hex(32))"`), senha do banco, senha de app do Gmail e chave da OpenAI **com limite de gasto e alerta de saldo** (sem créditos o chat deixa de responder). Não reutilize valores de desenvolvimento, e o `.env` nunca vai para o git.
 3. **HTTPS.** `HTTPS_ATIVO=true` e `BASE_URL=https://seu-dominio` (os links dos e-mails usam o `BASE_URL`). Com proxy ou túnel na frente (Nginx, cloudflared), use `PROXIES_CONFIAVEIS=1` e deixe o app acessível só pelo proxy (`--bind 127.0.0.1`); caso contrário alguém forja o `X-Forwarded-For` e escapa do limite de tentativas.
 4. **Servidor.** Linux, como serviço (systemd), atrás do proxy: `gunicorn app:app --workers 1 --threads 8 --bind 127.0.0.1:8000 --timeout 60`. Use **um processo só**: o controle de conversas em processamento e os limites de tentativas ficam na memória do processo, e com vários processos as contagens se multiplicam. Para escalar, aponte o Flask-Limiter para o Redis e troque o lock em memória.
@@ -108,7 +108,7 @@ Scripts próprios (cliente de teste do Flask contra o MySQL, com contas descart�
 
 ## Decisões técnicas e próximos passos
 
-- **`app.py` único (~10 mil linhas), sem ORM nem blueprints.** Foi uma escolha para aprender o fluxo completo (rotas, SQL e e-mail) sem abstrações. O próximo passo é dividir em blueprints (`auth`, `chatbot`, `forum`, `admin`) e extrair o acesso a dados.
+- **Blueprints por domínio, sem ORM.** O back-end começou num único `app.py` de ~10 mil linhas, escolha para aprender o fluxo completo (rotas, SQL e e-mail) sem abstrações. Foi dividido em Blueprints (`rotas/`), regras reutilizáveis (`servicos/`) e hooks globais (`hooks.py`), sem alterar o comportamento nos roteiros de teste: cada etapa foi comparada com a anterior, com banco simulado, em requisições que checam status, redirecionamentos, HTML, SQL de escrita e e-mails. Esses roteiros ainda não estão no repositório, e a verificação no navegador e contra o banco real continua manual. O acesso ao banco continua sendo SQL puro em cada rota; extraí-lo para uma camada de dados é um próximo passo.
 - **Respostas da IA em background** (`threading.Thread` com lock por conversa) e polling no front-end, em vez de WebSocket, para manter o deploy simples.
 - **Sem decorators de autorização:** cada rota checa a sessão. A auditoria percorreu as 68 rotas com cada perfil e não achou checagem faltando, mas é fácil esquecer uma em rotas novas. Centralizar em decorators é um próximo passo.
 - **Estado em memória:** o controle de conversas em processamento e os limites de tentativas vivem no processo. Por isso o deploy usa um processo com várias threads; escalar exige Redis (ver "Colocando no ar").
@@ -118,7 +118,13 @@ Scripts próprios (cliente de teste do Flask contra o MySQL, com contas descart�
 ## Estrutura
 
 ```
-app.py            rotas, regras e e-mails
+app.py            fábrica do app: configuração, extensões, hooks e Blueprints
+config.py         variáveis do .env, constantes e configuração do Flask
+extensoes.py      limitador de tentativas, CSRF, e-mail e cliente OpenAI
+db.py             conexão com o MySQL
+hooks.py          cabeçalhos de segurança, páginas de erro e checagem de conta e consentimento
+rotas/            um Blueprint por domínio (publico, conta, auth, usuario, profissional, admin, forum, chatbot)
+servicos/         e-mails, 2FA, sessão, LGPD, fotos, notícias, retenção, IA e cadastro
 validacoes.py     validações de formulário
 deteccao_risco.py detecção de risco de vida e pedido de atendimento humano no chat
 moderacao.py      filtro de conteúdo do fórum e da biografia
