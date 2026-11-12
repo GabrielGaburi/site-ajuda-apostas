@@ -25,6 +25,25 @@ from config import (
 )
 from extensoes import limiter, csrf, client, iniciar_extensoes
 from db import get_db_connection
+from servicos.sessao import (
+    redirecionar_para_painel,
+)
+from servicos.profissionais import (
+    CAMPOS_CADASTRO_PROFISSIONAL,
+    CAMPOS_EDITAR_PERFIL_PROFISSIONAL,
+    MENSAGEM_CADASTRO_PROFISSIONAL_RECEBIDO,
+    OPCOES_ESPECIALIDADE,
+    REGIOES_CRP,
+    validar_atuacao_profissional,
+    validar_dados_profissionais,
+)
+from servicos.cadastro import (
+    CAMPOS_CADASTRO_USUARIO,
+    CAMPOS_EDITAR_MEU_PERFIL,
+    MENSAGEM_CADASTRO_RECEBIDO,
+    buscar_conta_existente,
+    inserir_usuario,
+)
 from rotas.forum import bp as bp_forum
 from rotas.conta import bp as bp_conta
 from servicos.lgpd import (
@@ -209,7 +228,6 @@ MENSAGEM_FALHA_IA = (
 )
 
 from deteccao_risco import detect_critical, pediu_profissional
-from moderacao import verificar_conteudo_proibido
 
 
 def ha_mensagem_pendente(atendimento_id):
@@ -3699,16 +3717,6 @@ def desbanir_usuario(usuario_id):
             conexao.close()
             
             
-def redirecionar_para_painel():
-    """Leva o usuário logado ao painel do próprio perfil (nunca ao painel de outro)."""
-
-    destino = {
-        "usuario": "dashboard_usuario",
-        "profissional": "dashboard_profissional",
-        "admin": "dashboard_admin",
-    }.get(session.get("tipo_usuario"), "login")
-
-    return redirect(url_for(destino))
 
 
 @app.route("/dashboard_usuario")
@@ -4143,115 +4151,13 @@ def recusar_profissional(profissional_id):
 # CADASTRO_USUÁRIO
 # =========================
 
-# Campos do formulário, na ordem em que aparecem (a validação segue essa ordem)
-CAMPOS_CADASTRO_USUARIO = [
-    ("nome", "Nome"),
-    ("sobrenome", "Sobrenome"),
-    ("cpf", "CPF"),
-    ("data_de_nascimento", "Data de nascimento"),
-    ("sexo", "Sexo"),
-    ("email", "E-mail"),
-    ("telefone", "Telefone"),
-    ("cep", "CEP"),
-    ("estado", "UF"),
-    ("cidade", "Cidade"),
-    ("rua", "Rua"),
-    ("numero", "Número"),
-    ("bairro", "Bairro")
-]
-
-# Campos que o próprio usuário pode alterar em editar_meu_perfil.
-# O CPF fica de fora: identifica a conta (é único no banco) e só o admin corrige,
-# como no perfil do profissional.
-CAMPOS_EDITAR_MEU_PERFIL = [
-    (campo, nome_campo)
-    for campo, nome_campo in CAMPOS_CADASTRO_USUARIO
-    if campo != "cpf"
-]
 
 
-# Mesma mensagem para cadastro novo, email ou CPF já cadastrados,
-# para a tela não revelar quem tem conta no site
-MENSAGEM_CADASTRO_RECEBIDO = (
-    "Cadastro recebido! Se os dados estiverem corretos, enviamos um e-mail para "
-    "confirmar sua conta. Não recebeu? Use \"Reenviar e-mail de confirmação\" na tela de login."
-)
 
 
-def buscar_conta_existente(cursor, email, cpf):
-    # Procura uma conta com o mesmo email ou CPF (cadastros de usuário e de profissional).
-    # O CPF é comparado só pelos dígitos, porque cadastros antigos podem estar sem máscara
-    cursor.execute(
-        """
-        SELECT email, tipo, email_confirmado
-        FROM usuarios
-        WHERE email = %s
-           OR REPLACE(REPLACE(cpf, '.', ''), '-', '') = %s
-        ORDER BY email = %s DESC
-        LIMIT 1
-        """,
-        (email, re.sub(r"\D", "", cpf), email)
-    )
-
-    return cursor.fetchone()
 
 
-def inserir_usuario(cursor, dados, data_nascimento, senha_hash, tipo):
-    # Insere a conta na tabela usuarios e devolve o ID criado (sem commit)
-    cursor.execute(
-        """
-        INSERT INTO usuarios (
-            nome,
-            sobrenome,
-            cpf,
-            data_nascimento,
-            sexo,
-            email,
-            telefone,
-            cep,
-            estado,
-            cidade,
-            rua,
-            numero,
-            bairro,
-            senha_hash,
-            tipo,
-            status,
-            email_confirmado,
-            termos_aceitos,
-            termos_aceitos_em,
-            termos_versao
-        )
-        VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, %s, %s, %s, %s, %s, %s,
-            %s, %s, NOW(), %s
-        )
-        """,
-        (
-            dados["nome"],
-            dados["sobrenome"],
-            dados["cpf"],
-            data_nascimento.strftime("%Y-%m-%d"),
-            dados["sexo"],
-            dados["email"],
-            dados["telefone"],
-            dados["cep"],
-            dados["estado"],
-            dados["cidade"],
-            dados["rua"],
-            dados["numero"],
-            dados["bairro"],
-            senha_hash,
-            tipo,
-            "ativo",
-            False,
-            True,
-            TERMOS_VERSAO
-        )
-    )
 
-    return cursor.lastrowid
 
 
 @app.route('/cadastro_usuario', methods=['GET', 'POST'])
@@ -5089,95 +4995,15 @@ def verificar_conta_e_consentimento():
     
 
 
-# Região do CRP (dois primeiros dígitos) -> UFs atendidas por ela
-REGIOES_CRP = {
-    "01": ["DF"], "02": ["PE"], "03": ["BA"], "04": ["MG"], "05": ["RJ"], "06": ["SP"],
-    "07": ["RS"], "08": ["PR"], "09": ["GO"], "10": ["PA", "AP"], "11": ["CE"], "12": ["SC"],
-    "13": ["PB"], "14": ["MS"], "15": ["AL"], "16": ["ES"], "17": ["RN"], "18": ["MT"],
-    "19": ["SE"], "20": ["AM", "RR"], "21": ["PI"], "22": ["MA"], "23": ["TO"], "24": ["RO", "AC"]
-}
-
-# Campos do formulário do profissional, na ordem em que aparecem
-CAMPOS_CADASTRO_PROFISSIONAL = CAMPOS_CADASTRO_USUARIO + [
-    ("crp", "CRP"),
-    ("uf_crp", "UF do CRP"),
-    ("experiencia", "Experiência"),
-    ("especialidade", "Especialidade"),
-    ("faculdade", "Instituição de ensino"),
-    ("pos", "Pós-graduação"),
-    ("biografia", "Biografia")
-]
-
-# Campos que o profissional pode alterar em editar_perfil_profissional, na ordem do formulário.
-# Nome, CPF, data de nascimento, sexo, email e CRP ficam de fora: foram conferidos pelo admin na aprovação.
-CAMPOS_EDITAR_PERFIL_PROFISSIONAL = [
-    (campo, nome_campo)
-    for campo, nome_campo in CAMPOS_CADASTRO_PROFISSIONAL
-    if campo in {
-        "telefone", "cep", "estado", "cidade", "rua", "numero", "bairro",
-        "experiencia", "especialidade", "faculdade", "pos", "biografia"
-    }
-]
-
-# Mesma mensagem para cadastro novo, email ou CPF já cadastrados,
-# para a tela não revelar quem tem conta no site
-MENSAGEM_CADASTRO_PROFISSIONAL_RECEBIDO = (
-    "Cadastro recebido! Se os dados estiverem corretos, seu perfil será analisado "
-    "por um administrador e você receberá um e-mail com a decisão."
-)
 
 
-OPCOES_ESPECIALIDADE = [
-    "Psicologia Clínica",
-    "Terapia Cognitivo-Comportamental",
-    "Dependência Química",
-    "Dependência em Jogos",
-    "Ansiedade",
-    "Depressão",
-    "Relacionamentos",
-    "Infantil",
-    "Casais",
-    "Outro"
-]
 
 
-def validar_dados_profissionais(dados):
-    # Valida e padroniza os campos que só o cadastro de profissional tem.
-    # Levanta ErroCadastro no primeiro erro.
-
-    # CRP (00/000000) e a UF, que depende da região do CRP.
-    # A UF é conferida aqui porque o campo do formulário pode ser alterado no navegador.
-    crp_partes = re.fullmatch(r"(\d{2})/?(\d{3,6})", dados["crp"])
-    if not crp_partes or crp_partes.group(1) not in REGIOES_CRP:
-        raise ErroCadastro("crp", "CRP inválido. Use o formato 00/000000, com uma região existente.")
-
-    dados["crp"] = f"{crp_partes.group(1)}/{crp_partes.group(2)}"
-
-    dados["uf_crp"] = dados["uf_crp"].upper()
-    if dados["uf_crp"] not in REGIOES_CRP[crp_partes.group(1)]:
-        raise ErroCadastro("uf_crp", "Selecione a UF correspondente à região do CRP.")
-
-    validar_atuacao_profissional(dados)
 
 
-def validar_atuacao_profissional(dados):
-    # Experiência, especialidade, formação e biografia (cadastro e edição do perfil do profissional).
-    # Levanta ErroCadastro no primeiro erro.
 
-    # Experiência em anos (a coluna é INT)
-    if not dados["experiencia"].isdigit() or int(dados["experiencia"]) > 60:
-        raise ErroCadastro("experiencia", "Informe a experiência em anos, de 0 a 60.")
 
-    if dados["especialidade"] not in OPCOES_ESPECIALIDADE:
-        raise ErroCadastro("especialidade", "Selecione uma especialidade da lista.")
 
-    # Formação e biografia aparecem no perfil público: passam pela mesma moderação do fórum
-    for campo, nome_campo in (("faculdade", "Instituição de ensino"), ("pos", "Pós-graduação"), ("biografia", "Biografia")):
-        if verificar_conteudo_proibido(dados[campo]):
-            raise ErroCadastro(
-                campo,
-                f"O campo {nome_campo} contém linguagem ofensiva ou conteúdo que promove apostas."
-            )
 
 
 @app.route('/cadastro_profissional', methods=['GET', 'POST'])

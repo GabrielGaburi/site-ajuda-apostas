@@ -47,3 +47,15 @@ def exigir_consentimento_saude():
     )
 
     return redirect(url_for("conta.aceitar_termos", proximo=request.path))
+
+
+def redirecionar_para_painel():
+    """Leva o usuário logado ao painel do próprio perfil (nunca ao painel de outro)."""
+
+    destino = {
+        "usuario": "dashboard_usuario",
+        "profissional": "dashboard_profissional",
+        "admin": "dashboard_admin",
+    }.get(session.get("tipo_usuario"), "login")
+
+    return redirect(url_for(destino))
