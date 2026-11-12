@@ -94,7 +94,7 @@
                             </li>
 
                             <li>
-                                <a class="dropdown-item" href="{{ url_for('minha_privacidade') }}">
+                                <a class="dropdown-item" href="{{ url_for('conta.minha_privacidade') }}">
                                     <i class="bi bi-shield-lock" aria-hidden="true"></i> Privacidade e dados
                                 </a>
                             </li>
@@ -157,9 +157,9 @@
                 <span>&copy; Apoio &amp; Consciência</span>
 
                 <nav aria-label="Documentos legais">
-                    <a class="link-light me-3" href="{{ url_for('termos_de_uso') }}">Termos de Uso</a>
-                    <a class="link-light me-3" href="{{ url_for('politica_privacidade') }}">Privacidade</a>
-                    <a class="link-light" href="{{ url_for('politica_cookies') }}">Cookies</a>
+                    <a class="link-light me-3" href="{{ url_for('conta.termos_de_uso') }}">Termos de Uso</a>
+                    <a class="link-light me-3" href="{{ url_for('conta.politica_privacidade') }}">Privacidade</a>
+                    <a class="link-light" href="{{ url_for('conta.politica_cookies') }}">Cookies</a>
                 </nav>
             </div>
 
@@ -229,7 +229,7 @@
                     Antes de conversar: o que você escrever aqui é guardado, pode revelar informações sobre
                     sua saúde e é enviado a um serviço de inteligência artificial (OpenAI). Se pedir ajuda
                     profissional ou houver sinal de risco, profissionais aprovados poderão ler a conversa.
-                    Veja a <a href="{{ url_for('politica_privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>.
+                    Veja a <a href="{{ url_for('conta.politica_privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>.
                 </p>
                 <button id="chatbot-consentir" type="button">Concordo e quero conversar</button>
             </div>

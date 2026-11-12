@@ -46,4 +46,4 @@ def exigir_consentimento_saude():
         "warning"
     )
 
-    return redirect(url_for("aceitar_termos", proximo=request.path))
+    return redirect(url_for("conta.aceitar_termos", proximo=request.path))

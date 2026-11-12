@@ -1,6 +1,6 @@
 import hmac
 import re, os, json, traceback, uuid, mysql.connector, threading, time,  hashlib, secrets, functools
-from flask import Flask, render_template, request, redirect, url_for, flash, abort, session, g, Response
+from flask import Flask, render_template, request, redirect, url_for, flash, abort, session, g
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.exceptions import HTTPException
 from flask_limiter.util import get_remote_address
@@ -26,16 +26,12 @@ from config import (
 )
 from extensoes import limiter, csrf, client, iniciar_extensoes
 from db import get_db_connection
+from rotas.conta import bp as bp_conta
 from servicos.lgpd import (
     LEGAL,
-    MENSAGEM_REMOVIDA,
-    apagar_conversas_do_usuario,
-    montar_texto_meus_dados,
 )
 from servicos.sessao import (
-    destino_seguro,
     exigir_consentimento_saude,
-    usuario_comum_logado,
 )
 from rotas.publico import bp as bp_publico
 from servicos.tokens import serializer
@@ -69,6 +65,7 @@ from servicos.retencao import (
 app = Flask(__name__)
 configurar_app(app)
 iniciar_extensoes(app)
+app.register_blueprint(bp_conta)
 app.register_blueprint(bp_publico)
 
 # Hash usado no login quando o e-mail não existe,
@@ -88,7 +85,7 @@ def impressao_senha(senha_hash):
 
 # Páginas e respostas que, mesmo sem login, carregam dados pessoais ou de saúde
 ENDPOINTS_SEM_CACHE = {
-    "login", "verificar_2fa", "redefinir_senha", "esqueci_senha", "aceitar_termos", "cadastro_usuario",
+    "login", "verificar_2fa", "redefinir_senha", "esqueci_senha", "conta.aceitar_termos", "cadastro_usuario",
     "cadastro_profissional", "reenviar_confirmacao", "reenviar_codigo_2fa", "chatbot_historico",
     "mensagens", "lista_sessoes",
 }
@@ -148,8 +145,6 @@ atendimentos_lock = threading.Lock()
 
 usuarios = []
 profissionais = []
-
-
 
 
 SYSTEM_PROMPT = (
@@ -5004,12 +4999,10 @@ def editar_perfil_profissional():
 # Rotas que não exigem o aceite da versão atual dos Termos.
 # O chat e suas consultas têm a própria checagem de consentimento.
 ENDPOINTS_SEM_ACEITE = {
-    "static", "aceitar_termos", "logout", "termos_de_uso", "politica_privacidade",
-    "politica_cookies", "chatbot", "chatbot_historico", "voltar_para_ia",
-    "registrar_consentimento_chat", "mensagens",
+    "static", "conta.aceitar_termos", "logout", "conta.termos_de_uso", "conta.politica_privacidade",
+    "conta.politica_cookies", "chatbot", "chatbot_historico", "voltar_para_ia",
+    "conta.registrar_consentimento_chat", "mensagens",
 }
-
-
 
 
 @app.before_request
@@ -5085,7 +5078,7 @@ def verificar_conta_e_consentimento():
     if usuario["termos_versao"] != TERMOS_VERSAO:
         proximo = request.path if request.method == "GET" else None
 
-        return redirect(url_for("aceitar_termos", proximo=proximo))
+        return redirect(url_for("conta.aceitar_termos", proximo=proximo))
 
     return None
 
@@ -6135,13 +6128,7 @@ def cadastro_profissional():
     return erro(None, "")
 
 
-
-
-
         
-
-
-
 
 
 # Página principal do fórum
@@ -7552,17 +7539,7 @@ def redefinir_senha(token):
     
 
 
-
                 
-
-
-
-# =========================
-# PÁGINAS LEGAIS
-# =========================
-
-
-
 
 
 @functools.lru_cache(maxsize=512)
@@ -7597,530 +7574,9 @@ def injetar_dados_legais():
     }
 
 
-@app.route("/termos")
-def termos_de_uso():
-    return render_template("termos.html")
-
-
-@app.route("/privacidade")
-def politica_privacidade():
-    return render_template("privacidade.html")
-
-
-@app.route("/cookies")
-def politica_cookies():
-    return render_template("cookies.html")
-
-
 # =========================
 # CONSENTIMENTO
 # =========================
-
-@app.route("/aceitar_termos", methods=["GET", "POST"])
-@limiter.limit("10 per minute", methods=["POST"])
-def aceitar_termos():
-    """Registra o aceite da versão atual dos Termos e o consentimento para dados de saúde."""
-
-    if "usuario_id" not in session:
-        return redirect(url_for("login"))
-
-    proximo = destino_seguro(request.values.get("proximo"))
-
-    if request.method == "GET":
-        return render_template("aceitar_termos.html", proximo=proximo)
-
-    if request.form.get("termos") != "aceito":
-        flash(
-            "Para continuar, aceite os Termos de Uso e a Política de Privacidade.",
-            "warning"
-        )
-        return render_template("aceitar_termos.html", proximo=proximo), 400
-
-    consentimento_saude = request.form.get("consentimento_saude") == "aceito"
-
-    conexao = None
-    cursor = None
-
-    try:
-        conexao = get_db_connection()
-        cursor = conexao.cursor()
-
-        cursor.execute(
-            """
-            UPDATE usuarios
-            SET termos_aceitos = 1,
-                termos_aceitos_em = NOW(),
-                termos_versao = %s
-            WHERE id = %s
-            """,
-            (TERMOS_VERSAO, session["usuario_id"])
-        )
-
-        if consentimento_saude:
-            cursor.execute(
-                """
-                UPDATE usuarios
-                SET consentimento_saude_em = NOW(),
-                    consentimento_saude_versao = %s
-                WHERE id = %s
-                """,
-                (TERMOS_VERSAO, session["usuario_id"])
-            )
-
-        conexao.commit()
-
-        flash("Preferências de privacidade registradas.", "success")
-
-        return redirect(proximo)
-
-    except Exception:
-        if conexao:
-            conexao.rollback()
-
-        app.logger.exception("Erro ao registrar o aceite dos termos.")
-
-        flash("Não foi possível registrar o aceite. Tente novamente.", "danger")
-
-        return render_template("aceitar_termos.html", proximo=proximo), 500
-
-    finally:
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-
-
-@app.route("/chatbot/consentimento", methods=["POST"])
-@limiter.limit("10 per minute")
-def registrar_consentimento_chat():
-    """Consentimento para usar o chat. Visitante: guardado na sessão. Logado: na conta."""
-
-    usuario_id = session.get("usuario_id")
-
-    if not usuario_id:
-        session["consentimento_chat"] = TERMOS_VERSAO
-
-        return {"sucesso": True}
-
-    conexao = None
-    cursor = None
-
-    try:
-        conexao = get_db_connection()
-        cursor = conexao.cursor()
-
-        cursor.execute(
-            """
-            UPDATE usuarios
-            SET consentimento_saude_em = NOW(),
-                consentimento_saude_versao = %s
-            WHERE id = %s
-            """,
-            (TERMOS_VERSAO, usuario_id)
-        )
-
-        conexao.commit()
-
-        return {"sucesso": True}
-
-    except Exception:
-        if conexao:
-            conexao.rollback()
-
-        app.logger.exception("Erro ao registrar o consentimento do chat.")
-
-        return {"erro": "Não foi possível registrar o consentimento."}, 500
-
-    finally:
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-
-
-
-
-# =========================
-# PRIVACIDADE DA CONTA (LGPD)
-# =========================
-
-
-
-
-
-@app.route("/conta/privacidade")
-def minha_privacidade():
-
-    usuario_id, resposta = usuario_comum_logado()
-
-    if resposta:
-        return resposta
-
-    conexao = None
-    cursor = None
-
-    try:
-        conexao = get_db_connection()
-        cursor = conexao.cursor(dictionary=True)
-
-        cursor.execute(
-            """
-            SELECT
-                tipo,
-                termos_versao,
-                termos_aceitos_em,
-                consentimento_saude_em,
-                consentimento_saude_versao
-            FROM usuarios
-            WHERE id = %s
-            """,
-            (usuario_id,)
-        )
-
-        usuario = cursor.fetchone()
-
-        return render_template("minha_privacidade.html", usuario=usuario)
-
-    except Exception:
-        app.logger.exception("Erro ao carregar a página de privacidade.")
-
-        flash("Não foi possível carregar a página.", "danger")
-
-        return redirect(url_for("publico.index"))
-
-    finally:
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-
-
-
-
-
-
-
-
-@app.route("/conta/exportar", methods=["POST"])
-@limiter.limit("5 per hour")
-def exportar_meus_dados():
-
-    usuario_id, resposta = usuario_comum_logado()
-
-    if resposta:
-        return resposta
-
-    conexao = None
-    cursor = None
-
-    try:
-        conexao = get_db_connection()
-        cursor = conexao.cursor(dictionary=True)
-
-        cursor.execute("SELECT * FROM usuarios WHERE id = %s", (usuario_id,))
-        conta = cursor.fetchone() or {}
-        conta.pop("senha_hash", None)
-
-        cursor.execute("SELECT * FROM profissionais WHERE usuario_id = %s", (usuario_id,))
-        profissional = cursor.fetchone()
-
-        cursor.execute(
-            """
-            SELECT id, status, motivo, data_inicio
-            FROM atendimentos_chatbot
-            WHERE usuario_id = %s
-            ORDER BY id
-            """,
-            (usuario_id,)
-        )
-        atendimentos = cursor.fetchall()
-
-        cursor.execute(
-            """
-            SELECT m.atendimento_id, m.remetente, m.mensagem, m.data_envio
-            FROM mensagens_atendimento m
-            INNER JOIN atendimentos_chatbot a
-                ON a.id = m.atendimento_id
-            WHERE a.usuario_id = %s
-            ORDER BY m.id
-            """,
-            (usuario_id,)
-        )
-        mensagens_chat = cursor.fetchall()
-
-        cursor.execute(
-            """
-            SELECT id, titulo, data_criacao
-            FROM forum_topicos
-            WHERE usuario_id = %s
-            ORDER BY id
-            """,
-            (usuario_id,)
-        )
-        topicos = cursor.fetchall()
-
-        cursor.execute(
-            """
-            SELECT id, topico_id, mensagem, data_criacao
-            FROM forum_mensagens
-            WHERE usuario_id = %s
-            ORDER BY id
-            """,
-            (usuario_id,)
-        )
-        mensagens_forum = cursor.fetchall()
-
-        texto = montar_texto_meus_dados(
-            conta, profissional, atendimentos, mensagens_chat, topicos, mensagens_forum
-        )
-
-        return Response(
-            texto,
-            mimetype="text/plain",
-            headers={
-                "Content-Disposition": "attachment; filename=meus-dados.txt",
-                "Content-Type": "text/plain; charset=utf-8",
-                "Cache-Control": "no-store",
-            }
-        )
-
-    except Exception:
-        app.logger.exception("Erro ao exportar dados da conta.")
-
-        flash("Não foi possível exportar seus dados agora.", "danger")
-
-        return redirect(url_for("minha_privacidade"))
-
-    finally:
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-
-
-@app.route("/conta/revogar_consentimento", methods=["POST"])
-@limiter.limit("10 per hour")
-def revogar_consentimento_saude():
-
-    usuario_id, resposta = usuario_comum_logado()
-
-    if resposta:
-        return resposta
-
-    conexao = None
-    cursor = None
-
-    try:
-        conexao = get_db_connection()
-        cursor = conexao.cursor()
-
-        cursor.execute(
-            """
-            UPDATE usuarios
-            SET consentimento_saude_em = NULL,
-                consentimento_saude_versao = NULL
-            WHERE id = %s
-            """,
-            (usuario_id,)
-        )
-
-        # Encerra o que estiver em andamento com a IA ou com profissionais
-        cursor.execute(
-            """
-            UPDATE atendimentos_chatbot
-            SET status = 'finalizado'
-            WHERE usuario_id = %s
-              AND status IN ('ia', 'aguardando', 'em_atendimento')
-            """,
-            (usuario_id,)
-        )
-
-        conexao.commit()
-
-        flash(
-            "Consentimento revogado. O chat e o fórum ficam bloqueados até você consentir novamente.",
-            "success"
-        )
-
-    except Exception:
-        if conexao:
-            conexao.rollback()
-
-        app.logger.exception("Erro ao revogar o consentimento.")
-
-        flash("Não foi possível revogar o consentimento.", "danger")
-
-    finally:
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-
-    return redirect(url_for("minha_privacidade"))
-
-
-
-
-@app.route("/conta/apagar_conversas", methods=["POST"])
-@limiter.limit("10 per hour")
-def apagar_minhas_conversas():
-
-    usuario_id, resposta = usuario_comum_logado()
-
-    if resposta:
-        return resposta
-
-    conexao = None
-    cursor = None
-
-    try:
-        conexao = get_db_connection()
-        cursor = conexao.cursor()
-
-        apagar_conversas_do_usuario(cursor, usuario_id)
-
-        conexao.commit()
-
-        session.pop("chatbot_atendimento_id", None)
-
-        flash("Suas conversas com o Apoio Virtual foram apagadas.", "success")
-
-    except Exception:
-        if conexao:
-            conexao.rollback()
-
-        app.logger.exception("Erro ao apagar conversas do usuário.")
-
-        flash("Não foi possível apagar as conversas.", "danger")
-
-    finally:
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-
-    return redirect(url_for("minha_privacidade"))
-
-
-@app.route("/conta/excluir", methods=["POST"])
-@limiter.limit("5 per hour")
-def excluir_minha_conta():
-    """Exclui a conta: apaga as conversas e anonimiza o cadastro e as mensagens do fórum."""
-
-    usuario_id, resposta = usuario_comum_logado()
-
-    if resposta:
-        return resposta
-
-    if session.get("tipo_usuario") != "usuario":
-        flash(
-            "Contas de profissionais e administradores são excluídas pelo e-mail de privacidade.",
-            "warning"
-        )
-        return redirect(url_for("minha_privacidade"))
-
-    senha = request.form.get("senha", "")
-
-    if request.form.get("confirmacao", "").strip().upper() != "EXCLUIR":
-        flash('Digite "EXCLUIR" para confirmar.', "warning")
-        return redirect(url_for("minha_privacidade"))
-
-    conexao = None
-    cursor = None
-
-    try:
-        conexao = get_db_connection()
-        cursor = conexao.cursor(dictionary=True)
-
-        cursor.execute(
-            "SELECT senha_hash FROM usuarios WHERE id = %s AND tipo = 'usuario'",
-            (usuario_id,)
-        )
-
-        conta = cursor.fetchone()
-
-        if not conta or not check_password_hash(conta["senha_hash"], senha):
-            flash("Senha incorreta.", "danger")
-            return redirect(url_for("minha_privacidade"))
-
-        apagar_conversas_do_usuario(cursor, usuario_id)
-
-        cursor.execute("DELETE FROM codigos_2fa WHERE usuario_id = %s", (usuario_id,))
-        cursor.execute("DELETE FROM tokens_recuperacao_senha WHERE usuario_id = %s", (usuario_id,))
-
-        # O fórum guarda a estrutura das discussões, mas sem o conteúdo do autor
-        cursor.execute(
-            "UPDATE forum_mensagens SET mensagem = %s WHERE usuario_id = %s",
-            (MENSAGEM_REMOVIDA, usuario_id)
-        )
-        cursor.execute(
-            "UPDATE forum_topicos SET titulo = %s WHERE usuario_id = %s",
-            ("[tópico removido pelo autor]", usuario_id)
-        )
-
-        # O CPF e o e-mail são únicos, então recebem valores que não se repetem
-        cursor.execute(
-            """
-            UPDATE usuarios
-            SET nome = 'Usuário',
-                sobrenome = 'removido',
-                cpf = %s,
-                email = %s,
-                data_nascimento = '1900-01-01',
-                sexo = NULL,
-                telefone = NULL,
-                cep = NULL,
-                estado = NULL,
-                cidade = NULL,
-                rua = NULL,
-                numero = NULL,
-                bairro = NULL,
-                senha_hash = %s,
-                status = 'banido',
-                email_confirmado = 0,
-                consentimento_saude_em = NULL,
-                consentimento_saude_versao = NULL,
-                excluido_em = NOW()
-            WHERE id = %s
-            """,
-            (
-                f"EXCL{usuario_id:010d}",
-                f"excluido-{usuario_id}@invalido.local",
-                generate_password_hash(secrets.token_hex(32)),
-                usuario_id,
-            )
-        )
-
-        conexao.commit()
-
-    except Exception:
-        if conexao:
-            conexao.rollback()
-
-        app.logger.exception("Erro ao excluir a conta.")
-
-        flash("Não foi possível excluir a conta. Nada foi alterado.", "danger")
-
-        return redirect(url_for("minha_privacidade"))
-
-    finally:
-        if cursor:
-            cursor.close()
-
-        if conexao:
-            conexao.close()
-
-    session.clear()
-
-    flash("Sua conta foi excluída e seus dados pessoais foram removidos.", "success")
-
-    return redirect(url_for("publico.index"))
 
 
 # =========================
@@ -8134,7 +7590,6 @@ def comando_aplicar_retencao():
 
     for nome, quantidade in aplicar_retencao().items():
         print(f"{nome}: {quantidade}")
-
 
 
 if __name__ == "__main__":

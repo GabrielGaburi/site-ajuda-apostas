@@ -13,7 +13,7 @@
         a qualquer momento em <strong>Privacidade e dados</strong>, no menu da sua conta.
     </p>
 
-    <form method="POST" action="{{ url_for('aceitar_termos') }}" novalidate>
+    <form method="POST" action="{{ url_for('conta.aceitar_termos') }}" novalidate>
 
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="proximo" value="{{ proximo }}">
@@ -25,11 +25,11 @@
                     <input class="form-check-input" type="checkbox" id="termos" name="termos" value="aceito" required>
                     <label class="form-check-label" for="termos">
                         Li e aceito os
-                        <a href="{{ url_for('termos_de_uso') }}" target="_blank" rel="noopener">Termos de Uso</a>,
+                        <a href="{{ url_for('conta.termos_de_uso') }}" target="_blank" rel="noopener">Termos de Uso</a>,
                         a
-                        <a href="{{ url_for('politica_privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>
+                        <a href="{{ url_for('conta.politica_privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>
                         e a
-                        <a href="{{ url_for('politica_cookies') }}" target="_blank" rel="noopener">Política de Cookies</a>.
+                        <a href="{{ url_for('conta.politica_cookies') }}" target="_blank" rel="noopener">Política de Cookies</a>.
                         <span class="text-danger">(obrigatório)</span>
                     </label>
                 </div>
