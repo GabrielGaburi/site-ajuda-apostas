@@ -12,6 +12,22 @@ Aplicação web em português (pt-BR) de apoio a pessoas afetadas por apostas. R
 
 <!-- Adicione aqui capturas de tela (ex.: docs/home.png, docs/chatbot.png, docs/painel-profissional.png) e um link para o vídeo de demonstração. -->
 
+## Em 1 minuto (para quem avalia)
+
+**Problema:** quem tem problema com apostas costuma esconder o que sente, e um chatbot sozinho não é seguro nesse contexto. O site combina IA com atendimento humano e trata dados de saúde com cuidado legal e técnico.
+
+**O que este projeto demonstra:**
+
+- **Back-end completo em Flask e MySQL, sem ORM:** autenticação por perfis, 2FA por e-mail, tokens com expiração, upload de imagem, e-mails transacionais e rotina agendada. Cerca de 10 mil linhas, hoje organizadas em Blueprints por domínio, serviços reutilizáveis e hooks globais.
+- **Refatoração segura:** o `app.py` começou monolítico e foi dividido sem mudar o comportamento. Cada etapa foi comparada com a anterior e, no fim, o fluxo inteiro foi testado no navegador (login com 2FA, chat com IA, encaminhamento a profissional, fórum e painéis do admin) antes do merge.
+- **Segurança verificada, não só declarada:** auditoria própria com 13 achados corrigidos, entre eles uma falha real de concorrência no limite de tentativas do 2FA (tabela na seção "Segurança").
+- **Produto com responsabilidade:** IA restrita ao tema, detecção de risco de vida que enxerga tentativas de burlar o texto, moderação do fórum, LGPD (consentimento, exportação e exclusão) e nome abreviado de quem participa do fórum.
+- **Engenharia de qualidade:** testes automatizados nas regras de negócio puras (46 em Python e 7 em JavaScript), executados pelo GitHub Actions em cada pull request e em cada push na `main`, com Dependabot ativo.
+
+**Limites, ditos com honestidade:** as rotas e o banco ainda são verificados manualmente (não há testes de integração no repositório), não há decorators de autorização e o controle de conversas da IA vive na memória de um único processo. Cada um está explicado, com o próximo passo, em "Decisões técnicas e próximos passos".
+
+**Por onde olhar o código:** `rotas/chatbot.py` e `servicos/ia.py` (conversa com a IA e transferência a um humano), `deteccao_risco.py`, `moderacao.py` e `normalizacao.py` (texto adversarial, com testes), `rotas/auth.py` e `servicos/doisfa.py` (login e 2FA), `hooks.py` (segurança em toda requisição).
+
 ## Funcionalidades
 
 - **Chatbot com IA** (OpenAI) restrito a apoio emocional sobre apostas. Passa para um profissional quando o usuário pede ou quando detecta risco.
@@ -108,7 +124,7 @@ Scripts próprios (cliente de teste do Flask contra o MySQL, com contas descart�
 
 ## Decisões técnicas e próximos passos
 
-- **Blueprints por domínio, sem ORM.** O back-end começou num único `app.py` de ~10 mil linhas, escolha para aprender o fluxo completo (rotas, SQL e e-mail) sem abstrações. Foi dividido em Blueprints (`rotas/`), regras reutilizáveis (`servicos/`) e hooks globais (`hooks.py`), sem alterar o comportamento nos roteiros de teste: cada etapa foi comparada com a anterior, com banco simulado, em requisições que checam status, redirecionamentos, HTML, SQL de escrita e e-mails. Esses roteiros ainda não estão no repositório, e a verificação no navegador e contra o banco real continua manual. O acesso ao banco continua sendo SQL puro em cada rota; extraí-lo para uma camada de dados é um próximo passo.
+- **Blueprints por domínio, sem ORM.** O back-end começou num único `app.py` de ~10 mil linhas, escolha para aprender o fluxo completo (rotas, SQL e e-mail) sem abstrações. Foi dividido em Blueprints (`rotas/`), regras reutilizáveis (`servicos/`) e hooks globais (`hooks.py`), sem alterar o comportamento nos roteiros de teste: cada etapa foi comparada com a anterior, com banco simulado, em requisições que checam status, redirecionamentos, HTML, SQL de escrita e e-mails. Depois, o fluxo completo foi testado à mão no navegador, com banco, e-mail e OpenAI reais, antes do merge. Esses roteiros de comparação ainda não estão no repositório, e a verificação de rotas e banco continua manual. O acesso ao banco continua sendo SQL puro em cada rota; extraí-lo para uma camada de dados é um próximo passo.
 - **Respostas da IA em background** (`threading.Thread` com lock por conversa) e polling no front-end, em vez de WebSocket, para manter o deploy simples.
 - **Sem decorators de autorização:** cada rota checa a sessão. A auditoria percorreu as 68 rotas com cada perfil e não achou checagem faltando, mas é fácil esquecer uma em rotas novas. Centralizar em decorators é um próximo passo.
 - **Estado em memória:** o controle de conversas em processamento e os limites de tentativas vivem no processo. Por isso o deploy usa um processo com várias threads; escalar exige Redis (ver "Colocando no ar").
