@@ -28,7 +28,7 @@
                     das discussões da comunidade.
                 </p>
 
-                <a href="{{ url_for('forum_home') }}" class="btn btn-dark mt-auto">
+                <a href="{{ url_for('forum.forum_home') }}" class="btn btn-dark mt-auto">
                     Acessar fórum
                 </a>
 
@@ -49,7 +49,7 @@
                     de você.
                 </p>
 
-                <a href="{{ url_for('ajuda') }}" class="btn btn-dark mt-auto">
+                <a href="{{ url_for('publico.ajuda') }}" class="btn btn-dark mt-auto">
                     Ver mapa
                 </a>
 
@@ -70,7 +70,7 @@
                     e na redução do acesso às apostas.
                 </p>
 
-                <a href="{{ url_for('bloqueio') }}" class="btn btn-dark mt-auto">
+                <a href="{{ url_for('publico.bloqueio') }}" class="btn btn-dark mt-auto">
                     Acessar
                 </a>
 
@@ -91,14 +91,14 @@
                     sobre sua relação com as apostas.
                 </p>
 
-                <a href="{{ url_for('teste') }}" class="btn btn-dark mt-auto">
+                <a href="{{ url_for('publico.teste') }}" class="btn btn-dark mt-auto">
                     Fazer teste
                 </a>
 
             </div>
         </div>
 
-        <a href="{{ url_for('editar_meu_perfil') }}"
+        <a href="{{ url_for('usuario.editar_meu_perfil') }}"
             class="btn btn-outline-dark">
                 Editar meu perfil
         </a>

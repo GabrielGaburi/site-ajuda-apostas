@@ -19,7 +19,7 @@
             </p>
         </div>
 
-        <a href="{{ url_for('perfil') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('usuario.perfil') }}" class="btn btn-outline-secondary">
             Voltar
         </a>
 
@@ -103,7 +103,7 @@
                             <td>
 
                                 <a href="{{ url_for(
-                                    'detalhes_usuario',
+                                    'admin.detalhes_usuario',
                                     usuario_id=usuario.id
                                 ) }}" class="btn btn-sm btn-dark">
                                     Ver perfil

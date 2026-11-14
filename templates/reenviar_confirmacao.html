@@ -13,7 +13,7 @@
             Informe o e-mail usado no cadastro para receber um novo link de confirmação.
         </p>
 
-        <form method="POST" action="{{ url_for('reenviar_confirmacao') }}">
+        <form method="POST" action="{{ url_for('auth.reenviar_confirmacao') }}">
 
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -35,7 +35,7 @@
         </form>
 
         <div class="text-center mt-3">
-            <a href="{{ url_for('login') }}" class="text-decoration-none">
+            <a href="{{ url_for('auth.login') }}" class="text-decoration-none">
                 Voltar para login
             </a>
         </div>

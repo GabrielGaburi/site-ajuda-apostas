@@ -26,7 +26,7 @@
         </p>
 
         <form method="POST"
-              action="{{ url_for('verificar_2fa') }}">
+              action="{{ url_for('auth.verificar_2fa') }}">
 
             <input type="hidden"
                    name="csrf_token"
@@ -67,7 +67,7 @@
             Não recebeu o e-mail?
 
             <form method="POST"
-                  action="{{ url_for('reenviar_codigo_2fa') }}">
+                  action="{{ url_for('auth.reenviar_codigo_2fa') }}">
 
                 <input type="hidden"
                        name="csrf_token"

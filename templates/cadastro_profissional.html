@@ -49,7 +49,7 @@
 
                     {# novalidate: a validação é feita pelo cadastro_profissional.js (mensagens em português) e pelo servidor #}
                     <form id="formCadastroProfissional" method="POST" enctype="multipart/form-data"
-                        action="{{ url_for('cadastro_profissional') }}" novalidate>
+                        action="{{ url_for('profissional.cadastro_profissional') }}" novalidate>
 
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
@@ -595,11 +595,11 @@
 
                             <p class="small text-muted mb-0">
                                 Leia os
-                                <a href="{{ url_for('termos_de_uso') }}" target="_blank" rel="noopener">Termos de Uso</a>,
+                                <a href="{{ url_for('conta.termos_de_uso') }}" target="_blank" rel="noopener">Termos de Uso</a>,
                                 a
-                                <a href="{{ url_for('politica_privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>
+                                <a href="{{ url_for('conta.politica_privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>
                                 e a
-                                <a href="{{ url_for('politica_cookies') }}" target="_blank" rel="noopener">Política de Cookies</a>
+                                <a href="{{ url_for('conta.politica_cookies') }}" target="_blank" rel="noopener">Política de Cookies</a>
                                 antes de continuar. As conversas com o Apoio Virtual são enviadas a um serviço
                                 externo de inteligência artificial.
                             </p>
@@ -616,9 +616,9 @@
 
                             <label class="form-check-label" for="termos">
                                 Li e aceito os
-                                <a href="{{ url_for('termos_de_uso') }}" target="_blank" rel="noopener">Termos de Uso</a>
+                                <a href="{{ url_for('conta.termos_de_uso') }}" target="_blank" rel="noopener">Termos de Uso</a>
                                 e a
-                                <a href="{{ url_for('politica_privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>,
+                                <a href="{{ url_for('conta.politica_privacidade') }}" target="_blank" rel="noopener">Política de Privacidade</a>,
                                 inclusive o tratamento dos meus dados, que podem incluir dados de saúde, conforme descrito.
                             </label>
 
@@ -637,7 +637,7 @@
                         <small>
                             Já possui uma conta?
 
-                            <a href="{{ url_for('login') }}">
+                            <a href="{{ url_for('auth.login') }}">
                                 Fazer login
                             </a>
                         </small>

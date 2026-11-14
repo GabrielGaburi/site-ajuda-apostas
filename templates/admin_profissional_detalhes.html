@@ -16,7 +16,7 @@
             </p>
         </div>
 
-        <a href="{{ url_for('gerenciar_profissionais') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('admin_profissionais.gerenciar_profissionais') }}" class="btn btn-outline-secondary">
             Voltar
         </a>
 
@@ -200,7 +200,7 @@
             </h5>
 
             <img src="{{ url_for(
-        'servir_upload',
+        'publico.servir_upload',
         nome_arquivo=profissional.foto
     ) }}" alt="Foto do profissional" class="img-fluid rounded" style="max-width: 250px;">
 
@@ -238,7 +238,7 @@
                 <!-- APROVAR -->
 
                 <form method="POST" action="{{ url_for(
-                    'aprovar_profissional',
+                    'admin_profissionais.aprovar_profissional',
                     profissional_id=profissional.profissional_id
                 ) }}">
 
@@ -300,7 +300,7 @@
 
 
                 <form method="POST" action="{{ url_for(
-                    'recusar_profissional',
+                    'admin_profissionais.recusar_profissional',
                     profissional_id=profissional.profissional_id
                 ) }}">
 

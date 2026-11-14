@@ -12,7 +12,7 @@
         </p>
     </div>
 
-    <a href="{{ url_for('dashboard_admin') }}" class="btn btn-secondary">
+    <a href="{{ url_for('admin.dashboard_admin') }}" class="btn btn-secondary">
         Voltar
     </a>
 </div>
@@ -48,12 +48,12 @@
 
                 <div class="d-flex gap-2">
 
-                    <a href="{{ url_for('forum_topico', topico_id=topico.id) }}" class="btn btn-primary">
+                    <a href="{{ url_for('forum.forum_topico', topico_id=topico.id) }}" class="btn btn-primary">
                         Visualizar
                     </a>
 
                     <form method="POST"
-                        action="{{ url_for('excluir_topico', topico_id=topico.id) }}"
+                        action="{{ url_for('forum.excluir_topico', topico_id=topico.id) }}"
                         data-confirmar="Tem certeza que deseja excluir este tópico?">
 
                         <input type="hidden"
