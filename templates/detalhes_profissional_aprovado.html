@@ -19,7 +19,7 @@
             </p>
         </div>
 
-        <a href="{{ url_for('gerenciar_profissionais_aprovados') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('admin_profissionais.gerenciar_profissionais_aprovados') }}" class="btn btn-outline-secondary">
 
             Voltar
 
@@ -201,7 +201,7 @@
             </h5>
 
             <img src="{{ url_for(
-            'servir_upload',
+            'publico.servir_upload',
             nome_arquivo=profissional.foto
         ) }}" alt="Foto do profissional" class="img-fluid rounded" style="max-width: 250px;">
 
@@ -304,7 +304,7 @@
                 <!-- EDITAR -->
 
                 <a href="{{ url_for(
-                    'editar_profissional_aprovados',
+                    'admin_profissionais.editar_profissional_aprovados',
                     profissional_id=profissional.profissional_id
                 ) }}" class="btn btn-primary">
                     Editar informações
@@ -316,7 +316,7 @@
                 {% if profissional.status == "ativo" %}
 
                 <form method="POST" action="{{ url_for(
-                          'banir_profissional',
+                          'admin_profissionais.banir_profissional',
                           profissional_id=profissional.profissional_id
                       ) }}">
 
@@ -337,7 +337,7 @@
                 {% elif profissional.status == "banido" %}
 
                 <form method="POST" action="{{ url_for(
-                          'reativar_profissional',
+                          'admin_profissionais.reativar_profissional',
                           profissional_id=profissional.profissional_id
                       ) }}">
 

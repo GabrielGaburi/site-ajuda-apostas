@@ -8,7 +8,7 @@
 
     <h2 class="mb-4 text-center">Fórum</h2>
 
-    <a href="{{ url_for('forum_novo') }}" class="btn btn-primary mb-3">
+    <a href="{{ url_for('forum.forum_novo') }}" class="btn btn-primary mb-3">
         Criar novo tópico
     </a>
 
@@ -30,7 +30,7 @@
 
             <div class="d-flex gap-2">
 
-                <a href="{{ url_for('forum_topico', topico_id=topico.id) }}" class="btn btn-outline-primary">
+                <a href="{{ url_for('forum.forum_topico', topico_id=topico.id) }}" class="btn btn-outline-primary">
                     Ver tópico
                 </a>
 
@@ -38,7 +38,7 @@
                 (topico.usuario_id == session.get("usuario_id")
                 or session.get("tipo_usuario") == "admin") %}
 
-                <form method="POST" action="{{ url_for('excluir_topico', topico_id=topico.id) }}"
+                <form method="POST" action="{{ url_for('forum.excluir_topico', topico_id=topico.id) }}"
                     data-confirmar="Tem certeza que deseja excluir este tópico?">
 
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -22,7 +22,7 @@
                     {% if usuario.termos_versao == termos_versao %}
                     aceitos na versão atual ({{ termos_versao }}).
                     {% else %}
-                    <strong>pendente.</strong> <a href="{{ url_for('aceitar_termos') }}">Revisar e aceitar</a>.
+                    <strong>pendente.</strong> <a href="{{ url_for('conta.aceitar_termos') }}">Revisar e aceitar</a>.
                     {% endif %}
                 </li>
                 <li>
@@ -30,7 +30,7 @@
                     {% if usuario.consentimento_saude_versao == termos_versao %}
                     consentimento dado em {{ usuario.consentimento_saude_em.strftime('%d/%m/%Y %H:%M') }}.
                     {% else %}
-                    <strong>sem consentimento.</strong> <a href="{{ url_for('aceitar_termos') }}">Consentir</a>.
+                    <strong>sem consentimento.</strong> <a href="{{ url_for('conta.aceitar_termos') }}">Consentir</a>.
                     {% endif %}
                 </li>
             </ul>
@@ -48,7 +48,7 @@
                 Baixa um arquivo de texto, que abre no Bloco de Notas ou no Word, com seus dados de cadastro, conversas com o Apoio Virtual e mensagens do fórum.
             </p>
 
-            <form method="POST" action="{{ url_for('exportar_meus_dados') }}">
+            <form method="POST" action="{{ url_for('conta.exportar_meus_dados') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-outline-primary">Baixar meus dados</button>
             </form>
@@ -68,7 +68,7 @@
                 guardadas até você apagá-las abaixo.
             </p>
 
-            <form method="POST" action="{{ url_for('revogar_consentimento_saude') }}"
+            <form method="POST" action="{{ url_for('conta.revogar_consentimento_saude') }}"
                 data-confirmar-botao="Revogar o consentimento? O chat e o fórum serão bloqueados."
                 data-confirmar-sim="Sim, revogar">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -90,7 +90,7 @@
                 Conversas sem atividade por {{ retencao_conversas_dias }} dias também são apagadas automaticamente.
             </p>
 
-            <form method="POST" action="{{ url_for('apagar_minhas_conversas') }}"
+            <form method="POST" action="{{ url_for('conta.apagar_minhas_conversas') }}"
                 data-confirmar-botao="Apagar todas as suas conversas? Isso não pode ser desfeito."
                 data-confirmar-sim="Sim, apagar">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -113,7 +113,7 @@
                 Suas mensagens no fórum permanecem, mas sem o conteúdo. Não é possível desfazer.
             </p>
 
-            <form method="POST" action="{{ url_for('excluir_minha_conta') }}">
+            <form method="POST" action="{{ url_for('conta.excluir_minha_conta') }}">
 
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 

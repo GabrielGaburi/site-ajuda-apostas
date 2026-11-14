@@ -19,7 +19,7 @@
             </p>
         </div>
 
-        <a href="{{ url_for('dashboard_admin') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('admin.dashboard_admin') }}" class="btn btn-outline-secondary">
 
             Voltar
 
@@ -114,7 +114,7 @@
                             <td>
 
                                 <a href="{{ url_for(
-                            'detalhes_profissional_aprovado',
+                            'admin_profissionais.detalhes_profissional_aprovado',
                             profissional_id=profissional.profissional_id
                         ) }}" class="btn btn-sm btn-dark">
 
@@ -210,7 +210,7 @@
                             <td>
 
                                 <a href="{{ url_for(
-                                    'detalhes_profissional',
+                                    'admin_profissionais.detalhes_profissional',
                                     profissional_id=profissional.profissional_id
                                 ) }}" class="btn btn-sm btn-dark">
 

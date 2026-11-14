@@ -45,7 +45,7 @@
                     </p>
 
 
-                    <a href="{{ url_for('cadastro_usuario') }}" class="btn btn-primary w-100 mt-3">
+                    <a href="{{ url_for('usuario.cadastro_usuario') }}" class="btn btn-primary w-100 mt-3">
 
                         Criar conta de usuário
 
@@ -85,7 +85,7 @@
                     </p>
 
 
-                    <a href="{{ url_for('cadastro_profissional') }}" class="btn btn-success w-100 mt-3">
+                    <a href="{{ url_for('profissional.cadastro_profissional') }}" class="btn btn-success w-100 mt-3">
 
                         Cadastrar profissional
 
@@ -107,7 +107,7 @@
         <small>
             Já possui uma conta?
 
-            <a href="{{ url_for('login') }}">
+            <a href="{{ url_for('auth.login') }}">
                 Fazer login
             </a>
 
