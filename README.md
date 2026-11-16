@@ -24,6 +24,8 @@ Aplicação web em português (pt-BR) de apoio a pessoas afetadas por apostas. R
 
 ![Painel do profissional com atendimentos e perfil](docs/painel-profissional.png)
 
+**Vídeo de demonstração:** [assista no YouTube](https://youtu.be/B3dGJnqx23g)
+
 ## Em 1 minuto (para quem avalia)
 
 **Problema:** quem tem problema com apostas costuma esconder o que sente, e um chatbot sozinho não é seguro nesse contexto. O site combina IA com atendimento humano e trata dados de saúde com cuidado legal e técnico.
