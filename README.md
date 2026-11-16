@@ -10,7 +10,19 @@ Aplicação web em português (pt-BR) de apoio a pessoas afetadas por apostas. R
 
 > **Projeto acadêmico.** Começou como TCC em grupo e foi refeito do zero por mim, para estudo e portfólio. Não tem vínculo com órgãos públicos, casas de apostas ou serviços de saúde, e não substitui atendimento profissional. Em crise, ligue 188 (CVV).
 
-<!-- Adicione aqui capturas de tela (ex.: docs/home.png, docs/chatbot.png, docs/painel-profissional.png) e um link para o vídeo de demonstração. -->
+## Capturas de tela
+
+**Página inicial**
+
+![Página inicial com notícias em destaque](docs/home.png)
+
+**Chatbot de apoio, com opção de falar com um profissional**
+
+![Chatbot de apoio aberto na página inicial](docs/chatbot.png)
+
+**Painel do profissional**
+
+![Painel do profissional com atendimentos e perfil](docs/painel-profissional.png)
 
 ## Em 1 minuto (para quem avalia)
 
