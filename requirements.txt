@@ -7,4 +7,4 @@ python-dotenv==1.2.4
 openai==3.39.0
 Flask-Limiter==4.1.1
 Pillow==13.0.0
-gunicorn==26.2.0
+gunicorn==27.0.1
