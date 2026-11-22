@@ -169,6 +169,16 @@ uploads/          fotos de profissionais (criada em execução, fora do git)
 .env.example      modelo das variáveis de ambiente
 ```
 
+## O que aprendi com este projeto
+
+A verdadeira conquista ao desenvolver este projeto foi compreender que criar um site ou aplicativo vai muito além da programação. Aprendi a importância do planejamento, de entender o que precisa ser desenvolvido, de identificar e corrigir possíveis falhas e vulnerabilidades no sistema, além de reconhecer a responsabilidade envolvida na proteção de dados sensíveis.
+
+Outro aprendizado importante foi compreender a divisão do código por meio de Blueprints, tornando o projeto mais organizado e fácil de compreender. Essa organização é fundamental para facilitar futuras modificações, manutenções e correções de erros.
+
+Pelo lado social, compreendi ainda mais a importância do tema abordado. O vício em apostas não é algo novo, mas, com a expansão das plataformas de jogos online, tornou-se um problema cada vez mais presente na sociedade. Ao estudar o assunto, pude entender melhor os impactos que esse vício pode causar na vida das pessoas e a importância de desenvolver medidas para combater esse problema.
+
+Inicialmente, este projeto foi idealizado como parte de um TCC, com o objetivo de contribuir para minha formação acadêmica. No entanto, acabou se tornando muito mais do que isso: uma experiência de vida que ampliou minhas habilidades técnicas e também minha consciência social.
+
 ## Licença
 
 Distribuído sob a licença MIT. Veja o arquivo [LICENSE](LICENSE).
